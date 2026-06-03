@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "todai-league",
+	"compatibility_date": "2026-06-03",
+	"compatibility_flags": [
+		"nodejs_als"
+	],
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"workers_dev": true,
+	"preview_urls": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "todai-league",
+			"database_id": "ca60f5c9-9b5d-4b15-ae15-cbd70c7fee3e",
+			"migrations_dir": "drizzle"
+		}
+	]
+}
