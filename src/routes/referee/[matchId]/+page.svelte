@@ -19,7 +19,6 @@
 	const sideBName = $derived(
 		data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B'
 	);
-	const sides = ['A', 'B'] as const;
 	const reversedEvents = $derived([...data.events].reverse());
 	const courtAssignmentsJson = $derived(
 		data.state.service?.discipline === 'doubles'
@@ -53,10 +52,7 @@
 	let correctionReceiverPlayerId = $state(data.state.service?.receiverPlayerId ?? '');
 	let letReason = $state('receiver_not_ready');
 
-	const allPlayerItems = $derived([
-		...playerOptions(sideAPlayers),
-		...playerOptions(sideBPlayers)
-	]);
+	const allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);
 	const bFirstPlayerItems = $derived([
 		...playerOptions(sideBPlayers),
 		...playerOptions(sideAPlayers)
@@ -92,39 +88,178 @@
 	// Scoresheet toggle
 	let showScoresheet = $state(false);
 
-	// Build scoresheet data from events, grouped by game
-	const scoresheetByGame = $derived.by(() => {
-		const scoring = [...data.events]
-			.filter((e) => e.scoreAAfter !== null && e.scoreBAfter !== null)
-			.sort((a, b) => a.seqNo - b.seqNo);
+	/**
+	 * Build BWF-style scoresheet data from events.
+	 *
+	 * Official BWF score sheet structure:
+	 * - Each side (left/right on the sheet) has player row(s)
+	 *   - Singles: 1 row per side
+	 *   - Doubles: 2 rows per side (one per player)
+	 * - Points are written in the row of the current server
+	 * - When service changes (service over), writing moves to a new row
+	 * - Each "service run" is a sequence of scores written in one player's row
+	 *
+	 * We produce per-game data with:
+	 * - playerRows: for each player, the ordered list of score entries they recorded as server
+	 * - serviceRuns: ordered list of { playerId, side, scores[] } representing consecutive service
+	 * - finalScore: the final score of the game
+	 */
+	interface ScoreEntry {
+		scoreA: number;
+		scoreB: number;
+		isServiceOver: boolean;
+	}
 
-		const games: Array<{
-			aPoints: Array<{ point: number; opponentScore: number }>;
-			bPoints: Array<{ point: number; opponentScore: number }>;
-		}> = [];
+	interface ServiceRun {
+		serverPlayerId: string;
+		side: 'A' | 'B';
+		scores: ScoreEntry[];
+	}
 
-		let aPoints: typeof games[0]['aPoints'] = [];
-		let bPoints: typeof games[0]['bPoints'] = [];
-		let prevA = 0;
-		let prevB = 0;
+	interface GameSheet {
+		gameNo: number;
+		serviceRuns: ServiceRun[];
+		finalScoreA: number;
+		finalScoreB: number;
+		winnerSide: 'A' | 'B' | null;
+	}
 
-		for (const e of scoring) {
-			const a = e.scoreAAfter ?? 0;
-			const b = e.scoreBAfter ?? 0;
-			// Detect game boundary: combined score went down (reset to 0)
-			if ((aPoints.length > 0 || bPoints.length > 0) && a + b < prevA + prevB) {
-				games.push({ aPoints, bPoints });
-				aPoints = [];
-				bPoints = [];
-				prevA = 0;
-				prevB = 0;
+	const scoresheetByGame = $derived.by((): GameSheet[] => {
+		const allEvents = [...data.events].sort((a, b) => a.seqNo - b.seqNo);
+
+		const games: GameSheet[] = [];
+		let currentGameNo = 1;
+		let runs: ServiceRun[] = [];
+		let currentRun: ServiceRun | null = null;
+		let lastScoreA = 0;
+		let lastScoreB = 0;
+
+		for (const ev of allEvents) {
+			// Detect game boundary from game_started events
+			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo > currentGameNo) {
+				// Close previous game
+				if (runs.length > 0 || currentRun) {
+					if (currentRun) runs.push(currentRun);
+					games.push({
+						gameNo: currentGameNo,
+						serviceRuns: runs,
+						finalScoreA: lastScoreA,
+						finalScoreB: lastScoreB,
+						winnerSide: data.state.games.find((g) => g.gameNo === currentGameNo)?.winnerSide ?? null
+					});
+				}
+				currentGameNo = ev.gameNo;
+				runs = [];
+				currentRun = null;
+				lastScoreA = 0;
+				lastScoreB = 0;
 			}
-			if (a > prevA) aPoints.push({ point: a, opponentScore: b });
-			if (b > prevB) bPoints.push({ point: b, opponentScore: a });
-			prevA = a;
-			prevB = b;
+
+			// match_started: record the initial 0-0 with the first server
+			// BWF convention: both server and receiver rows start with "0"
+			if (ev.eventType === 'match_started') {
+				const serverId = ev.serverPlayerIdAfter;
+				const receiverId = ev.receiverPlayerIdAfter;
+				const serverSide = data.players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
+				const receiverSide =
+					data.players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
+
+				// Server's initial 0
+				currentRun = {
+					serverPlayerId: serverId ?? '',
+					side: serverSide,
+					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: false }]
+				};
+
+				// Receiver's initial 0 is implicitly at the same column
+				// We record it as a "phantom run" that just has 0
+				runs.push({
+					serverPlayerId: receiverId ?? '',
+					side: receiverSide,
+					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
+				});
+			}
+
+			// game_started: similar to match_started, set up initial 0-0 for both
+			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo === currentGameNo) {
+				const serverId = ev.serverPlayerIdAfter;
+				const receiverId = ev.receiverPlayerIdAfter;
+				const serverSide = data.players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
+				const receiverSide =
+					data.players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
+
+				// Receiver's initial 0
+				runs.push({
+					serverPlayerId: receiverId ?? '',
+					side: receiverSide,
+					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
+				});
+
+				// Server's initial 0
+				currentRun = {
+					serverPlayerId: serverId ?? '',
+					side: serverSide,
+					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: false }]
+				};
+			}
+
+			// rally_won: add score to the appropriate run
+			if (ev.eventType === 'rally_won' && ev.scoreAAfter !== null && ev.scoreBAfter !== null) {
+				const scoreA = ev.scoreAAfter;
+				const scoreB = ev.scoreBAfter;
+				const serverBefore = ev.serverPlayerIdBefore;
+				const serverAfter = ev.serverPlayerIdAfter;
+
+				// Determine if service changed
+				const serviceChanged = serverBefore !== serverAfter;
+
+				if (serviceChanged && currentRun) {
+					// Mark last entry of current run as service over
+					if (currentRun.scores.length > 0) {
+						currentRun.scores[currentRun.scores.length - 1].isServiceOver = true;
+					}
+					// Close current run
+					runs.push(currentRun);
+
+					// Start new run with the new server
+					const newServerSide =
+						data.players.find((p) => p.id === serverAfter)?.side ?? ('A' as 'A' | 'B');
+					currentRun = {
+						serverPlayerId: serverAfter ?? '',
+						side: newServerSide,
+						scores: [{ scoreA, scoreB, isServiceOver: false }]
+					};
+				} else if (currentRun) {
+					// Same server continues
+					currentRun.scores.push({ scoreA, scoreB, isServiceOver: false });
+				} else {
+					// Shouldn't happen, but handle gracefully
+					const sid = serverAfter ?? '';
+					const ss = data.players.find((p) => p.id === sid)?.side ?? ('A' as 'A' | 'B');
+					currentRun = {
+						serverPlayerId: sid,
+						side: ss,
+						scores: [{ scoreA, scoreB, isServiceOver: false }]
+					};
+				}
+
+				lastScoreA = scoreA;
+				lastScoreB = scoreB;
+			}
 		}
-		if (aPoints.length > 0 || bPoints.length > 0) games.push({ aPoints, bPoints });
+
+		// Close the last game
+		if (currentRun) runs.push(currentRun);
+		if (runs.length > 0) {
+			games.push({
+				gameNo: currentGameNo,
+				serviceRuns: runs,
+				finalScoreA: lastScoreA,
+				finalScoreB: lastScoreB,
+				winnerSide: data.state.games.find((g) => g.gameNo === currentGameNo)?.winnerSide ?? null
+			});
+		}
+
 		return games;
 	});
 </script>
@@ -135,7 +270,6 @@
 
 <main class="min-h-screen bg-zinc-50 px-4 py-6 text-zinc-950 sm:px-6">
 	<div class="mx-auto grid max-w-3xl gap-4">
-
 		<!-- Header -->
 		<header class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
 			<a
@@ -148,8 +282,7 @@
 				<div>
 					<h1 class="text-xl font-semibold">{sideAName} vs {sideBName}</h1>
 					<p class="mt-0.5 text-sm text-zinc-500">
-						{data.match.court?.name ?? 'コート未設定'} ·
-						ゲーム {data.state.currentGameNo} ·
+						{data.match.court?.name ?? 'コート未設定'} · ゲーム {data.state.currentGameNo} ·
 						{statusLabel[data.state.status] ?? data.state.status}
 					</p>
 				</div>
@@ -217,58 +350,181 @@
 
 		<!-- Scoresheet view -->
 		{#if showScoresheet}
-			<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+			<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
 				<div class="border-b border-zinc-100 px-5 py-3">
 					<h2 class="text-sm font-medium text-zinc-700">スコアシート</h2>
-					<p class="mt-0.5 text-xs text-zinc-400">各欄の数字は得点時の自チーム得点（括弧内は相手得点）</p>
 				</div>
 				{#each scoresheetByGame as game, gi (gi)}
-					<div class="px-5 py-4 {gi > 0 ? 'border-t border-zinc-100' : ''}">
-						<p class="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400">
-							第{gi + 1}ゲーム
-						</p>
-						<div class="grid grid-cols-2 gap-4">
-							<!-- A side -->
-							<div>
-								<p class="mb-2 text-center text-sm font-semibold text-emerald-700">{sideAName}</p>
-								<div class="flex flex-wrap gap-1">
-									{#each game.aPoints as pt (pt.point)}
-										<span class="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
-											{pt.point}<span class="ml-0.5 text-emerald-400">({pt.opponentScore})</span>
-										</span>
+					{@const aPlayers = sideAPlayers}
+					{@const bPlayers = sideBPlayers}
+					<div class="px-3 py-4 {gi > 0 ? 'border-t border-zinc-200' : ''}">
+						<div class="mb-3 flex items-center justify-between">
+							<p class="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+								第{game.gameNo}ゲーム
+							</p>
+							{#if game.winnerSide}
+								<span
+									class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
+									{game.winnerSide === 'A' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}"
+								>
+									{game.finalScoreA}–{game.finalScoreB}
+								</span>
+							{/if}
+						</div>
+
+						<!-- BWF Score Sheet Table -->
+						<div class="overflow-x-auto">
+							<table class="w-full border-collapse text-xs">
+								<tbody>
+									<!-- Side A rows -->
+									{#each aPlayers as player (player.id)}
+										{@const playerRuns = game.serviceRuns.filter(
+											(r) => r.serverPlayerId === player.id
+										)}
+										<tr
+											class="border-b border-zinc-100
+										{playerRuns.length > 0 ? '' : 'opacity-50'}"
+										>
+											<!-- Player name column -->
+											<td
+												class="sticky left-0 z-10 border-r border-zinc-200 bg-emerald-50 px-2 py-1.5 font-medium whitespace-nowrap text-emerald-800"
+												style="min-width: 5rem; max-width: 7rem;"
+											>
+												<div class="flex items-center gap-1 truncate">
+													<span class="truncate">{player.name}</span>
+												</div>
+											</td>
+
+											<!-- Score cells -->
+											<td class="p-0">
+												<div class="flex items-stretch">
+													{#each game.serviceRuns as run, ri (ri)}
+														{#if run.serverPlayerId === player.id}
+															{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
+																<div
+																	class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-emerald-700 tabular-nums"
+																>
+																	{entry.scoreA}
+																</div>
+															{/each}
+															<!-- Service over marker -->
+															{#if ri < game.serviceRuns.length - 1}
+																<div class="flex items-center border-r-2 border-zinc-300"></div>
+															{/if}
+														{:else}
+															<!-- Blank cells for other player's service run -->
+															{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
+																<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
+															{/each}
+															{#if ri < game.serviceRuns.length - 1}
+																<div class="flex items-center border-r-2 border-zinc-300"></div>
+															{/if}
+														{/if}
+													{/each}
+													{#if playerRuns.length === 0 && game.serviceRuns.length === 0}
+														<div class="px-2 py-1.5 text-zinc-300">—</div>
+													{/if}
+												</div>
+											</td>
+										</tr>
 									{/each}
-									{#if game.aPoints.length === 0}
-										<span class="text-xs text-zinc-400">—</span>
-									{/if}
-								</div>
-							</div>
-							<!-- B side -->
-							<div>
-								<p class="mb-2 text-center text-sm font-semibold text-sky-700">{sideBName}</p>
-								<div class="flex flex-wrap gap-1">
-									{#each game.bPoints as pt (pt.point)}
-										<span class="rounded-lg bg-sky-50 px-2 py-1 text-xs font-medium text-sky-800">
-											{pt.point}<span class="ml-0.5 text-sky-400">({pt.opponentScore})</span>
-										</span>
+								</tbody>
+
+								<!-- Separator between A and B sides -->
+								<tbody>
+									<tr>
+										<td
+											class="sticky left-0 z-10 border-y-2 border-zinc-400 bg-zinc-100 px-2 py-0.5 text-center text-[10px] font-medium tracking-wider text-zinc-400 uppercase"
+										>
+											—
+										</td>
+										<td class="border-y-2 border-zinc-400 bg-zinc-100 p-0">
+											<div class="flex items-stretch">
+												{#each game.serviceRuns as run, ri (ri)}
+													{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
+														<div class="min-w-7 border-r border-zinc-300 px-1 py-0.5"></div>
+													{/each}
+													{#if ri < game.serviceRuns.length - 1}
+														<div class="border-r-2 border-zinc-300"></div>
+													{/if}
+												{/each}
+											</div>
+										</td>
+									</tr>
+								</tbody>
+
+								<!-- Side B rows -->
+								<tbody>
+									{#each bPlayers as player (player.id)}
+										{@const playerRuns = game.serviceRuns.filter(
+											(r) => r.serverPlayerId === player.id
+										)}
+										<tr
+											class="border-b border-zinc-100
+										{playerRuns.length > 0 ? '' : 'opacity-50'}"
+										>
+											<!-- Player name column -->
+											<td
+												class="sticky left-0 z-10 border-r border-zinc-200 bg-sky-50 px-2 py-1.5 font-medium whitespace-nowrap text-sky-800"
+												style="min-width: 5rem; max-width: 7rem;"
+											>
+												<div class="flex items-center gap-1 truncate">
+													<span class="truncate">{player.name}</span>
+												</div>
+											</td>
+
+											<!-- Score cells -->
+											<td class="p-0">
+												<div class="flex items-stretch">
+													{#each game.serviceRuns as run, ri (ri)}
+														{#if run.serverPlayerId === player.id}
+															{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
+																<div
+																	class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-sky-700 tabular-nums"
+																>
+																	{entry.scoreB}
+																</div>
+															{/each}
+															<!-- Service over marker -->
+															{#if ri < game.serviceRuns.length - 1}
+																<div class="flex items-center border-r-2 border-zinc-300"></div>
+															{/if}
+														{:else}
+															<!-- Blank cells for other player's service run -->
+															{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
+																<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
+															{/each}
+															{#if ri < game.serviceRuns.length - 1}
+																<div class="flex items-center border-r-2 border-zinc-300"></div>
+															{/if}
+														{/if}
+													{/each}
+													{#if playerRuns.length === 0 && game.serviceRuns.length === 0}
+														<div class="px-2 py-1.5 text-zinc-300">—</div>
+													{/if}
+												</div>
+											</td>
+										</tr>
 									{/each}
-									{#if game.bPoints.length === 0}
-										<span class="text-xs text-zinc-400">—</span>
-									{/if}
-								</div>
-							</div>
+								</tbody>
+							</table>
+						</div>
+
+						<!-- Legend -->
+						<div class="mt-2 flex items-center gap-4 text-[10px] text-zinc-400">
+							<span>太線 ＝ サービスオーバー</span>
+							<span>数字 ＝ サーバー側得点</span>
 						</div>
 					</div>
 				{:else}
-					<div class="px-5 py-8 text-center text-sm text-zinc-400">
-						得点データがありません
-					</div>
+					<div class="px-5 py-8 text-center text-sm text-zinc-400">得点データがありません</div>
 				{/each}
 			</section>
 		{/if}
 
 		<!-- Service info -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400">サービス情報</h2>
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">サービス情報</h2>
 			<div class="grid gap-3 sm:grid-cols-3">
 				<div>
 					<p class="text-xs text-zinc-500">サーバー</p>
@@ -293,7 +549,7 @@
 			{@const server = data.state.service.serverPlayerId}
 			{@const receiver = data.state.service.receiverPlayerId}
 			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-				<h2 class="mb-4 text-xs font-medium uppercase tracking-wide text-zinc-400">コート配置</h2>
+				<h2 class="mb-4 text-xs font-medium tracking-wide text-zinc-400 uppercase">コート配置</h2>
 				<!-- Court diagram: B at top (far), A at bottom (near). -->
 				<!-- Left/Right are from each side's perspective facing the net. -->
 				<!-- Diagram left column: B-right / A-left  |  Diagram right column: B-left / A-right -->
@@ -301,8 +557,10 @@
 					<div class="relative overflow-hidden rounded-xl border-2 border-zinc-300">
 						<!-- B side (top half): faces down → B-right = screen left, B-left = screen right -->
 						<div class="grid grid-cols-2 divide-x divide-zinc-200">
-							<div class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-3 text-center
-								{server === ca.B.right ? 'bg-sky-50' : receiver === ca.B.right ? 'bg-zinc-50' : ''}">
+							<div
+								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
+								{server === ca.B.right ? 'bg-sky-50' : receiver === ca.B.right ? 'bg-zinc-50' : ''}"
+							>
 								{#if server === ca.B.right}
 									<span class="text-xs font-medium text-sky-600">S</span>
 								{:else if receiver === ca.B.right}
@@ -310,11 +568,15 @@
 								{:else}
 									<span class="text-xs text-zinc-300">—</span>
 								{/if}
-								<p class="text-sm font-medium text-zinc-800 leading-tight">{playerName(ca.B.right)}</p>
+								<p class="text-sm leading-tight font-medium text-zinc-800">
+									{playerName(ca.B.right)}
+								</p>
 								<p class="text-[10px] text-zinc-400">{sideBName} 右</p>
 							</div>
-							<div class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-3 text-center
-								{server === ca.B.left ? 'bg-sky-50' : receiver === ca.B.left ? 'bg-zinc-50' : ''}">
+							<div
+								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
+								{server === ca.B.left ? 'bg-sky-50' : receiver === ca.B.left ? 'bg-zinc-50' : ''}"
+							>
 								{#if server === ca.B.left}
 									<span class="text-xs font-medium text-sky-600">S</span>
 								{:else if receiver === ca.B.left}
@@ -322,7 +584,9 @@
 								{:else}
 									<span class="text-xs text-zinc-300">—</span>
 								{/if}
-								<p class="text-sm font-medium text-zinc-800 leading-tight">{playerName(ca.B.left)}</p>
+								<p class="text-sm leading-tight font-medium text-zinc-800">
+									{playerName(ca.B.left)}
+								</p>
 								<p class="text-[10px] text-zinc-400">{sideBName} 左</p>
 							</div>
 						</div>
@@ -330,15 +594,22 @@
 						<!-- Net -->
 						<div class="relative flex items-center border-y-2 border-zinc-400 bg-zinc-100 py-1">
 							<div class="flex-1 border-t border-dashed border-zinc-300"></div>
-							<span class="shrink-0 px-2 text-[10px] font-medium uppercase tracking-widest text-zinc-400">NET</span>
+							<span
+								class="shrink-0 px-2 text-[10px] font-medium tracking-widest text-zinc-400 uppercase"
+								>NET</span
+							>
 							<div class="flex-1 border-t border-dashed border-zinc-300"></div>
 						</div>
 
 						<!-- A side (bottom half): faces up → A-right = screen right, A-left = screen left -->
 						<div class="grid grid-cols-2 divide-x divide-zinc-200">
-							<div class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-3 text-center
-								{server === ca.A.left ? 'bg-emerald-50' : receiver === ca.A.left ? 'bg-zinc-50' : ''}">
-								<p class="text-sm font-medium text-zinc-800 leading-tight">{playerName(ca.A.left)}</p>
+							<div
+								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
+								{server === ca.A.left ? 'bg-emerald-50' : receiver === ca.A.left ? 'bg-zinc-50' : ''}"
+							>
+								<p class="text-sm leading-tight font-medium text-zinc-800">
+									{playerName(ca.A.left)}
+								</p>
 								<p class="text-[10px] text-zinc-400">{sideAName} 左</p>
 								{#if server === ca.A.left}
 									<span class="text-xs font-medium text-emerald-600">S</span>
@@ -346,9 +617,13 @@
 									<span class="text-xs text-zinc-400">R</span>
 								{/if}
 							</div>
-							<div class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-3 text-center
-								{server === ca.A.right ? 'bg-emerald-50' : receiver === ca.A.right ? 'bg-zinc-50' : ''}">
-								<p class="text-sm font-medium text-zinc-800 leading-tight">{playerName(ca.A.right)}</p>
+							<div
+								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
+								{server === ca.A.right ? 'bg-emerald-50' : receiver === ca.A.right ? 'bg-zinc-50' : ''}"
+							>
+								<p class="text-sm leading-tight font-medium text-zinc-800">
+									{playerName(ca.A.right)}
+								</p>
 								<p class="text-[10px] text-zinc-400">{sideAName} 右</p>
 								{#if server === ca.A.right}
 									<span class="text-xs font-medium text-emerald-600">S</span>
@@ -358,7 +633,7 @@
 							</div>
 						</div>
 					</div>
-					<p class="mt-2 text-center text-[10px] text-zinc-400">S = サーバー　R = レシーバー</p>
+					<p class="mt-2 text-center text-[10px] text-zinc-400">S = サーバー / R = レシーバー</p>
 				</div>
 			</section>
 		{/if}
@@ -409,7 +684,7 @@
 
 		<!-- Controls -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400">操作</h2>
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">操作</h2>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 				<form method="POST" action="?/undo">
 					<button
@@ -448,14 +723,13 @@
 		</section>
 
 		<!-- Advanced: correction / let / forfeit / retire -->
-		<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+		<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
 			<h2
-				class="border-b border-zinc-100 px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-400"
+				class="border-b border-zinc-100 px-5 py-3 text-xs font-medium tracking-wide text-zinc-400 uppercase"
 			>
 				高度な操作
 			</h2>
 			<div class="divide-y divide-zinc-100">
-
 				<!-- Correction -->
 				<details class="group">
 					<summary
@@ -484,7 +758,7 @@
 							<summary class="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-500">
 								サービス状態も訂正
 							</summary>
-							<div class="grid gap-2 px-3 pb-3 pt-1">
+							<div class="grid gap-2 px-3 pt-1 pb-3">
 								<AppSelect
 									name="servingSide"
 									bind:value={correctionServingSide}
@@ -506,10 +780,9 @@
 									items={allReceiverCorrectionItems}
 								/>
 								{#if data.state.service?.discipline === 'doubles'}
-									<AppTextarea
-										name="courtAssignmentsJson"
-										class="min-h-20 font-mono text-xs"
-									>{courtAssignmentsJson}</AppTextarea>
+									<AppTextarea name="courtAssignmentsJson" class="min-h-20 font-mono text-xs"
+										>{courtAssignmentsJson}</AppTextarea
+									>
 								{/if}
 							</div>
 						</details>
@@ -590,27 +863,25 @@
 						</button>
 					</form>
 				</details>
-
 			</div>
 		</section>
 
 		<!-- Event log -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400">イベントログ</h2>
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">イベントログ</h2>
 			<div class="max-h-72 space-y-1.5 overflow-auto">
 				{#each reversedEvents as event (event.id)}
 					<div
 						class="grid grid-cols-[3rem_1fr_auto] items-center gap-3 rounded-xl bg-zinc-50 px-3 py-2 text-sm"
 					>
-						<span class="tabular-nums text-zinc-400">#{event.seqNo}</span>
+						<span class="text-zinc-400 tabular-nums">#{event.seqNo}</span>
 						<span class="text-zinc-700">{event.eventType}</span>
-						<span class="tabular-nums font-medium text-zinc-500">
+						<span class="font-medium text-zinc-500 tabular-nums">
 							{event.scoreAAfter ?? '-'}–{event.scoreBAfter ?? '-'}
 						</span>
 					</div>
 				{/each}
 			</div>
 		</section>
-
 	</div>
 </main>
