@@ -22,7 +22,7 @@
 		onValueChange?: (value: string) => void;
 	} = $props();
 
-	const selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
+	let selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
 </script>
 
 <Select.Root

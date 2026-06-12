@@ -5,7 +5,7 @@
 
 	let { data }: PageProps = $props();
 
-	const groups = $derived([
+	let groups = $derived([
 		{ code: 'A', label: 'Aリーグ', teams: data.teamsA, ties: data.tiesA },
 		{ code: 'B', label: 'Bリーグ', teams: data.teamsB, ties: data.tiesB }
 	]);
@@ -15,8 +15,8 @@
 	<title>予選リーグ | 東大リーグ団体戦</title>
 </svelte:head>
 
-<main class="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
-	<div class="mx-auto max-w-4xl space-y-8">
+<div class="bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
+	<div class="space-y-8">
 		<header>
 			<h1 class="text-2xl font-semibold tracking-tight">予選リーグ</h1>
 			<p class="mt-1 text-sm text-zinc-500">A・Bリーグの管理</p>
@@ -48,7 +48,9 @@
 						</div>
 					</div>
 
-					<p class="mt-4 flex items-center gap-1 text-sm font-medium text-zinc-500 group-hover:text-zinc-700">
+					<p
+						class="mt-4 flex items-center gap-1 text-sm font-medium text-zinc-500 group-hover:text-zinc-700"
+					>
 						詳細を開く
 						<ChevronRight class="size-4 transition-transform group-hover:translate-x-0.5" />
 					</p>
@@ -56,4 +58,4 @@
 			{/each}
 		</div>
 	</div>
-</main>
+</div>

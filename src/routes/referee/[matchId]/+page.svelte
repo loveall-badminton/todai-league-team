@@ -1,26 +1,38 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageProps } from './$types';
 	import type { MatchPlayer } from '$lib/domain/types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppTextarea from '$lib/components/AppTextarea.svelte';
+	import {
+		rallyWon,
+		start,
+		startGame,
+		undo,
+		correction,
+		letCalled,
+		suspend,
+		resume,
+		forfeit,
+		retire,
+		confirm
+	} from './referee.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
-	const currentGame = $derived(
+	let cmdError = $state<string | null>(null);
+
+	let currentGame = $derived(
 		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
 	);
-	const sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
-	const sideBPlayers = $derived(data.players.filter((player) => player.side === 'B'));
-	const sideAName = $derived(
-		data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A'
-	);
-	const sideBName = $derived(
-		data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B'
-	);
-	const reversedEvents = $derived([...data.events].reverse());
-	const courtAssignmentsJson = $derived(
+	let sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
+	let sideBPlayers = $derived(data.players.filter((player) => player.side === 'B'));
+	let sideAName = $derived(data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A');
+	let sideBName = $derived(data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B');
+	let reversedEvents = $derived([...data.events].reverse());
+	let courtAssignmentsJson = $derived(
 		data.state.service?.discipline === 'doubles'
 			? JSON.stringify(data.state.service.courtAssignments)
 			: ''
@@ -43,17 +55,11 @@
 		confirmed: '確定'
 	};
 
-	// Controlled select states
-	let initialServerPlayerId = $state('');
-	let initialReceiverPlayerId = $state('');
-	let correctionServingSide = $state(data.state.service?.servingSide ?? '');
-	let correctionServiceCourt = $state(data.state.service?.serviceCourt ?? '');
-	let correctionServerPlayerId = $state(data.state.service?.serverPlayerId ?? '');
-	let correctionReceiverPlayerId = $state(data.state.service?.receiverPlayerId ?? '');
 	let letReason = $state('receiver_not_ready');
+	let letNote = $state('');
 
-	const allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);
-	const bFirstPlayerItems = $derived([
+	let allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);
+	let bFirstPlayerItems = $derived([
 		...playerOptions(sideBPlayers),
 		...playerOptions(sideAPlayers)
 	]);
@@ -67,11 +73,11 @@
 		{ value: 'right', label: '右' },
 		{ value: 'left', label: '左' }
 	];
-	const allPlayerCorrectionItems = $derived([
+	let allPlayerCorrectionItems = $derived([
 		{ value: '', label: 'サーバー変更なし' },
 		...data.players.map((p) => ({ value: p.id, label: p.name }))
 	]);
-	const allReceiverCorrectionItems = $derived([
+	let allReceiverCorrectionItems = $derived([
 		{ value: '', label: 'レシーバー変更なし' },
 		...data.players.map((p) => ({ value: p.id, label: p.name }))
 	]);
@@ -88,21 +94,18 @@
 	// Scoresheet toggle
 	let showScoresheet = $state(false);
 
+	async function run(fn: () => Promise<unknown>) {
+		cmdError = null;
+		try {
+			await fn();
+			await invalidateAll();
+		} catch (e) {
+			cmdError = e instanceof Error ? e.message : '操作に失敗しました';
+		}
+	}
+
 	/**
 	 * Build BWF-style scoresheet data from events.
-	 *
-	 * Official BWF score sheet structure:
-	 * - Each side (left/right on the sheet) has player row(s)
-	 *   - Singles: 1 row per side
-	 *   - Doubles: 2 rows per side (one per player)
-	 * - Points are written in the row of the current server
-	 * - When service changes (service over), writing moves to a new row
-	 * - Each "service run" is a sequence of scores written in one player's row
-	 *
-	 * We produce per-game data with:
-	 * - playerRows: for each player, the ordered list of score entries they recorded as server
-	 * - serviceRuns: ordered list of { playerId, side, scores[] } representing consecutive service
-	 * - finalScore: the final score of the game
 	 */
 	interface ScoreEntry {
 		scoreA: number;
@@ -124,7 +127,7 @@
 		winnerSide: 'A' | 'B' | null;
 	}
 
-	const scoresheetByGame = $derived.by((): GameSheet[] => {
+	let scoresheetByGame = $derived.by((): GameSheet[] => {
 		const allEvents = [...data.events].sort((a, b) => a.seqNo - b.seqNo);
 
 		const games: GameSheet[] = [];
@@ -135,19 +138,15 @@
 		let lastScoreB = 0;
 
 		for (const ev of allEvents) {
-			// Detect game boundary from game_started events
 			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo > currentGameNo) {
-				// Close previous game
-				if (runs.length > 0 || currentRun) {
-					if (currentRun) runs.push(currentRun);
-					games.push({
-						gameNo: currentGameNo,
-						serviceRuns: runs,
-						finalScoreA: lastScoreA,
-						finalScoreB: lastScoreB,
-						winnerSide: data.state.games.find((g) => g.gameNo === currentGameNo)?.winnerSide ?? null
-					});
-				}
+				if (currentRun) runs.push(currentRun);
+				games.push({
+					gameNo: currentGameNo,
+					serviceRuns: runs,
+					finalScoreA: lastScoreA,
+					finalScoreB: lastScoreB,
+					winnerSide: data.state.games.find((g) => g.gameNo === currentGameNo)?.winnerSide ?? null
+				});
 				currentGameNo = ev.gameNo;
 				runs = [];
 				currentRun = null;
@@ -155,8 +154,6 @@
 				lastScoreB = 0;
 			}
 
-			// match_started: record the initial 0-0 with the first server
-			// BWF convention: both server and receiver rows start with "0"
 			if (ev.eventType === 'match_started') {
 				const serverId = ev.serverPlayerIdAfter;
 				const receiverId = ev.receiverPlayerIdAfter;
@@ -164,15 +161,12 @@
 				const receiverSide =
 					data.players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
 
-				// Server's initial 0
 				currentRun = {
 					serverPlayerId: serverId ?? '',
 					side: serverSide,
 					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: false }]
 				};
 
-				// Receiver's initial 0 is implicitly at the same column
-				// We record it as a "phantom run" that just has 0
 				runs.push({
 					serverPlayerId: receiverId ?? '',
 					side: receiverSide,
@@ -180,7 +174,6 @@
 				});
 			}
 
-			// game_started: similar to match_started, set up initial 0-0 for both
 			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo === currentGameNo) {
 				const serverId = ev.serverPlayerIdAfter;
 				const receiverId = ev.receiverPlayerIdAfter;
@@ -188,14 +181,12 @@
 				const receiverSide =
 					data.players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
 
-				// Receiver's initial 0
 				runs.push({
 					serverPlayerId: receiverId ?? '',
 					side: receiverSide,
 					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
 				});
 
-				// Server's initial 0
 				currentRun = {
 					serverPlayerId: serverId ?? '',
 					side: serverSide,
@@ -203,25 +194,20 @@
 				};
 			}
 
-			// rally_won: add score to the appropriate run
 			if (ev.eventType === 'rally_won' && ev.scoreAAfter !== null && ev.scoreBAfter !== null) {
 				const scoreA = ev.scoreAAfter;
 				const scoreB = ev.scoreBAfter;
 				const serverBefore = ev.serverPlayerIdBefore;
 				const serverAfter = ev.serverPlayerIdAfter;
 
-				// Determine if service changed
 				const serviceChanged = serverBefore !== serverAfter;
 
 				if (serviceChanged && currentRun) {
-					// Mark last entry of current run as service over
 					if (currentRun.scores.length > 0) {
 						currentRun.scores[currentRun.scores.length - 1].isServiceOver = true;
 					}
-					// Close current run
 					runs.push(currentRun);
 
-					// Start new run with the new server
 					const newServerSide =
 						data.players.find((p) => p.id === serverAfter)?.side ?? ('A' as 'A' | 'B');
 					currentRun = {
@@ -230,10 +216,8 @@
 						scores: [{ scoreA, scoreB, isServiceOver: false }]
 					};
 				} else if (currentRun) {
-					// Same server continues
 					currentRun.scores.push({ scoreA, scoreB, isServiceOver: false });
 				} else {
-					// Shouldn't happen, but handle gracefully
 					const sid = serverAfter ?? '';
 					const ss = data.players.find((p) => p.id === sid)?.side ?? ('A' as 'A' | 'B');
 					currentRun = {
@@ -248,7 +232,6 @@
 			}
 		}
 
-		// Close the last game
 		if (currentRun) runs.push(currentRun);
 		if (runs.length > 0) {
 			games.push({
@@ -264,12 +247,42 @@
 	});
 </script>
 
+{#snippet scoreCard(
+	side: 'A' | 'B',
+	name: string,
+	score: number,
+	accent: 'emerald' | 'sky',
+	serviceActive: boolean
+)}
+	<div
+		class="rounded-2xl border bg-white p-5 shadow-sm {serviceActive
+			? accent === 'emerald'
+				? 'border-2 border-emerald-500'
+				: 'border-2 border-sky-500'
+			: 'border-zinc-200'}"
+	>
+		<p class="text-sm font-medium text-zinc-500">{name}</p>
+		<p class="mt-1 text-7xl leading-none font-bold tabular-nums">{score}</p>
+		<div class="mt-4">
+			<button
+				class="h-20 w-full rounded-2xl {accent === 'emerald'
+					? 'bg-emerald-600 hover:bg-emerald-700'
+					: 'bg-sky-600 hover:bg-sky-700'} text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400"
+				disabled={data.state.status !== 'playing'}
+				onclick={() => run(() => rallyWon({ side }))}
+			>
+				+1
+			</button>
+		</div>
+	</div>
+{/snippet}
+
 <svelte:head>
 	<title>スコア入力 | 東大リーグ団体戦</title>
 </svelte:head>
 
-<main class="min-h-screen bg-zinc-50 px-4 py-6 text-zinc-950 sm:px-6">
-	<div class="mx-auto grid max-w-3xl gap-4">
+<div class="min-h-screen bg-zinc-50 px-4 py-6 text-zinc-950 sm:px-6">
+	<div class="grid gap-4">
 		<!-- Header -->
 		<header class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
 			<a
@@ -301,51 +314,27 @@
 					</button>
 				</div>
 			</div>
-			{#if form?.message}
-				<p class="mt-3 rounded-xl bg-zinc-100 px-4 py-2 text-sm text-zinc-700">{form.message}</p>
+			{#if cmdError}
+				<p class="mt-3 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">{cmdError}</p>
 			{/if}
 		</header>
 
 		<!-- Score + tap buttons -->
 		<div class="grid grid-cols-2 gap-3">
-			<div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-				<div class="flex items-center gap-2">
-					<p class="text-sm font-medium text-zinc-500">{sideAName}</p>
-					{#if data.state.service?.servingSide === 'A'}
-						<span class="size-2.5 rounded-full bg-emerald-500" title="サーブ権あり"></span>
-					{/if}
-				</div>
-				<p class="mt-1 text-7xl leading-none font-bold tabular-nums">{currentGame?.score.A ?? 0}</p>
-				<form method="POST" action="?/rallyWon" class="mt-4">
-					<input name="side" type="hidden" value="A" />
-					<button
-						class="h-20 w-full rounded-2xl bg-emerald-600 text-2xl font-bold text-white hover:bg-emerald-700 active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400"
-						type="submit"
-						disabled={data.state.status !== 'playing'}
-					>
-						+1
-					</button>
-				</form>
-			</div>
-			<div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-				<div class="flex items-center gap-2">
-					<p class="text-sm font-medium text-zinc-500">{sideBName}</p>
-					{#if data.state.service?.servingSide === 'B'}
-						<span class="size-2.5 rounded-full bg-sky-500" title="サーブ権あり"></span>
-					{/if}
-				</div>
-				<p class="mt-1 text-7xl leading-none font-bold tabular-nums">{currentGame?.score.B ?? 0}</p>
-				<form method="POST" action="?/rallyWon" class="mt-4">
-					<input name="side" type="hidden" value="B" />
-					<button
-						class="h-20 w-full rounded-2xl bg-sky-600 text-2xl font-bold text-white hover:bg-sky-700 active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400"
-						type="submit"
-						disabled={data.state.status !== 'playing'}
-					>
-						+1
-					</button>
-				</form>
-			</div>
+			{@render scoreCard(
+				'A',
+				sideAName,
+				currentGame?.score.A ?? 0,
+				'emerald',
+				data.state.service?.servingSide === 'A'
+			)}
+			{@render scoreCard(
+				'B',
+				sideBName,
+				currentGame?.score.B ?? 0,
+				'sky',
+				data.state.service?.servingSide === 'B'
+			)}
 		</div>
 
 		<!-- Scoresheet view -->
@@ -359,7 +348,7 @@
 					{@const bPlayers = sideBPlayers}
 					<div class="px-3 py-4 {gi > 0 ? 'border-t border-zinc-200' : ''}">
 						<div class="mb-3 flex items-center justify-between">
-							<p class="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+							<p class="text-xs font-medium tracking-wide text-zinc-400">
 								第{game.gameNo}ゲーム
 							</p>
 							{#if game.winnerSide}
@@ -385,7 +374,6 @@
 											class="border-b border-zinc-100
 										{playerRuns.length > 0 ? '' : 'opacity-50'}"
 										>
-											<!-- Player name column -->
 											<td
 												class="sticky left-0 z-10 border-r border-zinc-200 bg-emerald-50 px-2 py-1.5 font-medium whitespace-nowrap text-emerald-800"
 												style="min-width: 5rem; max-width: 7rem;"
@@ -395,7 +383,6 @@
 												</div>
 											</td>
 
-											<!-- Score cells -->
 											<td class="p-0">
 												<div class="flex items-stretch">
 													{#each game.serviceRuns as run, ri (ri)}
@@ -407,12 +394,10 @@
 																	{entry.scoreA}
 																</div>
 															{/each}
-															<!-- Service over marker -->
 															{#if ri < game.serviceRuns.length - 1}
 																<div class="flex items-center border-r-2 border-zinc-300"></div>
 															{/if}
 														{:else}
-															<!-- Blank cells for other player's service run -->
 															{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
 																<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
 															{/each}
@@ -430,11 +415,10 @@
 									{/each}
 								</tbody>
 
-								<!-- Separator between A and B sides -->
 								<tbody>
 									<tr>
 										<td
-											class="sticky left-0 z-10 border-y-2 border-zinc-400 bg-zinc-100 px-2 py-0.5 text-center text-[10px] font-medium tracking-wider text-zinc-400 uppercase"
+											class="sticky left-0 z-10 border-y-2 border-zinc-400 bg-zinc-100 px-2 py-0.5 text-center text-[10px] font-medium tracking-wider text-zinc-400"
 										>
 											—
 										</td>
@@ -453,7 +437,6 @@
 									</tr>
 								</tbody>
 
-								<!-- Side B rows -->
 								<tbody>
 									{#each bPlayers as player (player.id)}
 										{@const playerRuns = game.serviceRuns.filter(
@@ -463,7 +446,6 @@
 											class="border-b border-zinc-100
 										{playerRuns.length > 0 ? '' : 'opacity-50'}"
 										>
-											<!-- Player name column -->
 											<td
 												class="sticky left-0 z-10 border-r border-zinc-200 bg-sky-50 px-2 py-1.5 font-medium whitespace-nowrap text-sky-800"
 												style="min-width: 5rem; max-width: 7rem;"
@@ -473,7 +455,6 @@
 												</div>
 											</td>
 
-											<!-- Score cells -->
 											<td class="p-0">
 												<div class="flex items-stretch">
 													{#each game.serviceRuns as run, ri (ri)}
@@ -485,12 +466,10 @@
 																	{entry.scoreB}
 																</div>
 															{/each}
-															<!-- Service over marker -->
 															{#if ri < game.serviceRuns.length - 1}
 																<div class="flex items-center border-r-2 border-zinc-300"></div>
 															{/if}
 														{:else}
-															<!-- Blank cells for other player's service run -->
 															{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
 																<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
 															{/each}
@@ -510,7 +489,6 @@
 							</table>
 						</div>
 
-						<!-- Legend -->
 						<div class="mt-2 flex items-center gap-4 text-[10px] text-zinc-400">
 							<span>太線 ＝ サービスオーバー</span>
 							<span>数字 ＝ サーバー側得点</span>
@@ -524,8 +502,8 @@
 
 		<!-- Service info -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">サービス情報</h2>
-			<div class="grid gap-3 sm:grid-cols-3">
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">サービス情報</h2>
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 				<div>
 					<p class="text-xs text-zinc-500">サーバー</p>
 					<p class="mt-0.5 font-medium">{playerName(data.state.service?.serverPlayerId)}</p>
@@ -549,13 +527,9 @@
 			{@const server = data.state.service.serverPlayerId}
 			{@const receiver = data.state.service.receiverPlayerId}
 			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-				<h2 class="mb-4 text-xs font-medium tracking-wide text-zinc-400 uppercase">コート配置</h2>
-				<!-- Court diagram: B at top (far), A at bottom (near). -->
-				<!-- Left/Right are from each side's perspective facing the net. -->
-				<!-- Diagram left column: B-right / A-left  |  Diagram right column: B-left / A-right -->
+				<h2 class="mb-4 text-xs font-medium tracking-wide text-zinc-400">コート配置</h2>
 				<div class="mx-auto max-w-xs">
 					<div class="relative overflow-hidden rounded-xl border-2 border-zinc-300">
-						<!-- B side (top half): faces down → B-right = screen left, B-left = screen right -->
 						<div class="grid grid-cols-2 divide-x divide-zinc-200">
 							<div
 								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
@@ -591,17 +565,14 @@
 							</div>
 						</div>
 
-						<!-- Net -->
 						<div class="relative flex items-center border-y-2 border-zinc-400 bg-zinc-100 py-1">
 							<div class="flex-1 border-t border-dashed border-zinc-300"></div>
-							<span
-								class="shrink-0 px-2 text-[10px] font-medium tracking-widest text-zinc-400 uppercase"
+							<span class="shrink-0 px-2 text-[10px] font-medium tracking-widest text-zinc-400"
 								>NET</span
 							>
 							<div class="flex-1 border-t border-dashed border-zinc-300"></div>
 						</div>
 
-						<!-- A side (bottom half): faces up → A-right = screen right, A-left = screen left -->
 						<div class="grid grid-cols-2 divide-x divide-zinc-200">
 							<div
 								class="flex min-h-18 flex-col items-center justify-center gap-1 p-3 text-center
@@ -645,27 +616,39 @@
 					{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 				</h2>
 				<form
-					method="POST"
-					action={data.state.status === 'scheduled' ? '?/start' : '?/startGame'}
+					onsubmit={async (e) => {
+						e.preventDefault();
+						const fd = new FormData(e.currentTarget as HTMLFormElement);
+						await run(async () => {
+							const initialServerPlayerId = String(fd.get('initialServerPlayerId') ?? '');
+							const initialReceiverPlayerId = String(fd.get('initialReceiverPlayerId') ?? '');
+							if (data.state.status === 'scheduled') {
+								await start({ initialServerPlayerId, initialReceiverPlayerId });
+							} else {
+								await startGame({
+									gameNo: data.state.currentGameNo,
+									initialServerPlayerId,
+									initialReceiverPlayerId
+								});
+							}
+						});
+					}}
 					class="grid gap-3 sm:grid-cols-2"
 				>
-					{#if data.state.status === 'interval'}
-						<input name="gameNo" type="hidden" value={data.state.currentGameNo} />
-					{/if}
 					<div class="grid gap-1">
-						<span class="text-xs font-medium text-zinc-500">初期サーバー</span>
+						<span class="text-xs font-medium text-zinc-500">1st サーバー</span>
 						<AppSelect
 							name="initialServerPlayerId"
-							bind:value={initialServerPlayerId}
+							value={data.state.service?.serverPlayerId ?? ''}
 							items={allPlayerItems}
 							required
 						/>
 					</div>
 					<div class="grid gap-1">
-						<span class="text-xs font-medium text-zinc-500">初期レシーバー</span>
+						<span class="text-xs font-medium text-zinc-500">1st レシーバー</span>
 						<AppSelect
 							name="initialReceiverPlayerId"
-							bind:value={initialReceiverPlayerId}
+							value={data.state.service?.receiverPlayerId ?? ''}
 							items={bFirstPlayerItems}
 							required
 						/>
@@ -684,48 +667,39 @@
 
 		<!-- Controls -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">操作</h2>
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">操作</h2>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-				<form method="POST" action="?/undo">
-					<button
-						class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-						type="submit"
-					>
-						取り消し
-					</button>
-				</form>
-				<form method="POST" action="?/suspend">
-					<input name="reason" type="hidden" value="referee_decision" />
-					<button
-						class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
-						type="submit"
-					>
-						中断
-					</button>
-				</form>
-				<form method="POST" action="?/resume">
-					<button
-						class="w-full rounded-xl bg-emerald-100 px-3 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-200"
-						type="submit"
-					>
-						再開
-					</button>
-				</form>
-				<form method="POST" action="?/confirm">
-					<button
-						class="w-full rounded-xl bg-zinc-950 px-3 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-						type="submit"
-					>
-						結果確定
-					</button>
-				</form>
+				<button
+					class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+					onclick={() => run(() => undo({}))}
+				>
+					取り消し
+				</button>
+				<button
+					class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
+					onclick={() => run(() => suspend({ reason: 'referee_decision' }))}
+				>
+					中断
+				</button>
+				<button
+					class="w-full rounded-xl bg-emerald-100 px-3 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-200"
+					onclick={() => run(() => resume({}))}
+				>
+					再開
+				</button>
+				<button
+					class="w-full rounded-xl bg-zinc-950 px-3 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+					onclick={() => run(() => confirm())}
+				>
+					結果確定
+				</button>
 			</div>
 		</section>
 
 		<!-- Advanced: correction / let / forfeit / retire -->
 		<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
 			<h2
-				class="border-b border-zinc-100 px-5 py-3 text-xs font-medium tracking-wide text-zinc-400 uppercase"
+				class="border-b border-zinc-100 px-5 py-3 text-xs font-medium tracking-wide text-zinc-400"
 			>
 				高度な操作
 			</h2>
@@ -737,8 +711,26 @@
 					>
 						スコア訂正
 					</summary>
-					<form method="POST" action="?/correction" class="grid gap-3 px-5 pb-4">
-						<input name="gameNo" type="hidden" value={data.state.currentGameNo} />
+					<form
+						onsubmit={async (e) => {
+							e.preventDefault();
+							const fd = new FormData(e.currentTarget as HTMLFormElement);
+							await run(() =>
+								correction({
+									gameNo: data.state.currentGameNo,
+									scoreA: Number(fd.get('scoreA')),
+									scoreB: Number(fd.get('scoreB')),
+									reason: String(fd.get('reason') ?? ''),
+									servingSide: String(fd.get('servingSide') ?? '') || undefined,
+									serviceCourt: String(fd.get('serviceCourt') ?? '') || undefined,
+									serverPlayerId: String(fd.get('serverPlayerId') ?? '') || undefined,
+									receiverPlayerId: String(fd.get('receiverPlayerId') ?? '') || undefined,
+									courtAssignmentsJson: String(fd.get('courtAssignmentsJson') ?? '') || undefined
+								})
+							);
+						}}
+						class="grid gap-3 px-5 pb-4"
+					>
 						<div class="grid grid-cols-2 gap-2">
 							<AppInput
 								name="scoreA"
@@ -761,22 +753,22 @@
 							<div class="grid gap-2 px-3 pt-1 pb-3">
 								<AppSelect
 									name="servingSide"
-									bind:value={correctionServingSide}
+									value={data.state.service?.servingSide ?? ''}
 									items={servingSideItems}
 								/>
 								<AppSelect
 									name="serviceCourt"
-									bind:value={correctionServiceCourt}
+									value={data.state.service?.serviceCourt ?? ''}
 									items={serviceCourtItems}
 								/>
 								<AppSelect
 									name="serverPlayerId"
-									bind:value={correctionServerPlayerId}
+									value={data.state.service?.serverPlayerId ?? ''}
 									items={allPlayerCorrectionItems}
 								/>
 								<AppSelect
 									name="receiverPlayerId"
-									bind:value={correctionReceiverPlayerId}
+									value={data.state.service?.receiverPlayerId ?? ''}
 									items={allReceiverCorrectionItems}
 								/>
 								{#if data.state.service?.discipline === 'doubles'}
@@ -802,16 +794,17 @@
 					>
 						レット
 					</summary>
-					<form method="POST" action="?/letCalled" class="grid gap-3 px-5 pb-4">
-						<AppSelect name="reason" bind:value={letReason} items={letReasonItems} />
-						<AppInput name="note" placeholder="メモ" />
+					<div class="grid gap-3 px-5 pb-4">
+						<AppSelect name="letReason" bind:value={letReason} items={letReasonItems} />
+						<AppInput name="letNote" bind:value={letNote} placeholder="メモ" />
 						<button
 							class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-							type="submit"
+							onclick={() =>
+								run(() => letCalled({ reason: letReason, note: letNote || undefined }))}
 						>
 							記録する
 						</button>
-					</form>
+					</div>
 				</details>
 
 				<!-- Forfeit -->
@@ -821,22 +814,20 @@
 					>
 						棄権
 					</summary>
-					<form method="POST" action="?/forfeit" class="grid grid-cols-2 gap-2 px-5 pb-4">
+					<div class="grid grid-cols-2 gap-2 px-5 pb-4">
 						<button
 							class="rounded-xl bg-red-100 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-200"
-							name="side"
-							value="A"
+							onclick={() => run(() => forfeit({ side: 'A' }))}
 						>
 							{sideAName} 棄権
 						</button>
 						<button
 							class="rounded-xl bg-red-100 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-200"
-							name="side"
-							value="B"
+							onclick={() => run(() => forfeit({ side: 'B' }))}
 						>
 							{sideBName} 棄権
 						</button>
-					</form>
+					</div>
 				</details>
 
 				<!-- Retire -->
@@ -846,29 +837,27 @@
 					>
 						リタイア
 					</summary>
-					<form method="POST" action="?/retire" class="grid grid-cols-2 gap-2 px-5 pb-4">
+					<div class="grid grid-cols-2 gap-2 px-5 pb-4">
 						<button
 							class="rounded-xl bg-red-100 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-200"
-							name="side"
-							value="A"
+							onclick={() => run(() => retire({ side: 'A' }))}
 						>
 							{sideAName} リタイア
 						</button>
 						<button
 							class="rounded-xl bg-red-100 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-200"
-							name="side"
-							value="B"
+							onclick={() => run(() => retire({ side: 'B' }))}
 						>
 							{sideBName} リタイア
 						</button>
-					</form>
+					</div>
 				</details>
 			</div>
 		</section>
 
 		<!-- Event log -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400 uppercase">イベントログ</h2>
+			<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">イベントログ</h2>
 			<div class="max-h-72 space-y-1.5 overflow-auto">
 				{#each reversedEvents as event (event.id)}
 					<div
@@ -884,4 +873,4 @@
 			</div>
 		</section>
 	</div>
-</main>
+</div>

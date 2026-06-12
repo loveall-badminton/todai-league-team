@@ -1,5 +1,6 @@
-import { betterAuth } from 'better-auth/minimal';
+import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { admin, username } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
@@ -10,6 +11,15 @@ const authConfig = {
 	secret: env.BETTER_AUTH_SECRET,
 	emailAndPassword: { enabled: true },
 	plugins: [
+		username({
+			minUsernameLength: 3,
+			maxUsernameLength: 64,
+			usernameValidator: (value) => /^[a-z0-9_.-]+$/.test(value)
+		}),
+		admin({
+			defaultRole: 'user',
+			adminRoles: ['admin']
+		}),
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
 } satisfies Omit<Parameters<typeof betterAuth>[0], 'database'>;

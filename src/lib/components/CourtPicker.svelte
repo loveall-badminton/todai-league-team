@@ -13,9 +13,9 @@
 	let venue = $state(untrack(() => initialVenue ?? ''));
 	let selected = $state<number[]>(untrack(() => parseCourts(initialCourts)));
 
-	const courtCount = $derived(venueCourtCount(venue));
-	const courts = $derived(Array.from({ length: courtCount }, (_, i) => i + 1));
-	const jsonValue = $derived(selected.length > 0 ? JSON.stringify(selected) : '');
+	let courtCount = $derived(venueCourtCount(venue));
+	let courts = $derived(Array.from({ length: courtCount }, (_, i) => i + 1));
+	let jsonValue = $derived(selected.length > 0 ? JSON.stringify(selected) : '');
 
 	const venueItems = [
 		{ value: '', label: '未設定' },

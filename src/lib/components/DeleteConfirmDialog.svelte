@@ -2,14 +2,16 @@
 	import { Dialog } from 'bits-ui';
 
 	let {
-		formAction,
+		formAction = '',
 		hiddenFields = [],
+		onConfirm = undefined,
 		triggerLabel,
 		title,
 		description
 	}: {
-		formAction: string;
+		formAction?: string;
 		hiddenFields?: { name: string; value: string }[];
+		onConfirm?: (() => void | Promise<void>) | undefined;
 		triggerLabel: string;
 		title: string;
 		description?: string;
@@ -20,6 +22,10 @@
 
 	function confirm() {
 		open = false;
+		if (onConfirm) {
+			onConfirm();
+			return;
+		}
 		formEl?.requestSubmit();
 	}
 </script>
@@ -31,7 +37,7 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
 		<Dialog.Content
-			class="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
+			class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
 		>
 			<Dialog.Title class="text-base font-semibold text-zinc-950">{title}</Dialog.Title>
 			{#if description}
@@ -39,14 +45,14 @@
 			{/if}
 			<div class="mt-6 flex justify-end gap-2">
 				<Dialog.Close
-					class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+					class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
 				>
 					キャンセル
 				</Dialog.Close>
 				<button
 					type="button"
 					onclick={confirm}
-					class="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+					class="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
 				>
 					削除する
 				</button>
@@ -55,8 +61,10 @@
 	</Dialog.Portal>
 </Dialog.Root>
 
-<form bind:this={formEl} method="POST" action={formAction} class="hidden">
-	{#each hiddenFields as field (field.name)}
-		<input type="hidden" name={field.name} value={field.value} />
-	{/each}
-</form>
+{#if !onConfirm}
+	<form bind:this={formEl} method="POST" action={formAction} class="hidden">
+		{#each hiddenFields as field (field.name)}
+			<input type="hidden" name={field.name} value={field.value} />
+		{/each}
+	</form>
+{/if}

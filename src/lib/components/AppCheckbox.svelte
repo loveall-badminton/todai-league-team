@@ -30,13 +30,13 @@
 	class="flex items-center gap-2 {className}"
 >
 	<div
-		class="flex size-4 shrink-0 items-center justify-center rounded border border-zinc-300 bg-white
-			data-[state=checked]:border-zinc-950 data-[state=checked]:bg-zinc-950
-			data-[disabled]:opacity-50"
+		class="flex size-4 shrink-0 items-center justify-center rounded border
+			{checked ? 'border-zinc-950 bg-zinc-950' : 'border-zinc-300 bg-white'}
+			{disabled ? 'opacity-50' : ''}"
 	>
-		<Checkbox.Indicator>
+		{#if checked}
 			<Check class="size-3 text-white" />
-		</Checkbox.Indicator>
+		{/if}
 	</div>
 	{#if label}
 		<span class="text-sm text-zinc-700 {disabled ? 'opacity-50' : ''}">{label}</span>

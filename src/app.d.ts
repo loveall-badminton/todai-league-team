@@ -1,4 +1,5 @@
-import type { User, Session } from 'better-auth/minimal';
+import type { User, Session } from 'better-auth';
+import type { AuthProfile } from '$lib/server/auth/access';
 import { createAuth } from '$lib/server/auth';
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
@@ -8,6 +9,7 @@ declare global {
 		interface Locals {
 			user?: User;
 			session?: Session;
+			authProfile?: AuthProfile;
 			auth: ReturnType<typeof createAuth>;
 		}
 

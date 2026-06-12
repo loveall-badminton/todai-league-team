@@ -11,6 +11,9 @@ importers:
       '@dnd-kit/svelte':
         specifier: ^0.5.0
         version: 0.5.0(svelte@5.56.1(@typescript-eslint/types@8.60.1))
+      '@fontsource/line-seed-jp':
+        specifier: ^5.2.2
+        version: 5.2.2
       bits-ui:
         specifier: ^2.18.1
         version: 2.18.1(@internationalized/date@3.12.2)(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@7.1.2(svelte@5.56.1(@typescript-eslint/types@8.60.1))(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.1(@typescript-eslint/types@8.60.1))(typescript@6.0.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.1(@typescript-eslint/types@8.60.1))
@@ -1077,6 +1080,9 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource/line-seed-jp@5.2.2':
+    resolution: {integrity: sha512-uuwnt3JJWlbUsBbP97dEKvQSVP6RpXnTDAYjG9f4SO9aHVCap96Rz8RpMcYbz58PXkYBldWfXP5VhOHdvNZWcA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -4187,6 +4193,8 @@ snapshots:
       '@floating-ui/utils': 0.2.11
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource/line-seed-jp@5.2.2': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

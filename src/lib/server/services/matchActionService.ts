@@ -5,6 +5,7 @@ import {
 	matchServiceStates,
 	matchSnapshots,
 	matches,
+	rubbers,
 	scoreEventUndoLinks,
 	scoreEvents
 } from '$lib/server/db/schema';
@@ -32,6 +33,7 @@ export async function applyMatchAction(params: {
 	}
 
 	const beforeState = await getMatchState(db, matchId);
+	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	const players = await getMatchPlayers(db, matchId);
 	const input = await prepareUndoInput(db, matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
@@ -49,26 +51,51 @@ export async function applyMatchAction(params: {
 	const matchUpdate = buildMatchUpdate(db, afterState);
 	const snapshotUpsert = buildSnapshotUpsert(db, afterState);
 	const serviceStateUpsert = buildServiceStateUpsert(db, afterState);
+	const rubberUpdate = match?.rubberId
+		? buildRubberUpdate(db, match.rubberId, afterState, now)
+		: null;
 
 	if (input.type === 'undo' && input.targetSeqNo) {
 		const targetEvent = await getScoreEventBySeqNo(db, matchId, input.targetSeqNo);
 		if (!targetEvent) throw new Error('Undo target event not found after insert');
-		await db.batch([
-			eventInsert,
-			matchUpdate,
-			snapshotUpsert,
-			serviceStateUpsert,
-			db.insert(scoreEventUndoLinks).values({
-				id: crypto.randomUUID(),
-				matchId,
-				undoEventId: eventId,
-				targetEventId: targetEvent.id,
-				targetSeqNo: input.targetSeqNo,
-				createdAt: now
-			})
-		] as const);
+		const undoLinkInsert = db.insert(scoreEventUndoLinks).values({
+			id: crypto.randomUUID(),
+			matchId,
+			undoEventId: eventId,
+			targetEventId: targetEvent.id,
+			targetSeqNo: input.targetSeqNo,
+			createdAt: now
+		});
+		if (rubberUpdate) {
+			await db.batch([
+				eventInsert,
+				matchUpdate,
+				snapshotUpsert,
+				serviceStateUpsert,
+				rubberUpdate,
+				undoLinkInsert
+			] as const);
+		} else {
+			await db.batch([
+				eventInsert,
+				matchUpdate,
+				snapshotUpsert,
+				serviceStateUpsert,
+				undoLinkInsert
+			] as const);
+		}
 	} else {
-		await db.batch([eventInsert, matchUpdate, snapshotUpsert, serviceStateUpsert] as const);
+		if (rubberUpdate) {
+			await db.batch([
+				eventInsert,
+				matchUpdate,
+				snapshotUpsert,
+				serviceStateUpsert,
+				rubberUpdate
+			] as const);
+		} else {
+			await db.batch([eventInsert, matchUpdate, snapshotUpsert, serviceStateUpsert] as const);
+		}
 	}
 
 	return afterState;
@@ -217,6 +244,32 @@ function buildMatchUpdate(db: AppDb, state: MatchState) {
 			updatedAt: state.updatedAt
 		})
 		.where(eq(matches.id, state.matchId));
+}
+
+function buildRubberUpdate(db: AppDb, rubberId: string, state: MatchState, now: string) {
+	const activeStatuses = new Set(['playing', 'interval', 'suspended']);
+	const finishedStatuses = new Set(['finished', 'forfeited', 'retired']);
+	const status =
+		state.status === 'confirmed'
+			? 'confirmed'
+			: finishedStatuses.has(state.status)
+				? 'finished'
+				: activeStatuses.has(state.status)
+					? 'playing'
+					: null;
+
+	if (!status) {
+		return db.update(rubbers).set({ updatedAt: now }).where(eq(rubbers.id, rubberId));
+	}
+
+	return db
+		.update(rubbers)
+		.set({
+			status,
+			winnerSide: state.winnerSide,
+			updatedAt: now
+		})
+		.where(eq(rubbers.id, rubberId));
 }
 
 function buildSnapshotUpsert(db: AppDb, state: MatchState) {

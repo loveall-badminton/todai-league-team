@@ -8,7 +8,7 @@
 
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
 
-## Available Svelte MCP Tools:
+## Available Svelte MCP Tools
 
 ### 1. list-sections
 
@@ -44,15 +44,15 @@ SvelteKit + Cloudflare D1 + Drizzle ORM を用いて、バドミントンの大�
 - シングルス・ダブルス対応
 - ダブルスのサーバー・レシーバー・左右サービスコート管理
 - 審判入力
-  - 試合開始
-  - 得点 +1
-  - undo
-  - correction
-  - 棄権
-  - リタイア
-  - 中断
-  - 再開
-  - 結果確定
+    - 試合開始
+    - 得点 +1
+    - undo
+    - correction
+    - 棄権
+    - リタイア
+    - 中断
+    - 再開
+    - 結果確定
 
 - 公開ライブスコア表示
 - イベントログ保存
@@ -173,21 +173,21 @@ export type ServiceCourt = 'right' | 'left';
 
 ```ts
 export interface ScoringConfig {
-	maxGames: number;
-	gamesToWin: number;
-	pointsToWin: number;
-	winBy: number;
-	maxPoints: number;
-	midGameIntervalPoint: number;
+ maxGames: number;
+ gamesToWin: number;
+ pointsToWin: number;
+ winBy: number;
+ maxPoints: number;
+ midGameIntervalPoint: number;
 }
 
 export const DEFAULT_BWF_SCORING_CONFIG: ScoringConfig = {
-	maxGames: 3,
-	gamesToWin: 2,
-	pointsToWin: 21,
-	winBy: 2,
-	maxPoints: 30,
-	midGameIntervalPoint: 11
+ maxGames: 3,
+ gamesToWin: 2,
+ pointsToWin: 21,
+ winBy: 2,
+ maxPoints: 30,
+ midGameIntervalPoint: 11
 };
 ```
 
@@ -201,11 +201,11 @@ export const DEFAULT_BWF_SCORING_CONFIG: ScoringConfig = {
 - `own >= 21` かつ `own - other >= 2` なら勝利。
 - ただし `own === 30` なら、点差が1点でも勝利。
 - 例:
-  - 21-19: 勝利
-  - 21-20: 未勝利
-  - 22-20: 勝利
-  - 29-29: 未勝利
-  - 30-29: 勝利
+    - 21-19: 勝利
+    - 21-20: 未勝利
+    - 22-20: 勝利
+    - 29-29: 未勝利
+    - 30-29: 勝利
 
 ### 4.3 マッチ勝利判定
 
@@ -234,21 +234,21 @@ export const DEFAULT_BWF_SCORING_CONFIG: ScoringConfig = {
 - サーブ側の得点が偶数なら右サービスコートからサーブ。
 - サーブ側の得点が奇数なら左サービスコートからサーブ。
 - サーブ側がラリーを取った場合:
-  - サーブ側に1点加算。
-  - 同じサーバーがサーブ継続。
-  - サーブ側の2人だけ左右サービスコートを入れ替える。
-  - レシーブ側の2人は左右を入れ替えない。
-  - レシーバーは、サーバーの対角サービスコートにいる相手プレイヤーになる。
+    - サーブ側に1点加算。
+    - 同じサーバーがサーブ継続。
+    - サーブ側の2人だけ左右サービスコートを入れ替える。
+    - レシーブ側の2人は左右を入れ替えない。
+    - レシーバーは、サーバーの対角サービスコートにいる相手プレイヤーになる。
 
 - レシーブ側がラリーを取った場合:
-  - レシーブ側に1点加算。
-  - レシーブ側が新しいサーブ側になる。
-  - どちらのペアも左右サービスコートを入れ替えない。
-  - 新サーブ側の得点偶奇に対応するサービスコートにいるプレイヤーが新サーバーになる。
-  - その対角サービスコートにいる相手プレイヤーが新レシーバーになる。
+    - レシーブ側に1点加算。
+    - レシーブ側が新しいサーブ側になる。
+    - どちらのペアも左右サービスコートを入れ替えない。
+    - 新サーブ側の得点偶奇に対応するサービスコートにいるプレイヤーが新サーバーになる。
+    - その対角サービスコートにいる相手プレイヤーが新レシーバーになる。
 
 - プレイヤーは「自分のサイドがサーブ側として得点したとき」までサービスコートを入れ替えない。
-- 次ゲームでは、前ゲーム勝者側のどちらのプレイヤーが最初にサーブしてもよい。敗者側のどちらのプレイヤーが最初にレシーブしてもよい。したがって、次ゲーム開始時にはUIで初期サーバー・初期レシーバーを選択させる。
+- 次ゲームでは、前ゲーム勝者側のどちらのプレイヤーが最初にサーブしてもよい。敗者側のどちらのプレイヤーが最初にレシーブしてもよい。したがって、次ゲーム開始時にはUIで1st サーバー・1st レシーバーを選択させる。
 
 ## 6. ドメイン型
 
@@ -262,117 +262,117 @@ export type MatchDiscipline = 'MS' | 'WS' | 'MD' | 'WD' | 'XD';
 export type ServiceCourt = 'right' | 'left';
 
 export type MatchStatus =
-	| 'scheduled'
-	| 'playing'
-	| 'interval'
-	| 'suspended'
-	| 'finished'
-	| 'confirmed'
-	| 'forfeited'
-	| 'retired'
-	| 'cancelled';
+ | 'scheduled'
+ | 'playing'
+ | 'interval'
+ | 'suspended'
+ | 'finished'
+ | 'confirmed'
+ | 'forfeited'
+ | 'retired'
+ | 'cancelled';
 
 export type TerminalReason =
-	| 'normal'
-	| 'forfeit'
-	| 'retirement'
-	| 'disqualification'
-	| 'walkover'
-	| 'cancelled';
+ | 'normal'
+ | 'forfeit'
+ | 'retirement'
+ | 'disqualification'
+ | 'walkover'
+ | 'cancelled';
 
 export interface GameScore {
-	A: number;
-	B: number;
+ A: number;
+ B: number;
 }
 
 export interface MatchPlayer {
-	id: string;
-	side: Side;
-	order: 1 | 2;
-	name: string;
-	teamName?: string | null;
+ id: string;
+ side: Side;
+ order: 1 | 2;
+ name: string;
+ teamName?: string | null;
 }
 
 export interface CourtAssignment {
-	right: string;
-	left: string;
+ right: string;
+ left: string;
 }
 
 export interface CourtAssignments {
-	A: CourtAssignment;
-	B: CourtAssignment;
+ A: CourtAssignment;
+ B: CourtAssignment;
 }
 
 export interface SinglesServiceState {
-	discipline: 'singles';
-	servingSide: Side;
-	serviceCourt: ServiceCourt;
-	serverPlayerId: string;
-	receiverPlayerId: string;
+ discipline: 'singles';
+ servingSide: Side;
+ serviceCourt: ServiceCourt;
+ serverPlayerId: string;
+ receiverPlayerId: string;
 }
 
 export interface DoublesServiceState {
-	discipline: 'doubles';
-	servingSide: Side;
-	serviceCourt: ServiceCourt;
-	serverPlayerId: string;
-	receiverPlayerId: string;
-	courtAssignments: CourtAssignments;
-	initialServerPlayerId: string;
-	initialReceiverPlayerId: string;
+ discipline: 'doubles';
+ servingSide: Side;
+ serviceCourt: ServiceCourt;
+ serverPlayerId: string;
+ receiverPlayerId: string;
+ courtAssignments: CourtAssignments;
+ initialServerPlayerId: string;
+ initialReceiverPlayerId: string;
 }
 
 export type ServiceState = SinglesServiceState | DoublesServiceState;
 
 export interface ScoringConfig {
-	maxGames: number;
-	gamesToWin: number;
-	pointsToWin: number;
-	winBy: number;
-	maxPoints: number;
-	midGameIntervalPoint: number;
+ maxGames: number;
+ gamesToWin: number;
+ pointsToWin: number;
+ winBy: number;
+ maxPoints: number;
+ midGameIntervalPoint: number;
 }
 
 export interface GameState {
-	gameNo: number;
-	score: GameScore;
-	winnerSide: Side | null;
-	midGameIntervalTaken: boolean;
-	changeEndsRequired: boolean;
-	changeEndsCompleted: boolean;
+ gameNo: number;
+ score: GameScore;
+ winnerSide: Side | null;
+ midGameIntervalTaken: boolean;
+ changeEndsRequired: boolean;
+ changeEndsCompleted: boolean;
 }
 
 export interface MatchState {
-	schemaVersion: 1;
+ schemaVersion: 1;
 
-	matchId: string;
-	tournamentId: string;
-	courtId: string | null;
+ matchId: string;
+ tournamentId: string;
+ courtId: string | null;
 
-	discipline: MatchDiscipline;
+ discipline: MatchDiscipline;
 
-	status: MatchStatus;
+ status: MatchStatus;
 
-	scoring: ScoringConfig;
+ scoring: ScoringConfig;
 
-	currentGameNo: number;
+ currentGameNo: number;
 
-	games: GameState[];
+ games: GameState[];
 
-	gamesWon: {
-		A: number;
-		B: number;
-	};
+ gamesWon: {
+  A: number;
+  B: number;
+ };
 
-	winnerSide: Side | null;
-	terminalReason: TerminalReason | null;
+ winnerSide: Side | null;
+ terminalReason: TerminalReason | null;
 
-	service: ServiceState | null;
+ service: ServiceState | null;
 
-	lastSeqNo: number;
+ lastSeqNo: number;
 
-	createdAt: string;
-	updatedAt: string;
+ createdAt: string;
+ updatedAt: string;
 }
 ```
 
@@ -383,109 +383,109 @@ export interface MatchState {
 
 ```ts
 export interface ScoreEventInputBase {
-	idempotencyKey: string;
-	observedSeqNo: number;
-	clientSeqNo?: number;
-	clientCreatedAt?: string;
+ idempotencyKey: string;
+ observedSeqNo: number;
+ clientSeqNo?: number;
+ clientCreatedAt?: string;
 }
 
 export type ScoreEventInput =
-	| MatchStartedInput
-	| GameStartedInput
-	| RallyWonInput
-	| UndoInput
-	| CorrectionInput
-	| LetCalledInput
-	| MatchSuspendedInput
-	| MatchResumedInput
-	| SideForfeitedInput
-	| SideRetiredInput
-	| MatchConfirmedInput;
+ | MatchStartedInput
+ | GameStartedInput
+ | RallyWonInput
+ | UndoInput
+ | CorrectionInput
+ | LetCalledInput
+ | MatchSuspendedInput
+ | MatchResumedInput
+ | SideForfeitedInput
+ | SideRetiredInput
+ | MatchConfirmedInput;
 
 export interface MatchStartedInput extends ScoreEventInputBase {
-	type: 'match_started';
-	initialServerPlayerId: string;
-	initialReceiverPlayerId: string;
+ type: 'match_started';
+ initialServerPlayerId: string;
+ initialReceiverPlayerId: string;
 }
 
 export interface GameStartedInput extends ScoreEventInputBase {
-	type: 'game_started';
-	gameNo: number;
-	initialServerPlayerId: string;
-	initialReceiverPlayerId: string;
+ type: 'game_started';
+ gameNo: number;
+ initialServerPlayerId: string;
+ initialReceiverPlayerId: string;
 }
 
 export interface RallyWonInput extends ScoreEventInputBase {
-	type: 'rally_won';
-	side: Side;
+ type: 'rally_won';
+ side: Side;
 }
 
 export interface UndoInput extends ScoreEventInputBase {
-	type: 'undo';
-	targetSeqNo?: number;
-	reason?: string;
+ type: 'undo';
+ targetSeqNo?: number;
+ reason?: string;
 }
 
 export interface CorrectionInput extends ScoreEventInputBase {
-	type: 'correction';
-	gameNo: number;
-	score: GameScore;
-	gamesWon?: {
-		A: number;
-		B: number;
-	};
-	service?: ServiceState | null;
-	reason: string;
+ type: 'correction';
+ gameNo: number;
+ score: GameScore;
+ gamesWon?: {
+  A: number;
+  B: number;
+ };
+ service?: ServiceState | null;
+ reason: string;
 }
 
 export interface LetCalledInput extends ScoreEventInputBase {
-	type: 'let_called';
-	reason:
-		| 'receiver_not_ready'
-		| 'both_faulted'
-		| 'shuttle_caught_on_net'
-		| 'shuttle_disintegrated'
-		| 'line_judge_unsighted'
-		| 'unforeseen_situation'
-		| 'other';
-	note?: string;
+ type: 'let_called';
+ reason:
+  | 'receiver_not_ready'
+  | 'both_faulted'
+  | 'shuttle_caught_on_net'
+  | 'shuttle_disintegrated'
+  | 'line_judge_unsighted'
+  | 'unforeseen_situation'
+  | 'other';
+ note?: string;
 }
 
 export interface MatchSuspendedInput extends ScoreEventInputBase {
-	type: 'match_suspended';
-	reason:
-		| 'injury'
-		| 'equipment'
-		| 'court_condition'
-		| 'power_failure'
-		| 'weather'
-		| 'referee_decision'
-		| 'other';
-	note?: string;
+ type: 'match_suspended';
+ reason:
+  | 'injury'
+  | 'equipment'
+  | 'court_condition'
+  | 'power_failure'
+  | 'weather'
+  | 'referee_decision'
+  | 'other';
+ note?: string;
 }
 
 export interface MatchResumedInput extends ScoreEventInputBase {
-	type: 'match_resumed';
-	note?: string;
+ type: 'match_resumed';
+ note?: string;
 }
 
 export interface SideForfeitedInput extends ScoreEventInputBase {
-	type: 'side_forfeited';
-	side: Side;
-	reason: 'no_show' | 'withdrawal' | 'disqualification' | 'other';
-	note?: string;
+ type: 'side_forfeited';
+ side: Side;
+ reason: 'no_show' | 'withdrawal' | 'disqualification' | 'other';
+ note?: string;
 }
 
 export interface SideRetiredInput extends ScoreEventInputBase {
-	type: 'side_retired';
-	side: Side;
-	reason: 'injury' | 'illness' | 'other';
-	note?: string;
+ type: 'side_retired';
+ side: Side;
+ reason: 'injury' | 'illness' | 'other';
+ note?: string;
 }
 
 export interface MatchConfirmedInput extends ScoreEventInputBase {
-	type: 'match_confirmed';
-	note?: string;
+ type: 'match_confirmed';
+ note?: string;
 }
 ```
 
@@ -619,7 +619,7 @@ applyScoreEvent(params: {
 
 - `state.status === 'interval'` のときのみ実行可能。
 - `gameNo === state.currentGameNo` であること。
-- 次ゲームの初期サーバー・初期レシーバーをセットする。
+- 次ゲームの1st サーバー・1st レシーバーをセットする。
 - `status` を `'playing'` にする。
 - `service` をセットする。
 
@@ -632,10 +632,10 @@ applyScoreEvent(params: {
 - 11点インターバル到達時は `midGameIntervalTaken` を `true` にする。
 - ゲーム未終了なら、サーブ状態を更新して継続。
 - ゲーム終了なら:
-  - 対象 `GameState.winnerSide` をセット。
-  - `gamesWon[side] += 1`
-  - マッチ終了なら `status = 'finished'`, `winnerSide = side`, `terminalReason = 'normal'`, `service = null`
-  - マッチ未終了なら `status = 'interval'`, `currentGameNo += 1`, 次ゲームの空 `GameState` を追加, `service = null`
+    - 対象 `GameState.winnerSide` をセット。
+    - `gamesWon[side] += 1`
+    - マッチ終了なら `status = 'finished'`, `winnerSide = side`, `terminalReason = 'normal'`, `service = null`
+    - マッチ未終了なら `status = 'interval'`, `currentGameNo += 1`, 次ゲームの空 `GameState` を追加, `service = null`
 
 - 第3ゲームでどちらかが11点に到達した場合、`changeEndsRequired = true` にする。
 - チェンジエンド自体の完了管理は後続UIで行う。MVPではフラグのみでよい。
@@ -898,7 +898,7 @@ status enum:
 要件:
 
 - `courtAssignmentsJson` はダブルスの場合に以下形式:
-  - `{ "A": { "right": "...", "left": "..." }, "B": { "right": "...", "left": "..." } }`
+    - `{ "A": { "right": "...", "left": "..." }, "B": { "right": "...", "left": "..." } }`
 
 - シングルスでは `{}` でよい。
 
@@ -1124,12 +1124,12 @@ actions:
 バリデーション:
 
 - `discipline` が `MS` / `WS` の場合:
-  - A1必須
-  - B1必須
-  - A2/B2は空でよい
+    - A1必須
+    - B1必須
+    - A2/B2は空でよい
 
 - `discipline` が `MD` / `WD` / `XD` の場合:
-  - A1, A2, B1, B2すべて必須
+    - A1, A2, B1, B2すべて必須
 
 - `XD` では性別管理はMVPでは不要。
 
@@ -1233,11 +1233,11 @@ actions:
 - `scoreB`
 - `reason`
 - 任意で:
-  - `servingSide`
-  - `serviceCourt`
-  - `serverPlayerId`
-  - `receiverPlayerId`
-  - `courtAssignmentsJson`
+    - `servingSide`
+    - `serviceCourt`
+    - `serverPlayerId`
+    - `receiverPlayerId`
+    - `courtAssignmentsJson`
 
 要件:
 
@@ -1286,11 +1286,11 @@ MVP:
 - A +1 / B +1 は画面中央に大きく配置
 - 誤タップ防止のため、棄権・リタイア・correctionは確認UIを挟む
 - 画面上部に以下を表示:
-  - 試合名
-  - コート
-  - 現在ゲーム
-  - ステータス
-  - seqNo
+    - 試合名
+    - コート
+    - 現在ゲーム
+    - ステータス
+    - seqNo
 
 - スコアは非常に大きく表示
 - 現在サーバーには「サーバー」ラベルを付ける
@@ -1510,12 +1510,12 @@ MVPでは認証を最小限にしてよいが、以下を想定して実装箇�
 3. シングルス試合を作成できる。
 4. ダブルス試合を作成できる。
 5. ダブルス試合でA/B各2名を登録できる。
-6. 試合開始時に初期サーバー・初期レシーバーを選択できる。
+6. 試合開始時に1st サーバー・1st レシーバーを選択できる。
 7. A/B +1でスコアが更新される。
 8. ダブルスのサーバー・レシーバー・右/左配置が正しく更新される。
 9. 21点・2点差・30点上限でゲームが終了する。
 10. 2ゲーム先取でマッチが終了する。
-11. 次ゲーム開始時に初期サーバー・初期レシーバーを選べる。
+11. 次ゲーム開始時に1st サーバー・1st レシーバーを選べる。
 12. 中断・再開ができる。
 13. 棄権・リタイアができる。
 14. correctionができる。

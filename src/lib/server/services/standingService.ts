@@ -165,8 +165,9 @@ export function calculateGroupStandingsFromRecords(params: {
 		row.rank = row.manualRank ?? rank;
 		rank += 1;
 	}
+	const roundRobinComplete = isRoundRobinComplete(params.teams, params.ties);
 	for (const group of groupByRecord(sorted, (row) => standingTieKey(row)).values()) {
-		if (group.length > 1 && group.every((row) => row.manualRank === null)) {
+		if (roundRobinComplete && group.length > 1 && group.every((row) => row.manualRank === null)) {
 			for (const row of group) {
 				row.requiresTiebreaker = true;
 				row.rank = null;
@@ -177,6 +178,30 @@ export function calculateGroupStandingsFromRecords(params: {
 	return sorted.sort(
 		(a, b) => (a.rank ?? 999) - (b.rank ?? 999) || a.teamName.localeCompare(b.teamName)
 	);
+}
+
+function isRoundRobinComplete(
+	teams: StandingTeamRecord[],
+	groupTies: StandingTieRecord[]
+): boolean {
+	if (teams.length < 2) return false;
+	for (let i = 0; i < teams.length; i++) {
+		for (let j = i + 1; j < teams.length; j++) {
+			const firstId = teams[i].id;
+			const secondId = teams[j].id;
+			const tie = groupTies.find(
+				(row) =>
+					row.teamAId &&
+					row.teamBId &&
+					new Set([row.teamAId, row.teamBId]).has(firstId) &&
+					new Set([row.teamAId, row.teamBId]).has(secondId)
+			);
+			if (!tie?.winnerTeamId || !new Set([firstId, secondId]).has(tie.winnerTeamId)) {
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 function applyRubberStats(params: {

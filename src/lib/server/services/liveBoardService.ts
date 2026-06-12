@@ -12,14 +12,14 @@ import {
 export type GameScore = { gameNo: number; scoreA: number; scoreB: number };
 
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
-	gamesScore: string | null;   // games won: "1-0"
-	pointScore: string | null;   // current game points: "4-3"
-	gameDetails: GameScore[];    // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
+	gamesScore: string | null; // games won: "1-0"
+	pointScore: string | null; // current game points: "4-3"
+	gameDetails: GameScore[]; // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
 	sideAPlayers: string | null;
 	sideBPlayers: string | null;
 };
 
-type PublicRubberInput = Pick<typeof rubbers.$inferSelect, 'id' | 'code' | 'matchId'>;
+type PublicRubberInput = Pick<typeof rubbers.$inferSelect, 'id' | 'code' | 'matchId' | 'status'>;
 type PublicMatchInput = Pick<
 	typeof matches.$inferSelect,
 	'id' | 'gamesWonA' | 'gamesWonB' | 'currentScoreA' | 'currentScoreB' | 'currentGameNo' | 'status'
@@ -83,7 +83,12 @@ export async function getPublicRubbersForTie(
 			? await db
 					.select()
 					.from(lineupItems)
-					.where(inArray(lineupItems.submissionId, submissions.map((s) => s.id)))
+					.where(
+						inArray(
+							lineupItems.submissionId,
+							submissions.map((s) => s.id)
+						)
+					)
 			: [];
 	const playerIds = items
 		.flatMap((item) => [item.player1Id, item.player2Id])
@@ -104,10 +109,7 @@ export async function getPublicRubbersForTie(
 	});
 }
 
-async function fetchGameScores(
-	db: AppDb,
-	matchIds: string[]
-): Promise<PublicGameScoreInput[]> {
+async function fetchGameScores(db: AppDb, matchIds: string[]): Promise<PublicGameScoreInput[]> {
 	if (matchIds.length === 0) return [];
 
 	// Fetch all scoring events ordered by seqNo; for each (matchId, gameNo) keep the last one
@@ -156,6 +158,7 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 		const scores = scoreFor(match, gameScores);
 		return {
 			...rubber,
+			status: rubberStatusForMatch(rubber.status, match),
 			gamesScore: scores.gamesScore,
 			pointScore: scores.pointScore,
 			gameDetails: scores.gameDetails,
@@ -167,6 +170,19 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 				: null
 		};
 	});
+}
+
+function rubberStatusForMatch(
+	currentStatus: PublicRubberInput['status'],
+	match: PublicMatchInput | null
+): PublicRubberInput['status'] {
+	if (!match) return currentStatus;
+	if (match.status === 'confirmed') return 'confirmed';
+	if (['finished', 'forfeited', 'retired'].includes(match.status)) return 'finished';
+	if (['playing', 'interval', 'suspended'].includes(match.status)) return 'playing';
+	if (['scheduled', 'called', 'warmup'].includes(match.status)) return 'scheduled';
+	if (match.status === 'cancelled') return 'cancelled';
+	return currentStatus;
 }
 
 function scoreFor(

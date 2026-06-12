@@ -8,7 +8,17 @@
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import type { TeamPlayer } from '$lib/server/repositories/tokyoLeagueRepository';
 
-	let { player, index }: { player: TeamPlayer; index: number } = $props();
+	let {
+		player,
+		index,
+		updatePlayerForm,
+		onDeleteConfirm
+	}: {
+		player: TeamPlayer;
+		index: number;
+		updatePlayerForm: Record<string, unknown>;
+		onDeleteConfirm?: () => void | Promise<void>;
+	} = $props();
 
 	const sortable = createSortable({
 		get id() {
@@ -51,35 +61,35 @@
 			<!-- Drag handle -->
 			<div
 				{@attach sortable.attachHandle}
-				class="cursor-grab flex-shrink-0 text-zinc-300 hover:text-zinc-500"
+				class="shrink-0 cursor-grab text-zinc-300 hover:text-zinc-500"
 			>
 				<GripVertical class="h-4 w-4" />
 			</div>
 			<button
 				type="button"
 				onclick={() => (isEditing = true)}
-				class="flex flex-1 items-center gap-3 text-left hover:bg-zinc-50 -mx-1 px-1 rounded-lg transition-colors"
+				class="-mx-1 flex flex-1 items-center gap-3 rounded-lg px-1 text-left transition-colors hover:bg-zinc-50"
 			>
 				<span
-					class="h-2 w-2 flex-shrink-0 rounded-full {player.gender === 'male'
+					class="h-2 w-2 shrink-0 rounded-full {player.gender === 'male'
 						? 'bg-sky-400'
 						: player.gender === 'female'
 							? 'bg-rose-400'
 							: 'bg-zinc-300'}"
 					title={genderLabel(player.gender)}
 				></span>
-				<div class="flex-1 min-w-0">
+				<div class="min-w-0 flex-1">
 					<p class="text-sm font-medium text-zinc-950">{player.name}</p>
 				</div>
-				<div class="flex items-center gap-2 flex-shrink-0">
+				<div class="flex shrink-0 items-center gap-2">
 					{#if player.status === 'inactive'}
 						<span
-							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-zinc-100 text-zinc-500"
+							class="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500"
 							>不可</span
 						>
 					{:else}
 						<span
-							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700"
+							class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
 							>出場可</span
 						>
 					{/if}
@@ -89,10 +99,10 @@
 		</div>
 	{:else}
 		<div class="space-y-3 py-3">
-			<form method="POST" action="?/updatePlayer" class="space-y-3">
+			<form {...updatePlayerForm} class="space-y-3">
 				<input type="hidden" name="id" value={player.id} />
 				<div class="flex flex-wrap gap-3">
-					<div class="flex-1 min-w-32">
+					<div class="min-w-32 flex-1">
 						<label class="block">
 							<span class="text-xs font-medium text-zinc-500">氏名 *</span>
 							<AppInput name="name" value={player.name} required class="mt-1" />
@@ -113,12 +123,13 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<AppButton type="submit">保存</AppButton>
-					<AppButton type="button" variant="secondary" onclick={() => (isEditing = false)}>キャンセル</AppButton>
+					<AppButton type="button" variant="secondary" onclick={() => (isEditing = false)}
+						>キャンセル</AppButton
+					>
 				</div>
 			</form>
 			<DeleteConfirmDialog
-				formAction="?/deletePlayer"
-				hiddenFields={[{ name: 'id', value: player.id }]}
+				onConfirm={onDeleteConfirm}
 				triggerLabel="選手を削除"
 				title="選手を削除しますか？"
 				description={`「${player.name}」を削除します。この操作は取り消せません。`}

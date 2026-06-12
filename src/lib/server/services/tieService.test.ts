@@ -11,7 +11,9 @@ describe('inferLineupDueAt', () => {
 	});
 
 	test('returns null for first_match_before_opening policy', () => {
-		expect(inferLineupDueAt('2025-06-01T10:00:00.000Z', 10, 'first_match_before_opening')).toBeNull();
+		expect(
+			inferLineupDueAt('2025-06-01T10:00:00.000Z', 10, 'first_match_before_opening')
+		).toBeNull();
 	});
 
 	test('returns null for invalid date string', () => {

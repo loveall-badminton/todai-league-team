@@ -8,14 +8,14 @@
 
 	let { data }: PageProps = $props();
 
-	const stats = $derived([
+	let stats = $derived([
 		{ label: 'Aリーグ', value: data.groupA.length, unit: '対戦' },
 		{ label: 'Bリーグ', value: data.groupB.length, unit: '対戦' },
 		{ label: '進行中', value: data.playing.length, unit: '対戦' },
 		{ label: 'チーム', value: data.teams.length, unit: 'チーム' }
 	]);
 
-	const alerts = $derived([
+	let alerts = $derived([
 		{
 			label: 'オーダー未提出',
 			count: data.lineupPending.length,
@@ -42,7 +42,7 @@
 		}
 	]);
 
-	const activeAlerts = $derived(alerts.filter((a) => a.count > 0));
+	let activeAlerts = $derived(alerts.filter((a) => a.count > 0));
 </script>
 
 <svelte:head>
@@ -50,11 +50,11 @@
 </svelte:head>
 
 <div class="px-4 py-6 sm:px-6">
-	<div class="mx-auto max-w-6xl space-y-6">
+	<div class="space-y-6">
 		<!-- Header -->
 		<header class="flex items-center justify-between">
 			<div>
-				<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">運営ホーム</p>
+				<p class="text-xs font-medium tracking-wide text-zinc-500">運営ホーム</p>
 				<h1 class="text-2xl font-bold text-zinc-950">
 					{data.settings?.eventName ?? '東大リーグ団体戦'}
 				</h1>
@@ -72,7 +72,7 @@
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			{#each stats as stat (stat.label)}
 				<Card class="p-4">
-					<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{stat.label}</p>
+					<p class="text-xs font-medium tracking-wide text-zinc-500">{stat.label}</p>
 					<p class="mt-1 text-4xl font-bold text-zinc-950">{stat.value}</p>
 					<p class="text-xs text-zinc-400">{stat.unit}</p>
 				</Card>

@@ -1,6 +1,7 @@
 export * from './auth.schema';
 
 import { relations, sql } from 'drizzle-orm';
+import { user } from './auth.schema';
 import {
 	type AnySQLiteColumn,
 	integer,
@@ -81,6 +82,34 @@ export const teams = sqliteTable('teams', {
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`)
 });
+
+export const authUserProfiles = sqliteTable(
+	'auth_user_profiles',
+	{
+		userId: text('user_id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+
+		accountType: text('account_type', {
+			enum: ['admin', 'participant', 'team']
+		})
+			.notNull()
+			.default('participant'),
+
+		teamId: text('team_id').references(() => teams.id, { onDelete: 'set null' }),
+
+		displayName: text('display_name'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		accountTypeIdx: index('auth_user_profiles_account_type_idx').on(table.accountType),
+		teamIdx: index('auth_user_profiles_team_id_idx').on(table.teamId)
+	})
+);
 
 export const teamPlayers = sqliteTable(
 	'team_players',

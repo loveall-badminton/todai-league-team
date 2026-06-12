@@ -42,7 +42,7 @@ describe('calculateGroupStandingsFromRecords', () => {
 		expect(standings[0]).toMatchObject({ teamId: 'c', rank: 1, manualRank: 1 });
 	});
 
-	test('marks unresolved ties as requiring a tiebreaker', () => {
+	test('does not require a tiebreaker before all round-robin ties are complete', () => {
 		const standings = calculateGroupStandingsFromRecords({
 			teams: teams.slice(0, 2),
 			ties: [],
@@ -51,8 +51,8 @@ describe('calculateGroupStandingsFromRecords', () => {
 		});
 
 		expect(standings).toEqual([
-			expect.objectContaining({ teamId: 'a', rank: null, requiresTiebreaker: true }),
-			expect.objectContaining({ teamId: 'b', rank: null, requiresTiebreaker: true })
+			expect.objectContaining({ teamId: 'a', rank: 1, requiresTiebreaker: false }),
+			expect.objectContaining({ teamId: 'b', rank: 2, requiresTiebreaker: false })
 		]);
 	});
 
@@ -135,7 +135,7 @@ describe('calculateGroupStandingsFromRecords', () => {
 		expect(topTeam.tiedTeamsRubbersWon).toBeGreaterThan(0);
 	});
 
-	test('teams with identical stats remain unranked and require a tiebreaker', () => {
+	test('teams with identical stats remain ranked until their head-to-head is complete', () => {
 		const standings = calculateGroupStandingsFromRecords({
 			teams: teams.slice(0, 2),
 			ties: [{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: null }],
@@ -143,9 +143,28 @@ describe('calculateGroupStandingsFromRecords', () => {
 			matches: []
 		});
 
-		expect(standings[0].requiresTiebreaker).toBe(true);
-		expect(standings[1].requiresTiebreaker).toBe(true);
-		expect(standings[0].rank).toBeNull();
-		expect(standings[1].rank).toBeNull();
+		expect(standings[0].requiresTiebreaker).toBe(false);
+		expect(standings[1].requiresTiebreaker).toBe(false);
+		expect(standings[0].rank).toBe(1);
+		expect(standings[1].rank).toBe(2);
+	});
+
+	test('marks identical stats as requiring a tiebreaker after all round-robin ties are complete', () => {
+		const standings = calculateGroupStandingsFromRecords({
+			teams,
+			ties: [
+				{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: 'a' },
+				{ id: 'ac', teamAId: 'a', teamBId: 'c', winnerTeamId: 'c' },
+				{ id: 'bc', teamAId: 'b', teamBId: 'c', winnerTeamId: 'b' }
+			],
+			rubbers: [],
+			matches: []
+		});
+
+		expect(standings).toEqual([
+			expect.objectContaining({ teamId: 'a', rank: null, requiresTiebreaker: true }),
+			expect.objectContaining({ teamId: 'b', rank: null, requiresTiebreaker: true }),
+			expect.objectContaining({ teamId: 'c', rank: null, requiresTiebreaker: true })
+		]);
 	});
 });

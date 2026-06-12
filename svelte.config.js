@@ -8,6 +8,9 @@ const config = {
 	},
 	kit: {
 		adapter: adapter(),
+		experimental: {
+			remoteFunctions: true
+		},
 		typescript: {
 			config: (config) => ({
 				...config,

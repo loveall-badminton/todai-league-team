@@ -84,7 +84,8 @@ export function validateLineupWarnings(
 		const player2 = playerMap.get(item.player2Id);
 		if (!player1 || !player2) continue;
 
-		const labelOf = (code: string) => RUBBER_DEFINITIONS.find((r) => r.code === code)?.label ?? code;
+		const labelOf = (code: string) =>
+			RUBBER_DEFINITIONS.find((r) => r.code === code)?.label ?? code;
 
 		if (item.rubberCode === 'WD1' && [player1.gender, player2.gender].includes('male')) {
 			warnings.push(`${labelOf('WD1')}に男性が含まれています`);
@@ -245,7 +246,8 @@ export async function revealLineups(db: AppDb, tieId: string, now = new Date().t
 		.where(eq(lineupSubmissions.tieId, tieId));
 	if (submissions.length < 2) throw new Error('両チームのオーダーが提出されていません');
 	for (const s of submissions) {
-		if (s.status === 'draft') throw new Error('下書き状態のオーダーがあります。先に提出してください');
+		if (s.status === 'draft')
+			throw new Error('下書き状態のオーダーがあります。先に提出してください');
 	}
 	for (const submission of submissions) {
 		await db

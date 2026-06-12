@@ -4,7 +4,8 @@ import { createPublicRubberSummaries } from './liveBoardService';
 const rubber = {
 	id: 'rubber-1',
 	code: 'WD1' as const,
-	matchId: 'match-1'
+	matchId: 'match-1',
+	status: 'ready' as const
 };
 
 const match = {
@@ -17,9 +18,7 @@ const match = {
 	status: 'playing' as const
 };
 
-const gameScores = [
-	{ matchId: 'match-1', gameNo: 1, scoreA: 21, scoreB: 15 }
-];
+const gameScores = [{ matchId: 'match-1', gameNo: 1, scoreA: 21, scoreB: 15 }];
 
 const submissions = [
 	{ id: 'submission-a', side: 'A' as const },
@@ -63,6 +62,7 @@ describe('createPublicRubberSummaries', () => {
 		expect(summaries[0]).toMatchObject({
 			gamesScore: '1-0',
 			pointScore: '15-12',
+			status: 'playing',
 			gameDetails: [
 				{ gameNo: 1, scoreA: 21, scoreB: 15 },
 				{ gameNo: 2, scoreA: 15, scoreB: 12 }

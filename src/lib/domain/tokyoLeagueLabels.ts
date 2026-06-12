@@ -1,4 +1,10 @@
-import { COURT_BLOCKS, RUBBER_DEFINITIONS, VENUES, type TiePhase, type VenueCode } from './tokyoLeague';
+import {
+	COURT_BLOCKS,
+	RUBBER_DEFINITIONS,
+	VENUES,
+	type TiePhase,
+	type VenueCode
+} from './tokyoLeague';
 
 export const phaseLabel = (phase: string) => {
 	const labels: Record<TiePhase, string> = {

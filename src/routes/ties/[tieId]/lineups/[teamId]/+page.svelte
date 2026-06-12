@@ -1,18 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import type { PageProps } from './$types';
+	import { saveDraft, submit } from './lineup.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
 	type Player = { id: string; name: string; gender: string };
 	type Item = { rubberCode: string; player1Id: string | null; player2Id: string | null };
 
-	const status = $derived(data.submission?.status ?? null);
-	const isLocked = $derived(status === 'locked' || status === 'revealed');
-	const isSubmitted = $derived(status === 'submitted');
+	let status = $derived(data.submission?.status ?? null);
+	let isLocked = $derived(status === 'locked' || status === 'revealed');
+	let isSubmitted = $derived(status === 'submitted');
 
 	const savedValue = (code: string, order: 1 | 2) => {
 		const item = data.items.find((i: Item) => i.rubberCode === code);
@@ -31,8 +33,6 @@
 		return s ? (map[s] ?? 'bg-zinc-100 text-zinc-500') : 'bg-zinc-100 text-zinc-400';
 	};
 
-	// Gender filtering per discipline and slot
-	// 'unknown' gender always included to avoid hiding players with unset gender
 	function filteredPlayers(discipline: string, order: 1 | 2): Player[] {
 		return (data.players as Player[]).filter((p) => {
 			if (p.gender === 'unknown') return true;
@@ -43,10 +43,39 @@
 		});
 	}
 
-	// Slot label: XD shows gender role, others show position number
 	function slotLabel(discipline: string, order: 1 | 2): string {
 		if (discipline === 'XD') return order === 1 ? '女性' : '男性';
 		return `${order}人目`;
+	}
+
+	let cmdMessage = $state<string | null>(null);
+	let cmdWarnings = $state<string[]>([]);
+	let cmdError = $state<string | null>(null);
+	let lineupAction = $state<'draft' | 'submit'>('draft');
+
+	async function handleLineup(e: SubmitEvent) {
+		e.preventDefault();
+		const fd = new FormData(e.currentTarget as HTMLFormElement);
+		const formData: Record<string, string> = {};
+		for (const [key, val] of fd.entries()) {
+			formData[key] = String(val);
+		}
+		cmdMessage = null;
+		cmdWarnings = [];
+		cmdError = null;
+		try {
+			let result: { message: string; warnings?: string[] } | undefined;
+			if (lineupAction === 'draft') {
+				result = await saveDraft(formData);
+			} else {
+				result = await submit(formData);
+			}
+			cmdMessage = result?.message ?? null;
+			cmdWarnings = result?.warnings ?? [];
+			await invalidateAll();
+		} catch (err) {
+			cmdError = err instanceof Error ? err.message : '失敗';
+		}
 	}
 </script>
 
@@ -54,9 +83,8 @@
 	<title>{data.team.name} オーダー入力 | 東大リーグ団体戦</title>
 </svelte:head>
 
-<main class="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
-	<div class="mx-auto max-w-2xl space-y-6">
-
+<div class="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
+	<div class="space-y-6">
 		<!-- Header -->
 		<header>
 			<a
@@ -77,34 +105,41 @@
 		</header>
 
 		<!-- Form feedback -->
-		{#if form?.message}
+		{#if cmdMessage}
 			<div
-				class="rounded-xl border px-4 py-3 text-sm {form.warnings?.length
+				class="rounded-xl border px-4 py-3 text-sm {cmdWarnings.length
 					? 'border-amber-200 bg-amber-50 text-amber-800'
 					: 'border-emerald-200 bg-emerald-50 text-emerald-800'}"
 			>
-				<p class="font-medium">{form.message}</p>
-				{#if form.warnings?.length}
+				<p class="font-medium">{cmdMessage}</p>
+				{#if cmdWarnings.length}
 					<ul class="mt-1.5 list-disc space-y-0.5 pl-5 text-amber-700">
-						{#each form.warnings as w (w)}<li>{w}</li>{/each}
+						{#each cmdWarnings as w (w)}<li>{w}</li>{/each}
 					</ul>
 				{/if}
+			</div>
+		{/if}
+		{#if cmdError}
+			<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+				{cmdError}
 			</div>
 		{/if}
 
 		<!-- Locked/revealed: read-only display -->
 		{#if isLocked}
-			<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+			<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
 				<div class="border-b border-zinc-100 px-5 py-4">
 					<p class="text-sm text-zinc-500">
-						{status === 'revealed' ? 'オーダーが公開されました。' : 'オーダーは承認済みです。変更する場合は運営にお問い合わせください。'}
+						{status === 'revealed'
+							? 'オーダーが公開されました。'
+							: 'オーダーは承認済みです。変更する場合は運営にお問い合わせください。'}
 					</p>
 				</div>
 				<div class="divide-y divide-zinc-100">
 					{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
 						{@const item = data.items.find((i: Item) => i.rubberCode === rubber.code)}
 						<div class="grid grid-cols-[8rem_1fr] gap-3 px-5 py-3.5">
-							<p class="text-xs font-medium text-zinc-500 pt-0.5">{rubberLabel(rubber.code)}</p>
+							<p class="pt-0.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
 							<div class="space-y-0.5">
 								{#if item?.player1Id}
 									<p class="text-sm">{playerName(item.player1Id)}</p>
@@ -119,8 +154,6 @@
 					{/each}
 				</div>
 			</section>
-
-		<!-- Editable form (draft, submitted, or no submission) -->
 		{:else}
 			{#if isSubmitted}
 				<div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
@@ -133,15 +166,18 @@
 					<p class="text-sm text-zinc-400">選手が登録されていません</p>
 				</div>
 			{:else}
-				<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-					<form method="POST" class="divide-y divide-zinc-100">
+				<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+					<form onsubmit={handleLineup} class="divide-y divide-zinc-100">
 						{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
 							<div class="px-5 py-4">
 								<p class="mb-2.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
 								<div class="grid grid-cols-2 gap-2">
 									{#each [1, 2] as order (order)}
 										{@const slotPlayers = filteredPlayers(rubber.discipline, order as 1 | 2)}
-										{@const playerItems = [{ value: '', label: '未入力' }, ...slotPlayers.map((p) => ({ value: p.id, label: p.name }))]}
+										{@const playerItems = [
+											{ value: '', label: '未入力' },
+											...slotPlayers.map((p) => ({ value: p.id, label: p.name }))
+										]}
 										<div>
 											<span class="mb-1 block text-xs text-zinc-400">
 												{slotLabel(rubber.discipline, order as 1 | 2)}
@@ -160,14 +196,17 @@
 
 						<div class="flex justify-end gap-2 px-5 py-4">
 							<button
+								type="submit"
+								formnovalidate
+								onclick={() => (lineupAction = 'draft')}
 								class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-								formaction="?/saveDraft"
 							>
 								下書き保存
 							</button>
 							<button
+								type="submit"
+								onclick={() => (lineupAction = 'submit')}
 								class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-								formaction="?/submit"
 							>
 								提出する
 							</button>
@@ -176,6 +215,5 @@
 				</section>
 			{/if}
 		{/if}
-
 	</div>
-</main>
+</div>

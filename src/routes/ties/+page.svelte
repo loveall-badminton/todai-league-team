@@ -1,24 +1,29 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import { untrack } from 'svelte';
 	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>>[0];
-	type DragEndEvent = Parameters<NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>>[0];
+	type DragOverEvent = Parameters<
+		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
+	>[0];
+	type DragEndEvent = Parameters<
+		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
+	>[0];
 	import { Dialog, Tabs } from 'bits-ui';
 	import { X } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import FormMessage from '$lib/components/FormMessage.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
 	import SortableTieItem from './SortableTieItem.svelte';
 	import type { PageProps } from './$types';
+	import { create, reorder, updateTie } from './ties.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
 	const groupCodeItems = [
 		{ value: '', label: '決勝系' },
@@ -37,46 +42,47 @@
 	let newPhase = $state('semifinal');
 	let newTeamAId = $state('');
 	let newTeamBId = $state('');
-	let newScoringRuleId = $state('');
+	let newScoringRuleId = $derived(data.scoringRules[0]?.id ?? '');
 	let dialogOpen = $state(false);
 
-	let allTies = $state(untrack(() => [...data.ties]));
+	let allTies = $derived([...data.ties]);
 	let snapshot: typeof allTies = [];
 
-	$effect(() => { allTies = [...data.ties]; });
-
-	// Auto-refresh while any tie is playing
-	$effect(() => {
+	onMount(() => {
 		const hasActive = data.ties.some((t) => t.status === 'playing');
 		if (!hasActive) return;
 		const interval = setInterval(() => invalidateAll(), 12000);
 		return () => clearInterval(interval);
 	});
 
-	$effect(() => {
-		if (newScoringRuleId === '' && data.scoringRules.length > 0) {
-			newScoringRuleId = data.scoringRules[0].id;
-		}
-	});
-
-	// Close dialog on successful create (form message present and no errors)
-	$effect(() => {
-		if (form?.message && !form.message.includes('失敗') && !form.message.includes('エラー')) {
-			dialogOpen = false;
-		}
-	});
-
 	type Filter =
-		| 'all' | 'group_a' | 'group_b' | 'semifinal' | 'final'
-		| 'third_place' | 'fifth_place' | 'lineup_pending' | 'playing'
-		| 'finished' | 'schedule_changed';
+		| 'all'
+		| 'group_a'
+		| 'group_b'
+		| 'semifinal'
+		| 'final'
+		| 'third_place'
+		| 'fifth_place'
+		| 'lineup_pending'
+		| 'playing'
+		| 'finished'
+		| 'schedule_changed';
 
 	const VALID_FILTERS: Filter[] = [
-		'all', 'group_a', 'group_b', 'semifinal', 'final', 'third_place', 'fifth_place',
-		'lineup_pending', 'playing', 'finished', 'schedule_changed'
+		'all',
+		'group_a',
+		'group_b',
+		'semifinal',
+		'final',
+		'third_place',
+		'fifth_place',
+		'lineup_pending',
+		'playing',
+		'finished',
+		'schedule_changed'
 	];
 
-	const filter = $derived.by<Filter>(() => {
+	let filter = $derived.by<Filter>(() => {
 		const v = page.url.searchParams.get('filter');
 		return VALID_FILTERS.includes(v as Filter) ? (v as Filter) : 'all';
 	});
@@ -85,7 +91,8 @@
 		const url = new URL(page.url);
 		if (value === 'all') url.searchParams.delete('filter');
 		else url.searchParams.set('filter', value);
-		goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		goto(resolve('/ties') + url.search, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
 	const filters: { id: Filter; label: string }[] = [
@@ -117,9 +124,11 @@
 		return true;
 	}
 
-	const filteredTies = $derived(allTies.filter((t) => tieMatchesFilter(t, filter)));
+	let filteredTies = $derived(allTies.filter((t) => tieMatchesFilter(t, filter)));
 
-	function onDragStart() { snapshot = allTies.slice(); }
+	function onDragStart() {
+		snapshot = allTies.slice();
+	}
 
 	function onDragOver(event: DragOverEvent) {
 		const { source, target } = event.operation;
@@ -132,14 +141,11 @@
 	}
 
 	async function onDragEnd(event: DragEndEvent) {
-		if (event.canceled) { allTies = snapshot; return; }
-		const fd = new FormData();
-		fd.set('ids', JSON.stringify(allTies.map((t) => t.id)));
-		await fetch('?/reorder', {
-			method: 'POST',
-			headers: { accept: 'application/json', 'x-sveltekit-action': 'true' },
-			body: fd
-		});
+		if (event.canceled) {
+			allTies = snapshot;
+			return;
+		}
+		await reorder({ ids: allTies.map((t) => t.id) });
 	}
 </script>
 
@@ -148,8 +154,7 @@
 </svelte:head>
 
 <div class="px-4 py-6 sm:px-6">
-	<div class="mx-auto max-w-5xl space-y-5">
-
+	<div class="space-y-5">
 		<!-- Header -->
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-zinc-950">対戦管理</h1>
@@ -162,23 +167,29 @@
 				<Dialog.Portal>
 					<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
 					<Dialog.Content
-						class="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none max-h-[90vh] overflow-y-auto"
+						class="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
 					>
-						<div class="flex items-center justify-between mb-5">
+						<div class="mb-5 flex items-center justify-between">
 							<Dialog.Title class="text-base font-semibold text-zinc-950">対戦を作成</Dialog.Title>
-							<Dialog.Close class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700">
+							<Dialog.Close
+								class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+							>
 								<X class="size-4" />
 							</Dialog.Close>
 						</div>
 
-						<form method="POST" action="?/create" class="space-y-4">
+						<form {...create} class="space-y-4">
 							<div class="grid gap-3 sm:grid-cols-2">
 								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">コード <span class="text-red-500">*</span></span>
+									<span class="text-xs font-medium text-zinc-600"
+										>コード <span class="text-red-500">*</span></span
+									>
 									<AppInput name="tieCode" placeholder="A-1" required />
 								</div>
 								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">得点ルール <span class="text-red-500">*</span></span>
+									<span class="text-xs font-medium text-zinc-600"
+										>得点ルール <span class="text-red-500">*</span></span
+									>
 									<AppSelect
 										name="scoringRuleId"
 										bind:value={newScoringRuleId}
@@ -191,7 +202,12 @@
 							<div class="grid gap-3 sm:grid-cols-3">
 								<div class="space-y-1">
 									<span class="text-xs font-medium text-zinc-600">リーグ</span>
-									<AppSelect name="groupCode" bind:value={newGroupCode} items={groupCodeItems} placeholder="決勝系" />
+									<AppSelect
+										name="groupCode"
+										bind:value={newGroupCode}
+										items={groupCodeItems}
+										placeholder="決勝系"
+									/>
 								</div>
 								<div class="space-y-1">
 									<span class="text-xs font-medium text-zinc-600">フェーズ</span>
@@ -199,7 +215,7 @@
 								</div>
 								<div class="space-y-1">
 									<span class="text-xs font-medium text-zinc-600">予定時刻</span>
-									<AppInput name="scheduledStartAt" type="datetime-local" />
+									<AppInput name="scheduledStartAt" type="time" />
 								</div>
 							</div>
 
@@ -209,7 +225,10 @@
 									<AppSelect
 										name="teamAId"
 										bind:value={newTeamAId}
-										items={[{ value: '', label: '未定' }, ...data.teams.map((t) => ({ value: t.id, label: t.name }))]}
+										items={[
+											{ value: '', label: '未定' },
+											...data.teams.map((t) => ({ value: t.id, label: t.name }))
+										]}
 										placeholder="未定"
 									/>
 								</div>
@@ -218,7 +237,10 @@
 									<AppSelect
 										name="teamBId"
 										bind:value={newTeamBId}
-										items={[{ value: '', label: '未定' }, ...data.teams.map((t) => ({ value: t.id, label: t.name }))]}
+										items={[
+											{ value: '', label: '未定' },
+											...data.teams.map((t) => ({ value: t.id, label: t.name }))
+										]}
 										placeholder="未定"
 									/>
 								</div>
@@ -230,7 +252,9 @@
 							</div>
 
 							<div class="flex justify-end gap-2 pt-1">
-								<Dialog.Close class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
+								<Dialog.Close
+									class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+								>
 									キャンセル
 								</Dialog.Close>
 								<AppButton type="submit">作成</AppButton>
@@ -241,24 +265,25 @@
 			</Dialog.Root>
 		</div>
 
-		<FormMessage message={form?.message} />
-
 		<!-- Filter tabs (horizontally scrollable) -->
 		<Tabs.Root value={filter} onValueChange={setFilter}>
-			<Tabs.List class="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+			<Tabs.List class="flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5">
 				{#each filters as f (f.id)}
-					{@const count = f.id === 'all'
-						? data.ties.length
-						: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length}
+					{@const count =
+						f.id === 'all'
+							? data.ties.length
+							: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length}
 					<Tabs.Trigger
 						value={f.id}
-						class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors {filter === f.id
+						class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors {filter ===
+						f.id
 							? 'bg-zinc-900 text-white'
 							: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400'}"
 					>
 						{f.label}
 						{#if count > 0}
-							<span class="ml-1 {filter === f.id ? 'text-zinc-300' : 'text-zinc-400'}">{count}</span>
+							<span class="ml-1 {filter === f.id ? 'text-zinc-300' : 'text-zinc-400'}">{count}</span
+							>
 						{/if}
 					</Tabs.Trigger>
 				{/each}
@@ -276,7 +301,13 @@
 			<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 				<div class="space-y-1.5">
 					{#each filteredTies as tie, index (tie.id)}
-						<SortableTieItem {tie} {index} sortable={filter === 'all'} teams={data.teams} />
+						<SortableTieItem
+							{tie}
+							{index}
+							sortable={filter === 'all'}
+							teams={data.teams}
+							tieForm={updateTie.for(tie.id)}
+						/>
 					{/each}
 				</div>
 			</DragDropProvider>

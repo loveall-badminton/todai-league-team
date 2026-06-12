@@ -1,13 +1,15 @@
-import { error, fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
-import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
+import { requireTeamLineupAccess } from '$lib/server/auth/access';
 import { getRequestDb } from '$lib/server/db/request';
 import { lineupItems, lineupSubmissions, teamPlayers, teams } from '$lib/server/db/schema';
 import { getTieWithRubbers } from '$lib/server/repositories/tokyoLeagueRepository';
-import { saveLineupDraft, submitLineup } from '$lib/server/services/lineupService';
-import type { Actions, PageServerLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async (event) => {
+	const { params, platform } = event;
+	requireTeamLineupAccess(event, params.teamId);
+
 	const db = getRequestDb(platform);
 	const result = await getTieWithRubbers(db, params.tieId);
 	if (!result) error(404, '対戦が見つかりません');
@@ -43,51 +45,3 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	return { tie, team, side, players, submission: submission ?? null, items };
 };
-
-export const actions: Actions = {
-	saveDraft: async ({ request, params, platform }) => {
-		const db = getRequestDb(platform);
-		const formData = await request.formData();
-		try {
-			const validation = await saveLineupDraft(db, {
-				tieId: params.tieId,
-				teamId: params.teamId,
-				items: parseItems(formData)
-			});
-			return { message: '下書きを保存しました', warnings: validation.warnings };
-		} catch (caught) {
-			return fail(400, { message: errorMessage(caught) });
-		}
-	},
-
-	submit: async ({ request, params, platform }) => {
-		const db = getRequestDb(platform);
-		const formData = await request.formData();
-		try {
-			await saveLineupDraft(db, {
-				tieId: params.tieId,
-				teamId: params.teamId,
-				items: parseItems(formData)
-			});
-			const validation = await submitLineup(db, {
-				tieId: params.tieId,
-				teamId: params.teamId
-			});
-			return { message: 'オーダーを提出しました', warnings: validation.warnings };
-		} catch (caught) {
-			return fail(400, { message: errorMessage(caught) });
-		}
-	}
-};
-
-function parseItems(formData: FormData) {
-	return RUBBER_DEFINITIONS.map((rubber) => ({
-		rubberCode: rubber.code as RubberCode,
-		player1Id: String(formData.get(`${rubber.code}_1`) ?? ''),
-		player2Id: String(formData.get(`${rubber.code}_2`) ?? '')
-	}));
-}
-
-function errorMessage(caught: unknown) {
-	return caught instanceof Error ? caught.message : '処理に失敗しました';
-}

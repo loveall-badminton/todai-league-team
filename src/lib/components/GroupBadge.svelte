@@ -1,10 +1,8 @@
 <script lang="ts">
 	let { groupCode }: { groupCode: string | null } = $props();
 
-	const label = $derived(
-		groupCode === 'A' ? 'Aリーグ' : groupCode === 'B' ? 'Bリーグ' : '未割当'
-	);
-	const classes = $derived(
+	let label = $derived(groupCode === 'A' ? 'Aリーグ' : groupCode === 'B' ? 'Bリーグ' : '未割当');
+	let classes = $derived(
 		groupCode === 'A'
 			? 'bg-blue-100 text-blue-800'
 			: groupCode === 'B'

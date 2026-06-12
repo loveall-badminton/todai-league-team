@@ -14,7 +14,7 @@
 		cancelled: 'bg-red-100 text-red-800'
 	};
 
-	const classes = $derived(colorMap[status] ?? 'bg-zinc-100 text-zinc-700');
+	let classes = $derived(colorMap[status] ?? 'bg-zinc-100 text-zinc-700');
 </script>
 
 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {classes}">

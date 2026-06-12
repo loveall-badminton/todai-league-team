@@ -1,1 +1,14 @@
+@import '@fontsource/line-seed-jp/400.css';
+@import '@fontsource/line-seed-jp/700.css';
+@import '@fontsource/line-seed-jp/800.css';
 @import 'tailwindcss';
+
+@theme {
+	--font-sans:
+		'LINE Seed JP', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+		'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+body {
+	font-family: var(--font-sans);
+}

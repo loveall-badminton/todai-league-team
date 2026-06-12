@@ -24,9 +24,9 @@ describe('validateLineupWarnings', () => {
 
 		expect(warnings).toEqual(
 			expect.arrayContaining([
-				'WD1に男性が含まれています',
-				'XD1が男女ペアではありません',
-				'MD1に女性が含まれています'
+				'女子ダブルスに男性が含まれています',
+				'ミックスダブルスが男女ペアではありません',
+				'男子ダブルス1に女性が含まれています'
 			])
 		);
 	});
@@ -37,7 +37,7 @@ describe('validateLineupWarnings', () => {
 			players
 		);
 
-		expect(warnings).toContain('同一選手が複数rubberに出場しています');
+		expect(warnings).toContain('同一選手が複数種目に出場しています');
 	});
 
 	test('no warnings for a gender-correct lineup with unique players', () => {
@@ -52,9 +52,9 @@ describe('validateLineupWarnings', () => {
 			players
 		);
 
-		expect(warnings).not.toContain('WD1に男性が含まれています');
-		expect(warnings).not.toContain('XD1が男女ペアではありません');
-		expect(warnings).not.toContain('MD1に女性が含まれています');
+		expect(warnings).not.toContain('女子ダブルスに男性が含まれています');
+		expect(warnings).not.toContain('ミックスダブルスが男女ペアではありません');
+		expect(warnings).not.toContain('男子ダブルス1に女性が含まれています');
 	});
 
 	test('MD2 and MD3 also warn when a female player is included', () => {
@@ -63,25 +63,25 @@ describe('validateLineupWarnings', () => {
 			players
 		);
 
-		expect(warnings).toContain('MD3に女性が含まれています');
-		expect(warnings).toContain('MD2に女性が含まれています');
+		expect(warnings).toContain('男子ダブルス3に女性が含まれています');
+		expect(warnings).toContain('男子ダブルス2に女性が含まれています');
 	});
 
 	test('XD1 with two females warns about gender pair', () => {
 		const warnings = validateLineupWarnings([item('XD1', 'f1', 'f2')], players);
 
-		expect(warnings).toContain('XD1が男女ペアではありません');
+		expect(warnings).toContain('ミックスダブルスが男女ペアではありません');
 	});
 
 	test('XD1 with one male and one female produces no gender warning', () => {
 		const warnings = validateLineupWarnings([item('XD1', 'm1', 'f1')], players);
 
-		expect(warnings).not.toContain('XD1が男女ペアではありません');
+		expect(warnings).not.toContain('ミックスダブルスが男女ペアではありません');
 	});
 
 	test('skips validation for items whose player ids are not in the players list', () => {
 		const warnings = validateLineupWarnings([item('WD1', 'unknown-1', 'unknown-2')], players);
 
-		expect(warnings).not.toContain('WD1に男性が含まれています');
+		expect(warnings).not.toContain('女子ダブルスに男性が含まれています');
 	});
 });

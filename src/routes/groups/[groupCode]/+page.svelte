@@ -1,26 +1,35 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import { untrack } from 'svelte';
 	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>>[0];
-	type DragEndEvent = Parameters<NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>>[0];
+	type DragOverEvent = Parameters<
+		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
+	>[0];
+	type DragEndEvent = Parameters<
+		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
+	>[0];
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import FormMessage from '$lib/components/FormMessage.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import SortableGroupTie from './SortableGroupTie.svelte';
 	import type { PageProps } from './$types';
+	import {
+		generateRoundRobin,
+		setManualRank,
+		createTiebreaker,
+		syncTiebreaker,
+		reorder,
+		updateTie
+	} from './group.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
-	let allTies = $state(untrack(() => [...data.ties]));
+	let allTies = $derived([...data.ties]);
 	let snapshot: typeof allTies = [];
-
-	$effect(() => {
-		allTies = [...data.ties];
-	});
+	let cmdMessage = $state<string | null>(null);
+	let cmdError = $state<string | null>(null);
 
 	function onDragStart() {
 		snapshot = allTies.slice();
@@ -41,13 +50,7 @@
 			allTies = snapshot;
 			return;
 		}
-		const fd = new FormData();
-		fd.set('ids', JSON.stringify(allTies.map((t) => t.id)));
-		await fetch('?/reorder', {
-			method: 'POST',
-			headers: { accept: 'application/json', 'x-sveltekit-action': 'true' },
-			body: fd
-		});
+		await reorder({ ids: allTies.map((t) => t.id) });
 	}
 
 	const teamName = (teamId: string | null) =>
@@ -58,12 +61,12 @@
 	let tiebreakerTeamBId = $state('');
 	let tiebreakerPlayerBId = $state('');
 
-	const groupTeamItems = $derived([
+	let groupTeamItems = $derived([
 		{ value: '', label: '選択' },
 		...data.groupTeams.map((t) => ({ value: t.id, label: t.name }))
 	]);
 
-	const allPlayerItems = $derived([
+	let allPlayerItems = $derived([
 		{ value: '', label: '選択' },
 		...data.groupTeams.flatMap((team) =>
 			(data.groupTeamPlayers.find((r) => r.teamId === team.id)?.players ?? []).map((player) => ({
@@ -74,7 +77,7 @@
 	]);
 
 	// Round-robin matrix helpers
-	const orderedTeams = $derived(
+	let orderedTeams = $derived(
 		data.standings.length > 0
 			? data.standings
 					.map((r) => data.groupTeams.find((t) => t.id === r.teamId))
@@ -98,15 +101,28 @@
 		const done = tie.status === 'confirmed' || tie.status === 'finished';
 		return { tie, myScore, theirScore, won: myScore > theirScore, done };
 	}
+
+	async function run(fn: () => Promise<unknown>) {
+		cmdMessage = null;
+		cmdError = null;
+		try {
+			const result = await fn();
+			await invalidateAll();
+			if (result && typeof result === 'object' && 'message' in result) {
+				cmdMessage = String((result as { message: string }).message);
+			}
+		} catch (e) {
+			cmdError = e instanceof Error ? e.message : '失敗';
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>{data.groupCode}リーグ | 東大リーグ団体戦</title>
 </svelte:head>
 
-<main class="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
-	<div class="mx-auto max-w-7xl space-y-8">
-
+<div class="min-h-screen min-w-0 bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
+	<div class="min-w-0 space-y-8">
 		<!-- Header -->
 		<header class="flex flex-wrap items-start justify-between gap-4">
 			<div>
@@ -115,20 +131,28 @@
 				</a>
 				<h1 class="mt-1 text-2xl font-semibold tracking-tight">{data.groupCode}リーグ</h1>
 			</div>
-			<form method="POST" action="?/generateRoundRobin">
-				<button
-					class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-				>
-					総当たり生成
-				</button>
-			</form>
+			<button
+				class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+				onclick={() => run(() => generateRoundRobin())}
+			>
+				総当たり生成
+			</button>
 		</header>
 
-		<FormMessage message={form?.message} />
+		{#if cmdMessage}
+			<div class="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
+				{cmdMessage}
+			</div>
+		{/if}
+		{#if cmdError}
+			<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+				{cmdError}
+			</div>
+		{/if}
 
 		<!-- Teams -->
 		<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-zinc-500">所属チーム</h2>
+			<h2 class="text-sm font-medium tracking-wide text-zinc-500">所属チーム</h2>
 			<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.groupTeams as team (team.id)}
 					<a
@@ -145,38 +169,48 @@
 		</section>
 
 		<!-- Standings + round-robin matrix (merged) -->
-		<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm">
+		<section class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
 			<div class="border-b border-zinc-100 px-5 py-4">
 				<h2 class="font-semibold">順位表</h2>
 			</div>
 			<div class="overflow-x-auto">
-				<table class="text-sm">
+				<table class="w-full min-w-240 text-sm whitespace-nowrap">
 					<thead>
 						<tr class="border-b border-zinc-100">
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 w-10">順位</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 min-w-[7rem]">チーム</th>
+							<th class="w-10 px-4 py-3 text-left text-xs font-medium text-zinc-400">順位</th>
+							<th class="min-w-28 px-4 py-3 text-left text-xs font-medium text-zinc-400">チーム</th>
 							{#each orderedTeams as col (col.id)}
-								<th class="px-3 py-3 text-center text-xs font-medium text-zinc-400 min-w-[4.5rem]">
+								<th class="min-w-18 px-3 py-3 text-center text-xs font-medium text-zinc-400">
 									{col.name}
 								</th>
 							{/each}
-							<th class="px-4 py-3 text-center text-xs font-medium uppercase text-zinc-400 w-20">団体</th>
-							<th class="px-4 py-3 text-center text-xs font-medium uppercase text-zinc-400 w-20">種目</th>
-							<th class="px-4 py-3 text-center text-xs font-medium uppercase text-zinc-400 w-20">ゲーム</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 w-20">状態</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 min-w-[12rem]">手動順位</th>
+							<th class="w-20 px-4 py-3 text-center text-xs font-medium text-zinc-400">団体</th>
+							<th class="w-20 px-4 py-3 text-center text-xs font-medium text-zinc-400">種目</th>
+							<th class="w-20 px-4 py-3 text-center text-xs font-medium text-zinc-400">ゲーム</th>
+							<th class="w-20 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
+							<th class="min-w-48 px-4 py-3 text-left text-xs font-medium text-zinc-400"
+								>手動順位</th
+							>
 						</tr>
 					</thead>
 					<tbody>
 						{#if data.standings.length === 0}
 							<tr>
-								<td colspan={4 + orderedTeams.length} class="px-4 py-8 text-center text-sm text-zinc-500">
+								<td
+									colspan={4 + orderedTeams.length}
+									class="px-4 py-8 text-center text-sm text-zinc-500"
+								>
 									チームが登録されると順位表が表示されます。
 								</td>
 							</tr>
 						{:else}
 							{#each data.standings as row (row.teamId)}
-								<tr class="border-b border-zinc-100 last:border-0 {row.requiresTiebreaker ? 'bg-amber-50' : ''}">
+								{@const rankForm = setManualRank.for(row.teamId)}
+								<tr
+									class="border-b border-zinc-100 last:border-0 {row.requiresTiebreaker
+										? 'bg-amber-50'
+										: ''}"
+								>
 									<td class="px-4 py-3 font-semibold tabular-nums">{row.rank ?? '-'}</td>
 									<td class="px-4 py-3 font-medium">{row.teamName}</td>
 									<!-- vs each opponent -->
@@ -207,30 +241,36 @@
 											{/if}
 										</td>
 									{/each}
-									<td class="px-4 py-3 tabular-nums text-center text-zinc-700">
+									<td class="px-4 py-3 text-center text-zinc-700 tabular-nums">
 										{row.teamMatchesWon}-{row.teamMatchesLost}
 									</td>
-									<td class="px-4 py-3 tabular-nums text-center text-zinc-700">
+									<td class="px-4 py-3 text-center text-zinc-700 tabular-nums">
 										{row.rubbersWon}-{row.rubbersLost}
 									</td>
-									<td class="px-4 py-3 tabular-nums text-center text-zinc-700">
+									<td class="px-4 py-3 text-center text-zinc-700 tabular-nums">
 										{row.gamesWon}-{row.gamesLost}
 									</td>
 									<td class="px-4 py-3">
 										{#if row.requiresTiebreaker}
-											<span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+											<span
+												class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800"
+											>
 												再試合必要
 											</span>
 										{:else if row.manualRank}
-											<span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
+											<span
+												class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600"
+											>
 												手動
 											</span>
 										{:else}
-											<span class="text-xs text-zinc-500">{row.headToHeadSummary ?? '計算済'}</span>
+											<span class="text-xs text-zinc-500"
+												>{row.headToHeadSummary ?? '自動判定'}</span
+											>
 										{/if}
 									</td>
 									<td class="px-4 py-3">
-										<form method="POST" action="?/setManualRank" class="flex items-center gap-2">
+										<form {...rankForm} class="flex items-center gap-2">
 											<input type="hidden" name="teamId" value={row.teamId} />
 											<AppInput
 												name="manualRank"
@@ -239,11 +279,7 @@
 												value={row.manualRank ?? row.rank ?? ''}
 												class="w-14 px-2 py-1.5 tabular-nums"
 											/>
-											<AppInput
-												name="reason"
-												placeholder="理由"
-												class="w-24 px-2 py-1.5"
-											/>
+											<AppInput name="reason" placeholder="理由" class="w-24 px-2 py-1.5" />
 											<button
 												class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
 											>
@@ -264,14 +300,21 @@
 			<h2 class="font-semibold">総当たり対戦</h2>
 
 			{#if allTies.length === 0}
-				<div class="rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-8 text-center text-sm text-zinc-500">
+				<div
+					class="rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-8 text-center text-sm text-zinc-500"
+				>
 					チームが2つ以上ある場合、総当たり対戦を生成できます。
 				</div>
 			{:else}
 				<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 					<div class="space-y-2">
 						{#each allTies as tie, index (tie.id)}
-							<SortableGroupTie {tie} {index} allTeams={data.allTeams} />
+							<SortableGroupTie
+								{tie}
+								{index}
+								allTeams={data.allTeams}
+								tieForm={updateTie.for(tie.id)}
+							/>
 						{/each}
 					</div>
 				</DragDropProvider>
@@ -285,22 +328,42 @@
 			</div>
 			<div class="space-y-5 p-5">
 				<!-- Create form -->
-				<form method="POST" action="?/createTiebreaker" class="grid gap-3 lg:grid-cols-6">
+				<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-500">A側チーム</span>
-						<AppSelect name="teamAId" bind:value={tiebreakerTeamAId} items={groupTeamItems} required />
+						<AppSelect
+							name="teamAId"
+							bind:value={tiebreakerTeamAId}
+							items={groupTeamItems}
+							required
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-500">A側選手</span>
-						<AppSelect name="playerAId" bind:value={tiebreakerPlayerAId} items={allPlayerItems} required />
+						<AppSelect
+							name="playerAId"
+							bind:value={tiebreakerPlayerAId}
+							items={allPlayerItems}
+							required
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-500">B側チーム</span>
-						<AppSelect name="teamBId" bind:value={tiebreakerTeamBId} items={groupTeamItems} required />
+						<AppSelect
+							name="teamBId"
+							bind:value={tiebreakerTeamBId}
+							items={groupTeamItems}
+							required
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-500">B側選手</span>
-						<AppSelect name="playerBId" bind:value={tiebreakerPlayerBId} items={allPlayerItems} required />
+						<AppSelect
+							name="playerBId"
+							bind:value={tiebreakerPlayerBId}
+							items={allPlayerItems}
+							required
+						/>
 					</div>
 					<div class="grid gap-1 lg:col-span-2">
 						<span class="text-xs font-medium text-zinc-500">理由</span>
@@ -314,12 +377,19 @@
 						</button>
 					</div>
 				</form>
+				{#if createTiebreaker.result?.message}
+					<div class="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700">
+						{createTiebreaker.result.message}
+					</div>
+				{/if}
 
 				<!-- Tiebreaker list -->
 				{#if data.rankingTiebreakers.length > 0}
 					<div class="space-y-2 border-t border-zinc-100 pt-2">
 						{#each data.rankingTiebreakers as item (item.id)}
-							<div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm">
+							<div
+								class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm"
+							>
 								<div class="space-y-0.5">
 									<p class="font-medium">{item.reason}</p>
 									<p class="text-xs text-zinc-500">
@@ -337,14 +407,12 @@
 										>
 											審判
 										</a>
-										<form method="POST" action="?/syncTiebreaker">
-											<input type="hidden" name="matchId" value={item.matchId} />
-											<button
-												class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-											>
-												同期
-											</button>
-										</form>
+										<button
+											class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+											onclick={() => run(() => syncTiebreaker({ matchId: item.matchId! }))}
+										>
+											同期
+										</button>
 									</div>
 								{/if}
 							</div>
@@ -355,6 +423,5 @@
 				{/if}
 			</div>
 		</section>
-
 	</div>
-</main>
+</div>
