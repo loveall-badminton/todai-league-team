@@ -25,6 +25,7 @@
 		"@better-auth/cli": "~1.4.21",
 		"@eslint/compat": "^2.0.4",
 		"@eslint/js": "^10.0.1",
+		"@lucide/svelte": "^1.17.0",
 		"@sveltejs/adapter-cloudflare": "^7.2.8",
 		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
@@ -53,6 +54,8 @@
 		"wrangler": "^4.81.0"
 	},
 	"dependencies": {
+		"@dnd-kit/svelte": "^0.5.0",
+		"bits-ui": "^2.18.1",
 		"valibot": "^1.4.1"
 	}
 }

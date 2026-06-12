@@ -32,5 +32,8 @@ export default defineConfig({
 				}
 			}
 		]
+	},
+	ssr: {
+		noExternal: ['@lucide/svelte', '@dnd-kit/svelte']
 	}
 });

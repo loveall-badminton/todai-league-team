@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { createInitialMatchState, getCurrentGame } from '$lib/domain/scoring';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
+import type { ScoringConfig } from '$lib/domain/types';
 import type { AppDb } from '$lib/server/db/client';
 import {
 	matchServiceStates,
@@ -17,6 +18,10 @@ export interface CreateMatchWithPlayersInput {
 	eventName?: string | null;
 	category?: string | null;
 	roundName?: string | null;
+	rubberId?: string | null;
+	rankingTiebreakerId?: string | null;
+	scoringRuleId?: string | null;
+	scoring?: ScoringConfig;
 	players: Array<{
 		side: 'A' | 'B';
 		order: 1 | 2;
@@ -86,7 +91,8 @@ export async function createMatchWithPlayers(
 		tournamentId: input.tournamentId,
 		courtId: input.courtId,
 		discipline: input.discipline,
-		now: input.now
+		now: input.now,
+		scoring: input.scoring
 	});
 
 	await db.batch([
@@ -98,6 +104,9 @@ export async function createMatchWithPlayers(
 			eventName: input.eventName,
 			category: input.category,
 			roundName: input.roundName,
+			rubberId: input.rubberId ?? null,
+			rankingTiebreakerId: input.rankingTiebreakerId ?? null,
+			scoringRuleId: input.scoringRuleId ?? null,
 			createdAt: input.now,
 			updatedAt: input.now
 		}),

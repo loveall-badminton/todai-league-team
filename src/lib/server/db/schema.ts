@@ -1,7 +1,212 @@
 export * from './auth.schema';
 
 import { relations, sql } from 'drizzle-orm';
-import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import {
+	type AnySQLiteColumn,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+	index
+} from 'drizzle-orm/sqlite-core';
+
+export const scoringRules = sqliteTable('scoring_rules', {
+	id: text('id').primaryKey(),
+
+	code: text('code').notNull().unique(),
+	name: text('name').notNull(),
+
+	maxGames: integer('max_games').notNull(),
+	gamesToWin: integer('games_to_win').notNull(),
+	pointsToWin: integer('points_to_win').notNull(),
+	winBy: integer('win_by').notNull(),
+	maxPoints: integer('max_points').notNull(),
+	midGameIntervalPoint: integer('mid_game_interval_point').notNull(),
+
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const appSettings = sqliteTable('app_settings', {
+	id: text('id').primaryKey(),
+
+	eventName: text('event_name').notNull().default('東大リーグ団体戦'),
+
+	groupStageScoringRuleId: text('group_stage_scoring_rule_id').references(() => scoringRules.id),
+	knockoutScoringRuleId: text('knockout_scoring_rule_id').references(() => scoringRules.id),
+	tiebreakerScoringRuleId: text('tiebreaker_scoring_rule_id').references(() => scoringRules.id),
+
+	lineupRevealPolicy: text('lineup_reveal_policy', {
+		enum: ['on_tie_start', 'manual']
+	})
+		.notNull()
+		.default('on_tie_start'),
+
+	defaultLineupDueMinutesBefore: integer('default_lineup_due_minutes_before').notNull().default(10),
+
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const teams = sqliteTable('teams', {
+	id: text('id').primaryKey(),
+
+	name: text('name').notNull(),
+	shortName: text('short_name'),
+
+	groupCode: text('group_code', {
+		enum: ['A', 'B']
+	}),
+
+	displayOrder: integer('display_order').notNull().default(0),
+
+	status: text('status', {
+		enum: ['active', 'withdrawn']
+	})
+		.notNull()
+		.default('active'),
+
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const teamPlayers = sqliteTable(
+	'team_players',
+	{
+		id: text('id').primaryKey(),
+
+		teamId: text('team_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
+
+		name: text('name').notNull(),
+
+		gender: text('gender', {
+			enum: ['male', 'female', 'unknown']
+		})
+			.notNull()
+			.default('unknown'),
+
+		displayOrder: integer('display_order').notNull().default(0),
+
+		status: text('status', {
+			enum: ['active', 'inactive']
+		})
+			.notNull()
+			.default('active'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		teamIdx: index('team_players_team_id_idx').on(table.teamId)
+	})
+);
+
+export const ties = sqliteTable(
+	'ties',
+	{
+		id: text('id').primaryKey(),
+
+		tieCode: text('tie_code').notNull(),
+
+		phase: text('phase', {
+			enum: [
+				'group_a',
+				'group_b',
+				'semifinal',
+				'final',
+				'third_place',
+				'fifth_place',
+				'ranking_tiebreaker'
+			]
+		}).notNull(),
+
+		groupCode: text('group_code', {
+			enum: ['A', 'B']
+		}),
+
+		roundLabel: text('round_label'),
+
+		teamAId: text('team_a_id').references(() => teams.id, { onDelete: 'set null' }),
+		teamBId: text('team_b_id').references(() => teams.id, { onDelete: 'set null' }),
+
+		status: text('status', {
+			enum: [
+				'scheduled',
+				'lineup_pending',
+				'lineup_submitted',
+				'ready',
+				'playing',
+				'finished',
+				'confirmed',
+				'cancelled'
+			]
+		})
+			.notNull()
+			.default('scheduled'),
+
+		teamScoreA: integer('team_score_a').notNull().default(0),
+		teamScoreB: integer('team_score_b').notNull().default(0),
+
+		winnerTeamId: text('winner_team_id').references(() => teams.id, { onDelete: 'set null' }),
+
+		displayOrder: integer('display_order').notNull().default(0),
+
+		scheduledStartAt: text('scheduled_start_at'),
+		actualStartAt: text('actual_start_at'),
+		actualEndAt: text('actual_end_at'),
+
+		venue: text('venue', {
+			enum: ['first_gym', 'second_gym']
+		}),
+
+		courtBlockCode: text('court_block_code'),
+
+		lineupDueAt: text('lineup_due_at'),
+
+		lineupDuePolicy: text('lineup_due_policy', {
+			enum: ['first_match_before_opening', 'ten_minutes_before', 'manual']
+		})
+			.notNull()
+			.default('ten_minutes_before'),
+
+		lineupsRevealedAt: text('lineups_revealed_at'),
+
+		operationNote: text('operation_note'),
+
+		scheduleChanged: integer('schedule_changed', { mode: 'boolean' }).notNull().default(false),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		tieCodeUnique: uniqueIndex('ties_tie_code_unique').on(table.tieCode),
+		groupIdx: index('ties_group_code_idx').on(table.groupCode),
+		teamAIdx: index('ties_team_a_idx').on(table.teamAId),
+		teamBIdx: index('ties_team_b_idx').on(table.teamBId)
+	})
+);
 
 export const tournaments = sqliteTable(
 	'tournaments',
@@ -101,6 +306,17 @@ export const matches = sqliteTable(
 			.notNull()
 			.default('best_of_3_21'),
 
+		rubberId: text('rubber_id').references((): AnySQLiteColumn => rubbers.id, {
+			onDelete: 'set null'
+		}),
+		rankingTiebreakerId: text('ranking_tiebreaker_id').references(
+			(): AnySQLiteColumn => rankingTiebreakers.id,
+			{
+				onDelete: 'set null'
+			}
+		),
+		scoringRuleId: text('scoring_rule_id').references(() => scoringRules.id),
+
 		status: text('status', {
 			enum: [
 				'scheduled',
@@ -162,6 +378,9 @@ export const matches = sqliteTable(
 	(table) => ({
 		tournamentIdx: index('matches_tournament_id_idx').on(table.tournamentId),
 		courtIdx: index('matches_court_id_idx').on(table.courtId),
+		rubberIdx: index('matches_rubber_id_idx').on(table.rubberId),
+		rankingTiebreakerIdx: index('matches_ranking_tiebreaker_id_idx').on(table.rankingTiebreakerId),
+		scoringRuleIdx: index('matches_scoring_rule_id_idx').on(table.scoringRuleId),
 		serverIdx: index('matches_current_server_idx').on(table.currentServerPlayerId)
 	})
 );
@@ -393,6 +612,264 @@ export const scoreEventUndoLinks = sqliteTable(
 	})
 );
 
+export const rubbers = sqliteTable(
+	'rubbers',
+	{
+		id: text('id').primaryKey(),
+
+		tieId: text('tie_id')
+			.notNull()
+			.references(() => ties.id, { onDelete: 'cascade' }),
+
+		code: text('code', {
+			enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
+		}).notNull(),
+
+		discipline: text('discipline', {
+			enum: ['WD', 'XD', 'MD']
+		}).notNull(),
+
+		displayOrder: integer('display_order').notNull(),
+
+		scoringRuleId: text('scoring_rule_id')
+			.notNull()
+			.references(() => scoringRules.id),
+
+		matchId: text('match_id').references((): AnySQLiteColumn => matches.id, {
+			onDelete: 'set null'
+		}),
+
+		status: text('status', {
+			enum: [
+				'not_ready',
+				'ready',
+				'scheduled',
+				'playing',
+				'finished',
+				'confirmed',
+				'skipped',
+				'cancelled'
+			]
+		})
+			.notNull()
+			.default('not_ready'),
+
+		winnerSide: text('winner_side', {
+			enum: ['A', 'B']
+		}),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		tieIdx: index('rubbers_tie_id_idx').on(table.tieId),
+		tieCodeUnique: uniqueIndex('rubbers_tie_code_unique').on(table.tieId, table.code),
+		matchIdx: index('rubbers_match_id_idx').on(table.matchId)
+	})
+);
+
+export const lineupSubmissions = sqliteTable(
+	'lineup_submissions',
+	{
+		id: text('id').primaryKey(),
+
+		tieId: text('tie_id')
+			.notNull()
+			.references(() => ties.id, { onDelete: 'cascade' }),
+
+		teamId: text('team_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
+
+		side: text('side', {
+			enum: ['A', 'B']
+		}).notNull(),
+
+		status: text('status', {
+			enum: ['draft', 'submitted', 'locked', 'revealed']
+		})
+			.notNull()
+			.default('draft'),
+
+		submittedAt: text('submitted_at'),
+		lockedAt: text('locked_at'),
+		revealedAt: text('revealed_at'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		tieTeamUnique: uniqueIndex('lineup_submissions_tie_team_unique').on(table.tieId, table.teamId),
+		tieSideUnique: uniqueIndex('lineup_submissions_tie_side_unique').on(table.tieId, table.side)
+	})
+);
+
+export const lineupItems = sqliteTable(
+	'lineup_items',
+	{
+		id: text('id').primaryKey(),
+
+		submissionId: text('submission_id')
+			.notNull()
+			.references(() => lineupSubmissions.id, { onDelete: 'cascade' }),
+
+		rubberCode: text('rubber_code', {
+			enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
+		}).notNull(),
+
+		player1Id: text('player1_id')
+			.notNull()
+			.references(() => teamPlayers.id, { onDelete: 'cascade' }),
+
+		player2Id: text('player2_id')
+			.notNull()
+			.references(() => teamPlayers.id, { onDelete: 'cascade' }),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		submissionRubberUnique: uniqueIndex('lineup_items_submission_rubber_unique').on(
+			table.submissionId,
+			table.rubberCode
+		)
+	})
+);
+
+export const officiatingAssignments = sqliteTable(
+	'officiating_assignments',
+	{
+		id: text('id').primaryKey(),
+
+		tieId: text('tie_id')
+			.notNull()
+			.references(() => ties.id, { onDelete: 'cascade' }),
+
+		assignedTeamId: text('assigned_team_id').references(() => teams.id, {
+			onDelete: 'set null'
+		}),
+
+		role: text('role', {
+			enum: ['umpire_team', 'chief_umpire', 'line_judge']
+		})
+			.notNull()
+			.default('umpire_team'),
+
+		status: text('status', {
+			enum: ['scheduled', 'confirmed', 'changed', 'cancelled']
+		})
+			.notNull()
+			.default('scheduled'),
+
+		note: text('note'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		tieIdx: index('officiating_assignments_tie_id_idx').on(table.tieId),
+		assignedTeamIdx: index('officiating_assignments_assigned_team_id_idx').on(table.assignedTeamId)
+	})
+);
+
+export const groupStandingOverrides = sqliteTable(
+	'group_standing_overrides',
+	{
+		id: text('id').primaryKey(),
+
+		groupCode: text('group_code', {
+			enum: ['A', 'B']
+		}).notNull(),
+
+		teamId: text('team_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
+
+		manualRank: integer('manual_rank').notNull(),
+
+		reason: text('reason'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		groupTeamUnique: uniqueIndex('group_standing_overrides_group_team_unique').on(
+			table.groupCode,
+			table.teamId
+		),
+		groupRankUnique: uniqueIndex('group_standing_overrides_group_rank_unique').on(
+			table.groupCode,
+			table.manualRank
+		)
+	})
+);
+
+export const rankingTiebreakers = sqliteTable(
+	'ranking_tiebreakers',
+	{
+		id: text('id').primaryKey(),
+
+		groupCode: text('group_code', {
+			enum: ['A', 'B']
+		}).notNull(),
+
+		reason: text('reason').notNull(),
+
+		teamAId: text('team_a_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
+
+		teamBId: text('team_b_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
+
+		matchId: text('match_id').references((): AnySQLiteColumn => matches.id, {
+			onDelete: 'set null'
+		}),
+
+		winnerTeamId: text('winner_team_id').references(() => teams.id, {
+			onDelete: 'set null'
+		}),
+
+		status: text('status', {
+			enum: ['scheduled', 'playing', 'finished', 'confirmed', 'cancelled']
+		})
+			.notNull()
+			.default('scheduled'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		groupIdx: index('ranking_tiebreakers_group_code_idx').on(table.groupCode),
+		matchIdx: index('ranking_tiebreakers_match_id_idx').on(table.matchId)
+	})
+);
+
 export const tournamentsRelations = relations(tournaments, ({ many }) => ({
 	courts: many(courts),
 	matches: many(matches)
@@ -414,6 +891,18 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
 	court: one(courts, {
 		fields: [matches.courtId],
 		references: [courts.id]
+	}),
+	rubber: one(rubbers, {
+		fields: [matches.rubberId],
+		references: [rubbers.id]
+	}),
+	rankingTiebreaker: one(rankingTiebreakers, {
+		fields: [matches.rankingTiebreakerId],
+		references: [rankingTiebreakers.id]
+	}),
+	scoringRule: one(scoringRules, {
+		fields: [matches.scoringRuleId],
+		references: [scoringRules.id]
 	}),
 	sides: many(matchSides),
 	events: many(scoreEvents),
@@ -473,5 +962,143 @@ export const scoreEventUndoLinksRelations = relations(scoreEventUndoLinks, ({ on
 	targetEvent: one(scoreEvents, {
 		fields: [scoreEventUndoLinks.targetEventId],
 		references: [scoreEvents.id]
+	})
+}));
+
+export const scoringRulesRelations = relations(scoringRules, ({ many }) => ({
+	rubbers: many(rubbers),
+	matches: many(matches)
+}));
+
+export const appSettingsRelations = relations(appSettings, ({ one }) => ({
+	groupStageScoringRule: one(scoringRules, {
+		fields: [appSettings.groupStageScoringRuleId],
+		references: [scoringRules.id]
+	}),
+	knockoutScoringRule: one(scoringRules, {
+		fields: [appSettings.knockoutScoringRuleId],
+		references: [scoringRules.id]
+	}),
+	tiebreakerScoringRule: one(scoringRules, {
+		fields: [appSettings.tiebreakerScoringRuleId],
+		references: [scoringRules.id]
+	})
+}));
+
+export const teamsRelations = relations(teams, ({ many }) => ({
+	players: many(teamPlayers),
+	tiesAsA: many(ties, { relationName: 'tiesTeamA' }),
+	tiesAsB: many(ties, { relationName: 'tiesTeamB' }),
+	lineupSubmissions: many(lineupSubmissions),
+	officiatingAssignments: many(officiatingAssignments)
+}));
+
+export const teamPlayersRelations = relations(teamPlayers, ({ one, many }) => ({
+	team: one(teams, {
+		fields: [teamPlayers.teamId],
+		references: [teams.id]
+	}),
+	lineupItemsAsPlayer1: many(lineupItems, { relationName: 'lineupItemPlayer1' }),
+	lineupItemsAsPlayer2: many(lineupItems, { relationName: 'lineupItemPlayer2' })
+}));
+
+export const tiesRelations = relations(ties, ({ one, many }) => ({
+	teamA: one(teams, {
+		fields: [ties.teamAId],
+		references: [teams.id],
+		relationName: 'tiesTeamA'
+	}),
+	teamB: one(teams, {
+		fields: [ties.teamBId],
+		references: [teams.id],
+		relationName: 'tiesTeamB'
+	}),
+	winnerTeam: one(teams, {
+		fields: [ties.winnerTeamId],
+		references: [teams.id]
+	}),
+	rubbers: many(rubbers),
+	lineupSubmissions: many(lineupSubmissions),
+	officiatingAssignments: many(officiatingAssignments)
+}));
+
+export const rubbersRelations = relations(rubbers, ({ one }) => ({
+	tie: one(ties, {
+		fields: [rubbers.tieId],
+		references: [ties.id]
+	}),
+	scoringRule: one(scoringRules, {
+		fields: [rubbers.scoringRuleId],
+		references: [scoringRules.id]
+	}),
+	match: one(matches, {
+		fields: [rubbers.matchId],
+		references: [matches.id]
+	})
+}));
+
+export const lineupSubmissionsRelations = relations(lineupSubmissions, ({ one, many }) => ({
+	tie: one(ties, {
+		fields: [lineupSubmissions.tieId],
+		references: [ties.id]
+	}),
+	team: one(teams, {
+		fields: [lineupSubmissions.teamId],
+		references: [teams.id]
+	}),
+	items: many(lineupItems)
+}));
+
+export const lineupItemsRelations = relations(lineupItems, ({ one }) => ({
+	submission: one(lineupSubmissions, {
+		fields: [lineupItems.submissionId],
+		references: [lineupSubmissions.id]
+	}),
+	player1: one(teamPlayers, {
+		fields: [lineupItems.player1Id],
+		references: [teamPlayers.id],
+		relationName: 'lineupItemPlayer1'
+	}),
+	player2: one(teamPlayers, {
+		fields: [lineupItems.player2Id],
+		references: [teamPlayers.id],
+		relationName: 'lineupItemPlayer2'
+	})
+}));
+
+export const officiatingAssignmentsRelations = relations(officiatingAssignments, ({ one }) => ({
+	tie: one(ties, {
+		fields: [officiatingAssignments.tieId],
+		references: [ties.id]
+	}),
+	assignedTeam: one(teams, {
+		fields: [officiatingAssignments.assignedTeamId],
+		references: [teams.id]
+	})
+}));
+
+export const groupStandingOverridesRelations = relations(groupStandingOverrides, ({ one }) => ({
+	team: one(teams, {
+		fields: [groupStandingOverrides.teamId],
+		references: [teams.id]
+	})
+}));
+
+export const rankingTiebreakersRelations = relations(rankingTiebreakers, ({ one }) => ({
+	teamA: one(teams, {
+		fields: [rankingTiebreakers.teamAId],
+		references: [teams.id]
+	}),
+	teamB: one(teams, {
+		fields: [rankingTiebreakers.teamBId],
+		references: [teams.id]
+	}),
+	match: one(matches, {
+		fields: [rankingTiebreakers.matchId],
+		references: [matches.id]
+	}),
+	winnerTeam: one(teams, {
+		fields: [rankingTiebreakers.winnerTeamId],
+		references: [teams.id]
 	})
 }));

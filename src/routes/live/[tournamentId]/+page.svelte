@@ -1,58 +1,24 @@
 <script lang="ts">
-	import type { PageProps } from './$types';
-
-	let { data }: PageProps = $props();
+	import { resolve } from '$app/paths';
 </script>
 
 <svelte:head>
-	<title>{data.tournament.name} Live</title>
+	<title>ライブ表示 | 東大リーグ団体戦</title>
 </svelte:head>
 
-<main class="min-h-screen bg-zinc-950 px-4 py-6 text-white sm:px-6">
-	<div class="mx-auto grid max-w-6xl gap-5">
-		<header class="flex flex-wrap items-end justify-between gap-4">
-			<div>
-				<h1 class="text-2xl font-semibold">{data.tournament.name}</h1>
-				<p class="text-sm text-zinc-400">{data.tournament.venue ?? '会場未設定'} / ライブスコア</p>
-			</div>
-			<p class="rounded-md bg-zinc-900 px-3 py-2 text-sm text-zinc-300">手動更新</p>
-		</header>
-
-		<div class="grid gap-3">
-			{#each data.matches as match (match.id)}
-				<section class="rounded-md bg-white p-4 text-zinc-950 shadow-sm">
-					<div class="flex flex-wrap justify-between gap-4">
-						<div>
-							<p class="text-sm text-zinc-600">
-								{match.courtName ?? 'コート未設定'} / {match.discipline} / {match.status}
-							</p>
-							<h2 class="mt-1 text-lg font-semibold">{match.sideAName} vs {match.sideBName}</h2>
-							<p class="text-sm text-zinc-600">
-								{match.eventName ?? ''}
-								{match.category ?? ''}
-								{match.roundName ?? ''}
-							</p>
-						</div>
-						<div class="min-w-44 text-right">
-							<p class="text-5xl leading-none font-semibold">
-								{match.currentScoreA} - {match.currentScoreB}
-							</p>
-							<p class="mt-1 text-sm text-zinc-600">
-								Games {match.gamesWonA}-{match.gamesWonB} / Game {match.currentGameNo}
-							</p>
-						</div>
-					</div>
-					<div class="mt-3 grid gap-2 border-t border-zinc-200 pt-3 text-sm sm:grid-cols-3">
-						<p>サーバー: {match.serverName ?? '-'}</p>
-						<p>サーブ側: {match.currentServingSide ?? '-'}</p>
-						<p>サービスコート: {match.currentServiceCourt ?? '-'}</p>
-					</div>
-				</section>
-			{:else}
-				<p class="rounded-md border border-dashed border-zinc-700 p-6 text-sm text-zinc-400">
-					表示できる試合はまだありません。
-				</p>
-			{/each}
+<main class="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-950 sm:px-6">
+	<div class="mx-auto max-w-2xl">
+		<div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+			<h1 class="text-xl font-semibold tracking-tight">ライブ表示へ移動します</h1>
+			<p class="mt-2 text-sm text-zinc-500">
+				公開ライブは大会IDではなく、東大リーグ団体戦全体として表示します。
+			</p>
+			<a
+				class="mt-4 inline-flex rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+				href={resolve('/live')}
+			>
+				ライブ表示
+			</a>
 		</div>
 	</div>
 </main>
