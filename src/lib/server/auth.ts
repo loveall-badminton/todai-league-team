@@ -2,13 +2,13 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin, username } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { env } from '$env/dynamic/private';
+import { BETTER_AUTH_URL, BETTER_AUTH_SECRET } from '$env/static/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
 
 const authConfig = {
-	baseURL: env.ORIGIN,
-	secret: env.BETTER_AUTH_SECRET,
+	baseURL: BETTER_AUTH_URL,
+	secret: BETTER_AUTH_SECRET,
 	emailAndPassword: { enabled: true },
 	plugins: [
 		username({

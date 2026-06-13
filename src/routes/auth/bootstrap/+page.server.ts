@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
-import { createManagedAccount } from '$lib/server/auth/accountManagement';
+import { bootstrapAdminAccount } from '$lib/server/auth/accountManagement';
 import { normalizeAccountId } from '$lib/server/auth/accountIds';
 import { getRequestDb } from '$lib/server/db/request';
 import type { Actions, PageServerLoad } from './$types';
@@ -48,15 +48,12 @@ export const actions: Actions = {
 		}
 
 		try {
-			await createManagedAccount({
+			await bootstrapAdminAccount({
 				db: getRequestDb(platform),
 				auth: locals.auth,
-				headers: request.headers,
 				accountId,
 				password,
 				name,
-				accountType: 'admin',
-				teamId: null,
 				now: new Date().toISOString()
 			});
 		} catch (caught) {

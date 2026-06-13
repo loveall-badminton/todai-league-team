@@ -1,5 +1,6 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { authUserProfiles, teams } from '$lib/server/db/schema';
+import { user } from '$lib/server/db/auth.schema';
 import type { AppDb } from '$lib/server/db/client';
 import {
 	accountIdToInternalEmail,
@@ -126,6 +127,51 @@ export async function createManagedAccount(params: {
 		userId: created.user.id,
 		accountType: params.accountType,
 		teamId: params.teamId,
+		displayName: params.name,
+		now: params.now
+	});
+}
+
+/**
+ * Bootstrap the very first admin account.
+ *
+ * `auth.api.createUser` (admin plugin) requires the caller to already be an
+ * authenticated admin, which is impossible when zero users exist.
+ * Instead we use the public `signUpEmail` endpoint and then patch `role` to
+ * 'admin' directly in the DB.
+ */
+export async function bootstrapAdminAccount(params: {
+	db: AppDb;
+	auth: App.Locals['auth'];
+	accountId: string;
+	name: string;
+	password: string;
+	now: string;
+}) {
+	const accountId = normalizeAccountId(params.accountId);
+
+	const result = await params.auth.api.signUpEmail({
+		body: {
+			email: accountIdToInternalEmail(accountId),
+			password: params.password,
+			name: params.name,
+			username: accountId,
+			displayUsername: accountId
+		}
+	});
+
+	const userId = result.user.id;
+
+	// signUpEmail does not accept `role`, so patch it directly.
+	await params.db
+		.update(user)
+		.set({ role: 'admin' })
+		.where(eq(user.id, userId));
+
+	await upsertAuthProfile(params.db, {
+		userId,
+		accountType: 'admin',
+		teamId: null,
 		displayName: params.name,
 		now: params.now
 	});

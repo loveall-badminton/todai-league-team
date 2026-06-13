@@ -3,6 +3,7 @@
 	import type { PageProps } from './$types';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
+	import { enhance } from '$app/forms';
 
 	let { data, form }: PageProps = $props();
 </script>
@@ -13,7 +14,7 @@
 
 <div class="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10">
 	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
-		<PageHeader eyebrow="初回設定" title="初回管理者作成" />
+		<PageHeader title="初回管理者作成" />
 
 		{#if data.hasUsers}
 			<p class="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
@@ -32,7 +33,7 @@
 				</p>
 			{/if}
 
-			<form method="POST" action="?/createAdmin" class="mt-6 space-y-4">
+			<form method="POST" action="?/createAdmin" use:enhance class="mt-6 space-y-4">
 				<label class="grid gap-1.5">
 					<span class="text-sm font-medium text-zinc-700">ID</span>
 					<AppInput

@@ -2,7 +2,9 @@
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "todai-league",
 	"compatibility_date": "2026-06-03",
-	"compatibility_flags": ["nodejs_als"],
+	"compatibility_flags": [
+		"nodejs_als"
+	],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
@@ -10,6 +12,15 @@
 	},
 	"workers_dev": true,
 	"preview_urls": true,
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true
+		}
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -17,5 +28,8 @@
 			"database_id": "ca60f5c9-9b5d-4b15-ae15-cbd70c7fee3e",
 			"migrations_dir": "drizzle"
 		}
-	]
+	],
+	"vars": {
+		"BETTER_AUTH_URL": "https://todai-league.qwg2pfmvzk.workers.dev"
+	}
 }
