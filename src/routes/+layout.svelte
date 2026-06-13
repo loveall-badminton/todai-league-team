@@ -5,7 +5,18 @@
 	import { resolve } from '$app/paths';
 	import type { Component } from 'svelte';
 	import type { LayoutProps } from './$types';
-	import { House, Users, LayoutGrid, Trophy, List, Radio, Settings, Menu, X } from '@lucide/svelte';
+	import {
+		House,
+		Users,
+		LayoutGrid,
+		Trophy,
+		List,
+		Radio,
+		Settings,
+		Menu,
+		X,
+		ClipboardList
+	} from '@lucide/svelte';
 	import type { AppRole } from '$lib/server/auth/access';
 
 	let { data, children }: LayoutProps = $props();
@@ -13,18 +24,19 @@
 
 	type NavItem = {
 		label: string;
-		path: '/' | '/teams' | '/groups' | '/finals' | '/ties' | '/live' | '/settings';
+		path: '/' | '/teams' | '/groups' | '/finals' | '/ties' | '/live' | '/live/tasks' | '/settings';
 		icon: Component;
 		roles: AppRole[];
 	};
 
 	const navItems: NavItem[] = [
-		{ label: 'ホーム', path: '/', icon: House, roles: ['admin', 'participant', 'team'] },
+		{ label: 'ホーム', path: '/', icon: House, roles: ['admin'] },
 		{ label: 'チーム', path: '/teams', icon: Users, roles: ['admin'] },
 		{ label: '予選', path: '/groups', icon: LayoutGrid, roles: ['admin'] },
 		{ label: '決勝', path: '/finals', icon: Trophy, roles: ['admin'] },
 		{ label: '対戦管理', path: '/ties', icon: List, roles: ['admin'] },
 		{ label: 'ライブ', path: '/live', icon: Radio, roles: ['admin', 'participant', 'team'] },
+		{ label: 'オーダー/審判', path: '/live/tasks', icon: ClipboardList, roles: ['team'] },
 		{ label: '設定', path: '/settings', icon: Settings, roles: ['admin'] }
 	];
 
@@ -38,12 +50,15 @@
 		const pathname = page.url.pathname;
 		const href = resolve(path);
 		if (href === resolve('/')) return pathname === href;
+		if (href === resolve('/live')) return pathname === href;
 		return pathname.startsWith(href);
 	}
 
 	function closeDrawer() {
 		drawerOpen = false;
 	}
+
+	const today = new Date();
 </script>
 
 <svelte:head>
@@ -57,7 +72,7 @@
 	<header
 		class="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 lg:hidden"
 	>
-		<span class="text-base font-bold text-zinc-950">東大リーグ</span>
+		<span class="text-base font-bold text-zinc-950">東大リーグ団体戦</span>
 		<button
 			type="button"
 			class="rounded-lg p-1.5 text-zinc-600 hover:bg-zinc-100"
@@ -82,7 +97,7 @@
 			: '-translate-x-full'}"
 	>
 		<div class="flex items-center justify-between border-b border-zinc-200 px-4 py-4">
-			<span class="text-base font-bold text-zinc-950">東大リーグ団体戦</span>
+			<span class="text-base font-bold text-zinc-950">メニュー</span>
 			<button
 				type="button"
 				class="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100"
@@ -125,9 +140,7 @@
 			class="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-zinc-200 bg-white lg:flex"
 		>
 			<div class="border-b border-zinc-200 px-4 py-5">
-				<span class="block text-sm leading-tight font-bold text-zinc-950"
-					>東大リーグ<br />団体戦</span
-				>
+				<span class="block text-sm leading-tight font-bold text-zinc-950">メニュー</span>
 			</div>
 			<nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
 				{#each visibleNavItems as item (item.path)}
@@ -155,14 +168,16 @@
 		</aside>
 
 		<!-- Main content -->
-		<div class="flex min-w-0 flex-1 flex-col lg:ml-52">
-			<main class="min-w-0 flex-1">
-				{@render children()}
+		<div class="flex min-w-0 flex-1 flex-col text-zinc-950 lg:ml-52">
+			<main class="min-w-0 flex-1 px-4 py-6 sm:px-6">
+				<div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
+					{@render children()}
+				</div>
 			</main>
 			<footer class="flex-0">
 				<div class="border-t border-zinc-200 bg-white">
 					<div class="px-4 py-5 text-center text-xs font-medium text-zinc-500">
-						&copy; 2026 東京大学ラブオール
+						&copy; {today.getFullYear()} 東京大学ラブオール
 					</div>
 				</div>
 			</footer>

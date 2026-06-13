@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
+	import AppButton from './AppButton.svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		formAction = '',
@@ -34,10 +36,17 @@
 		}
 		formEl?.requestSubmit();
 	}
+
+	function attachForm(node: HTMLFormElement) {
+		formEl = node;
+		return () => {
+			if (formEl === node) formEl = undefined;
+		};
+	}
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Trigger class={triggerClass}>
+	<Dialog.Trigger class={cn(triggerClass)}>
 		{triggerLabel}
 	</Dialog.Trigger>
 	<Dialog.Portal>
@@ -55,16 +64,16 @@
 				>
 					キャンセル
 				</Dialog.Close>
-				<button type="button" onclick={confirm} class={confirmClass}>
+				<AppButton type="button" onclick={confirm} class={cn(confirmClass)}>
 					{confirmLabel}
-				</button>
+				</AppButton>
 			</div>
 		</Dialog.Content>
 	</Dialog.Portal>
 </Dialog.Root>
 
 {#if !onConfirm}
-	<form bind:this={formEl} method="POST" action={formAction} class="hidden">
+	<form {@attach attachForm} method="POST" action={formAction} class="hidden">
 		{#each hiddenFields as field (field.name)}
 			<input type="hidden" name={field.name} value={field.value} />
 		{/each}

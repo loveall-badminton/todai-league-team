@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import { enhance } from '$app/forms';
 
@@ -13,10 +14,7 @@
 
 <div class="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10">
 	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
-		<div class="space-y-1">
-			<p class="text-sm font-medium text-zinc-500">東大リーグ団体戦</p>
-			<h1 class="text-xl font-semibold text-zinc-950">ログイン</h1>
-		</div>
+		<PageHeader title="ログイン" />
 
 		{#if form?.message}
 			<p class="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

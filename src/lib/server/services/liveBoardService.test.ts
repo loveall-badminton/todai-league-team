@@ -90,4 +90,37 @@ describe('createPublicRubberSummaries', () => {
 			sideBPlayers: 'B One / B Two'
 		});
 	});
+
+	test('treats forfeited and retired matches as finished public rubber results', () => {
+		const summaries = createPublicRubberSummaries({
+			rubbers: [rubber, { ...rubber, id: 'rubber-2', matchId: 'match-2' }],
+			matches: [
+				{
+					...match,
+					status: 'forfeited' as const,
+					gamesWonA: 0,
+					gamesWonB: 0,
+					currentScoreA: 0,
+					currentScoreB: 0
+				},
+				{
+					...match,
+					id: 'match-2',
+					status: 'retired' as const,
+					gamesWonA: 1,
+					gamesWonB: 0
+				}
+			],
+			gameScores: [],
+			revealed: false,
+			submissions,
+			items,
+			players
+		});
+
+		expect(summaries.map((summary) => summary.status)).toEqual(['finished', 'finished']);
+		expect(summaries.map((summary) => summary.matchStatus)).toEqual(['forfeited', 'retired']);
+		expect(summaries[0]).toMatchObject({ gamesScore: '0-0', pointScore: '0-0' });
+		expect(summaries[1]).toMatchObject({ gamesScore: '1-0', pointScore: '15-12' });
+	});
 });

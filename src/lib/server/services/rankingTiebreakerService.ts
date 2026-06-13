@@ -11,6 +11,7 @@ import {
 	teams,
 	tournaments
 } from '$lib/server/db/schema';
+import { rubberStatusFromMatchResultStatus } from '$lib/server/services/tieOperationService';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
 const internalTournamentId = 'tokyo-league-default';
@@ -114,7 +115,8 @@ export async function syncRankingTiebreakerResult(
 ) {
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rankingTiebreakerId || !match.winnerSide) return;
-	if (match.status !== 'finished' && match.status !== 'confirmed') return;
+	const resultStatus = rubberStatusFromMatchResultStatus(match.status);
+	if (!resultStatus) return;
 
 	const tiebreaker = await db.query.rankingTiebreakers.findFirst({
 		where: eq(rankingTiebreakers.id, match.rankingTiebreakerId)
@@ -125,7 +127,7 @@ export async function syncRankingTiebreakerResult(
 		.update(rankingTiebreakers)
 		.set({
 			winnerTeamId: match.winnerSide === 'A' ? tiebreaker.teamAId : tiebreaker.teamBId,
-			status: match.status === 'confirmed' ? 'confirmed' : 'finished',
+			status: resultStatus,
 			updatedAt: now
 		})
 		.where(eq(rankingTiebreakers.id, tiebreaker.id));

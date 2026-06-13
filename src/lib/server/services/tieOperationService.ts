@@ -17,6 +17,7 @@ import { revealLineups } from './lineupService';
 
 const internalTournamentId = 'tokyo-league-default';
 const terminalRubberStatuses = new Set(['finished', 'confirmed', 'skipped', 'cancelled']);
+const matchResultStatuses = new Set(['finished', 'confirmed', 'forfeited', 'retired']);
 type TieStatus = typeof ties.$inferSelect.status;
 
 export type TieResultInput = {
@@ -44,6 +45,13 @@ export function calculateTieResult(tie: TieResultInput, rubberRows: RubberResult
 		status: (allDone ? 'finished' : tie.status) as TieStatus,
 		allDone
 	};
+}
+
+export function rubberStatusFromMatchResultStatus(
+	matchStatus: string
+): 'finished' | 'confirmed' | null {
+	if (!matchResultStatuses.has(matchStatus)) return null;
+	return matchStatus === 'confirmed' ? 'confirmed' : 'finished';
 }
 
 export async function startTie(
@@ -154,12 +162,13 @@ export async function syncRubberResultFromMatch(
 ) {
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) return;
-	if (match.status !== 'finished' && match.status !== 'confirmed') return;
+	const rubberStatus = rubberStatusFromMatchResultStatus(match.status);
+	if (!rubberStatus || !match.winnerSide) return;
 
 	await db
 		.update(rubbers)
 		.set({
-			status: match.status === 'confirmed' ? 'confirmed' : 'finished',
+			status: rubberStatus,
 			winnerSide: match.winnerSide,
 			updatedAt: now
 		})

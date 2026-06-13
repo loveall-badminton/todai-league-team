@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import type { GroupCode, TiePhase } from '$lib/domain/tokyoLeague';
 import type { AppDb } from '$lib/server/db/client';
 import {
@@ -277,29 +277,49 @@ export async function listTies(db: AppDb, phase?: TiePhase): Promise<TieSummary[
 				.orderBy(asc(ties.displayOrder), asc(ties.tieCode))
 		: await db.select().from(ties).orderBy(asc(ties.displayOrder), asc(ties.tieCode));
 	const teamRows = await db.select().from(teams);
+	const rubberRows = tieRows.length
+		? await db
+				.select({
+					tieId: rubbers.tieId,
+					winnerSide: rubbers.winnerSide
+				})
+				.from(rubbers)
+				.where(
+					inArray(
+						rubbers.tieId,
+						tieRows.map((tie) => tie.id)
+					)
+				)
+		: [];
+	const summaryByTieId = summarizeTieSummaries(tieRows, rubberRows);
 
 	return Promise.all(
 		tieRows.map(async (tie) => {
-			const [{ value: rubberCount }] = await db
-				.select({ value: count() })
-				.from(rubbers)
-				.where(eq(rubbers.tieId, tie.id));
 			const assignments = await db
 				.select()
 				.from(officiatingAssignments)
 				.where(eq(officiatingAssignments.tieId, tie.id))
 				.orderBy(asc(officiatingAssignments.createdAt));
 			const assignment = assignments[0] ?? null;
+			const summary = summaryByTieId.get(tie.id) ?? {
+				rubberCount: 0,
+				teamScoreA: tie.teamScoreA,
+				teamScoreB: tie.teamScoreB,
+				winnerTeamId: tie.winnerTeamId
+			};
 
 			return {
 				...tie,
+				teamScoreA: summary.teamScoreA,
+				teamScoreB: summary.teamScoreB,
+				winnerTeamId: summary.winnerTeamId,
 				teamAName: teamRows.find((team) => team.id === tie.teamAId)?.name ?? null,
 				teamBName: teamRows.find((team) => team.id === tie.teamBId)?.name ?? null,
 				officiatingTeamId: assignment?.assignedTeamId ?? null,
 				officiatingTeamName:
 					teamRows.find((team) => team.id === assignment?.assignedTeamId)?.name ?? null,
 				officiatingNote: assignment?.note ?? null,
-				rubberCount
+				rubberCount: summary.rubberCount
 			};
 		})
 	);
@@ -317,7 +337,57 @@ export async function getTieWithRubbers(db: AppDb, tieId: string) {
 		.from(rubbers)
 		.where(eq(rubbers.tieId, tie.id))
 		.orderBy(asc(rubbers.displayOrder));
-	return { tie, rubbers: rubberRows };
+	const summary = summarizeTieSummaries(
+		[tie],
+		rubberRows.map((rubber) => ({ tieId: rubber.tieId, winnerSide: rubber.winnerSide }))
+	).get(tie.id);
+	return {
+		tie: summary
+			? {
+					...tie,
+					teamScoreA: summary.teamScoreA,
+					teamScoreB: summary.teamScoreB,
+					winnerTeamId: summary.winnerTeamId
+				}
+			: tie,
+		rubbers: rubberRows
+	};
+}
+
+function summarizeTieSummaries(
+	tieRows: Pick<Tie, 'id' | 'teamAId' | 'teamBId'>[],
+	rubberRows: Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[]
+) {
+	const summaries = new Map<
+		string,
+		{ rubberCount: number; teamScoreA: number; teamScoreB: number; winnerTeamId: string | null }
+	>();
+
+	for (const tie of tieRows) {
+		summaries.set(tie.id, {
+			rubberCount: 0,
+			teamScoreA: 0,
+			teamScoreB: 0,
+			winnerTeamId: null
+		});
+	}
+
+	for (const rubber of rubberRows) {
+		const summary = summaries.get(rubber.tieId);
+		if (!summary) continue;
+		summary.rubberCount += 1;
+		if (rubber.winnerSide === 'A') summary.teamScoreA += 1;
+		if (rubber.winnerSide === 'B') summary.teamScoreB += 1;
+	}
+
+	for (const tie of tieRows) {
+		const summary = summaries.get(tie.id);
+		if (!summary) continue;
+		if (summary.teamScoreA >= 3) summary.winnerTeamId = tie.teamAId ?? null;
+		else if (summary.teamScoreB >= 3) summary.winnerTeamId = tie.teamBId ?? null;
+	}
+
+	return summaries;
 }
 
 export async function updateTieSchedule(

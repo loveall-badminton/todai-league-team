@@ -25,9 +25,8 @@ export async function insertScoreEvent(db: AppDb, params: InsertScoreEventParams
 	const beforeGame = params.beforeState.games.find(
 		(game) => game.gameNo === params.beforeState.currentGameNo
 	);
-	const afterGame = params.afterState.games.find(
-		(game) => game.gameNo === params.afterState.currentGameNo
-	);
+	const eventGameNo = params.gameNo ?? params.beforeState.currentGameNo;
+	const afterGame = params.afterState.games.find((game) => game.gameNo === eventGameNo);
 
 	await db.insert(scoreEvents).values({
 		id: params.id,
@@ -35,7 +34,7 @@ export async function insertScoreEvent(db: AppDb, params: InsertScoreEventParams
 		seqNo: params.seqNo,
 		eventType: params.eventType,
 		side: params.side ?? null,
-		gameNo: params.gameNo ?? params.afterState.currentGameNo,
+		gameNo: eventGameNo,
 		scoreABefore: beforeGame?.score.A ?? null,
 		scoreBBefore: beforeGame?.score.B ?? null,
 		scoreAAfter: afterGame?.score.A ?? null,

@@ -16,6 +16,7 @@ import {
 	getScoreEventBySeqNo,
 	hasUndoLink
 } from '$lib/server/repositories/scoreEventRepository';
+import { recalculateTieResult } from '$lib/server/services/tieOperationService';
 import { eq } from 'drizzle-orm';
 
 export async function applyMatchAction(params: {
@@ -98,6 +99,11 @@ export async function applyMatchAction(params: {
 		}
 	}
 
+	if (match?.rubberId) {
+		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
+		if (rubber) await recalculateTieResult(db, rubber.tieId, now);
+	}
+
 	return afterState;
 }
 
@@ -166,9 +172,12 @@ function buildScoreEventInsert(params: {
 	const beforeGame = params.beforeState.games.find(
 		(game) => game.gameNo === params.beforeState.currentGameNo
 	);
-	const afterGame = params.afterState.games.find(
-		(game) => game.gameNo === params.afterState.currentGameNo
-	);
+	// Use the same gameNo the event is attributed to (beforeState.currentGameNo for rally_won
+	// etc., or input.gameNo for game_started). When a rally wins a game, afterState.currentGameNo
+	// has already advanced to the next game whose score is 0-0, so we must NOT use it here.
+	const eventGameNo =
+		'gameNo' in params.input ? params.input.gameNo : params.beforeState.currentGameNo;
+	const afterGame = params.afterState.games.find((game) => game.gameNo === eventGameNo);
 
 	return scoreEventsInsert(params, beforeGame?.score ?? null, afterGame?.score ?? null);
 }

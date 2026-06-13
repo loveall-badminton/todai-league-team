@@ -1,5 +1,20 @@
 import { describe, expect, test } from 'vitest';
-import { calculateTieResult } from './tieOperationService';
+import { calculateTieResult, rubberStatusFromMatchResultStatus } from './tieOperationService';
+
+describe('rubberStatusFromMatchResultStatus', () => {
+	test('maps forfeit and retirement match results to finished rubbers', () => {
+		expect(rubberStatusFromMatchResultStatus('finished')).toBe('finished');
+		expect(rubberStatusFromMatchResultStatus('forfeited')).toBe('finished');
+		expect(rubberStatusFromMatchResultStatus('retired')).toBe('finished');
+		expect(rubberStatusFromMatchResultStatus('confirmed')).toBe('confirmed');
+	});
+
+	test('ignores non-result match statuses', () => {
+		expect(rubberStatusFromMatchResultStatus('playing')).toBeNull();
+		expect(rubberStatusFromMatchResultStatus('suspended')).toBeNull();
+		expect(rubberStatusFromMatchResultStatus('scheduled')).toBeNull();
+	});
+});
 
 describe('calculateTieResult', () => {
 	test('sets winner at three rubber wins without finishing the tie early', () => {

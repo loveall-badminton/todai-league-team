@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Checkbox } from 'bits-ui';
 	import { Check } from '@lucide/svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		name,
@@ -27,18 +28,20 @@
 	bind:checked
 	{disabled}
 	onCheckedChange={() => onCheckedChange?.()}
-	class="flex items-center gap-2 {className}"
+	class={cn('flex items-center gap-2', className)}
 >
 	<div
-		class="flex size-4 shrink-0 items-center justify-center rounded border
-			{checked ? 'border-zinc-950 bg-zinc-950' : 'border-zinc-300 bg-white'}
-			{disabled ? 'opacity-50' : ''}"
+		class={cn(
+			'flex size-4 shrink-0 items-center justify-center rounded border',
+			checked ? 'border-zinc-950 bg-zinc-950' : 'border-zinc-300 bg-white',
+			disabled && 'opacity-50'
+		)}
 	>
 		{#if checked}
 			<Check class="size-3 text-white" />
 		{/if}
 	</div>
 	{#if label}
-		<span class="text-sm text-zinc-700 {disabled ? 'opacity-50' : ''}">{label}</span>
+		<span class={cn('text-sm text-zinc-700', disabled && 'opacity-50')}>{label}</span>
 	{/if}
 </Checkbox.Root>

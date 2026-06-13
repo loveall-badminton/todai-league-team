@@ -86,7 +86,9 @@ export const teams = sqliteTable('teams', {
 export const authUserProfiles = sqliteTable(
 	'auth_user_profiles',
 	{
-		userId: text('user_id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
 
 		accountType: text('account_type', {
 			enum: ['admin', 'participant', 'team']

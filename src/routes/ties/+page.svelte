@@ -19,6 +19,7 @@
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortableTieItem from './SortableTieItem.svelte';
 	import type { PageProps } from './$types';
 	import { create, reorder, updateTie } from './ties.remote';
@@ -153,164 +154,153 @@
 	<title>対戦管理 | 東大リーグ団体戦</title>
 </svelte:head>
 
-<div class="px-4 py-6 sm:px-6">
-	<div class="space-y-5">
-		<!-- Header -->
-		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold text-zinc-950">対戦管理</h1>
-			<Dialog.Root bind:open={dialogOpen}>
-				<Dialog.Trigger>
-					{#snippet child({ props })}
-						<AppButton {...props}>+ 新規作成</AppButton>
-					{/snippet}
-				</Dialog.Trigger>
-				<Dialog.Portal>
-					<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-					<Dialog.Content
-						class="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
-					>
-						<div class="mb-5 flex items-center justify-between">
-							<Dialog.Title class="text-base font-semibold text-zinc-950">対戦を作成</Dialog.Title>
-							<Dialog.Close
-								class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-							>
-								<X class="size-4" />
-							</Dialog.Close>
-						</div>
+{#snippet headerActions()}
+	<AppButton type="button" onclick={() => (dialogOpen = true)}>+ 新規作成</AppButton>
+{/snippet}
 
-						<form {...create} class="space-y-4">
-							<div class="grid gap-3 sm:grid-cols-2">
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600"
-										>コード <span class="text-red-500">*</span></span
-									>
-									<AppInput name="tieCode" placeholder="A-1" required />
-								</div>
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600"
-										>得点ルール <span class="text-red-500">*</span></span
-									>
-									<AppSelect
-										name="scoringRuleId"
-										bind:value={newScoringRuleId}
-										required
-										items={data.scoringRules.map((r) => ({ value: r.id, label: r.name ?? r.code }))}
-									/>
-								</div>
-							</div>
+<PageHeader title="対戦管理" actions={headerActions} />
+<Dialog.Root bind:open={dialogOpen}>
+	<Dialog.Portal>
+		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
+		<Dialog.Content
+			class="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
+		>
+			<div class="mb-5 flex items-center justify-between">
+				<Dialog.Title class="text-base font-semibold text-zinc-950">対戦を作成</Dialog.Title>
+				<Dialog.Close class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700">
+					<X class="size-4" />
+				</Dialog.Close>
+			</div>
 
-							<div class="grid gap-3 sm:grid-cols-3">
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">リーグ</span>
-									<AppSelect
-										name="groupCode"
-										bind:value={newGroupCode}
-										items={groupCodeItems}
-										placeholder="決勝系"
-									/>
-								</div>
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">フェーズ</span>
-									<AppSelect name="phase" bind:value={newPhase} items={phaseItems} />
-								</div>
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">予定時刻</span>
-									<AppInput name="scheduledStartAt" type="time" />
-								</div>
-							</div>
-
-							<div class="grid gap-3 sm:grid-cols-2">
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">A側チーム</span>
-									<AppSelect
-										name="teamAId"
-										bind:value={newTeamAId}
-										items={[
-											{ value: '', label: '未定' },
-											...data.teams.map((t) => ({ value: t.id, label: t.name }))
-										]}
-										placeholder="未定"
-									/>
-								</div>
-								<div class="space-y-1">
-									<span class="text-xs font-medium text-zinc-600">B側チーム</span>
-									<AppSelect
-										name="teamBId"
-										bind:value={newTeamBId}
-										items={[
-											{ value: '', label: '未定' },
-											...data.teams.map((t) => ({ value: t.id, label: t.name }))
-										]}
-										placeholder="未定"
-									/>
-								</div>
-							</div>
-
-							<div class="space-y-1">
-								<span class="text-xs font-medium text-zinc-600">体育館・コート</span>
-								<CourtPicker />
-							</div>
-
-							<div class="flex justify-end gap-2 pt-1">
-								<Dialog.Close
-									class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-								>
-									キャンセル
-								</Dialog.Close>
-								<AppButton type="submit">作成</AppButton>
-							</div>
-						</form>
-					</Dialog.Content>
-				</Dialog.Portal>
-			</Dialog.Root>
-		</div>
-
-		<!-- Filter tabs (horizontally scrollable) -->
-		<Tabs.Root value={filter} onValueChange={setFilter}>
-			<Tabs.List class="flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5">
-				{#each filters as f (f.id)}
-					{@const count =
-						f.id === 'all'
-							? data.ties.length
-							: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length}
-					<Tabs.Trigger
-						value={f.id}
-						class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors {filter ===
-						f.id
-							? 'bg-zinc-900 text-white'
-							: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400'}"
-					>
-						{f.label}
-						{#if count > 0}
-							<span class="ml-1 {filter === f.id ? 'text-zinc-300' : 'text-zinc-400'}">{count}</span
-							>
-						{/if}
-					</Tabs.Trigger>
-				{/each}
-			</Tabs.List>
-		</Tabs.Root>
-
-		<!-- Ties list -->
-		{#if filteredTies.length === 0}
-			<EmptyState
-				message={filter === 'all'
-					? '対戦はまだありません。予選リーグで総当たり生成するか、「新規作成」から追加します。'
-					: 'このフィルターに該当する対戦はありません。'}
-			/>
-		{:else}
-			<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
-				<div class="space-y-1.5">
-					{#each filteredTies as tie, index (tie.id)}
-						<SortableTieItem
-							{tie}
-							{index}
-							sortable={filter === 'all'}
-							teams={data.teams}
-							tieForm={updateTie.for(tie.id)}
+			<form {...create} class="space-y-4">
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600"
+							>コード <span class="text-red-500">*</span></span
+						>
+						<AppInput name="tieCode" placeholder="A-1" required />
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600"
+							>得点ルール <span class="text-red-500">*</span></span
+						>
+						<AppSelect
+							name="scoringRuleId"
+							bind:value={newScoringRuleId}
+							required
+							items={data.scoringRules.map((r) => ({ value: r.id, label: r.name ?? r.code }))}
 						/>
-					{/each}
+					</div>
 				</div>
-			</DragDropProvider>
-		{/if}
-	</div>
-</div>
+
+				<div class="grid gap-3 sm:grid-cols-3">
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600">リーグ</span>
+						<AppSelect
+							name="groupCode"
+							bind:value={newGroupCode}
+							items={groupCodeItems}
+							placeholder="決勝系"
+						/>
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600">フェーズ</span>
+						<AppSelect name="phase" bind:value={newPhase} items={phaseItems} />
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600">予定時刻</span>
+						<AppInput name="scheduledStartAt" type="time" />
+					</div>
+				</div>
+
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600">A側チーム</span>
+						<AppSelect
+							name="teamAId"
+							bind:value={newTeamAId}
+							items={[
+								{ value: '', label: '未定' },
+								...data.teams.map((t) => ({ value: t.id, label: t.name }))
+							]}
+							placeholder="未定"
+						/>
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-medium text-zinc-600">B側チーム</span>
+						<AppSelect
+							name="teamBId"
+							bind:value={newTeamBId}
+							items={[
+								{ value: '', label: '未定' },
+								...data.teams.map((t) => ({ value: t.id, label: t.name }))
+							]}
+							placeholder="未定"
+						/>
+					</div>
+				</div>
+
+				<div class="space-y-1">
+					<span class="text-xs font-medium text-zinc-600">体育館・コート</span>
+					<CourtPicker />
+				</div>
+
+				<div class="flex justify-end gap-2 pt-1">
+					<Dialog.Close
+						class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+					>
+						キャンセル
+					</Dialog.Close>
+					<AppButton type="submit">作成</AppButton>
+				</div>
+			</form>
+		</Dialog.Content>
+	</Dialog.Portal>
+</Dialog.Root>
+
+<!-- Filter tabs (horizontally scrollable) -->
+<Tabs.Root value={filter} onValueChange={setFilter}>
+	<Tabs.List class="flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5">
+		{#each filters as f (f.id)}
+			{@const count =
+				f.id === 'all'
+					? data.ties.length
+					: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length}
+			<Tabs.Trigger
+				value={f.id}
+				class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors {filter ===
+				f.id
+					? 'bg-zinc-900 text-white'
+					: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400'}"
+			>
+				{f.label}
+				{#if count > 0}
+					<span class="ml-1 {filter === f.id ? 'text-zinc-300' : 'text-zinc-400'}">{count}</span>
+				{/if}
+			</Tabs.Trigger>
+		{/each}
+	</Tabs.List>
+</Tabs.Root>
+
+<!-- Ties list -->
+{#if filteredTies.length === 0}
+	<EmptyState
+		message={filter === 'all'
+			? '対戦はまだありません。予選リーグで総当たり生成するか、「新規作成」から追加します。'
+			: 'このフィルターに該当する対戦はありません。'}
+	/>
+{:else}
+	<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
+		<div class="space-y-1.5">
+			{#each filteredTies as tie, index (tie.id)}
+				<SortableTieItem
+					{tie}
+					{index}
+					sortable={filter === 'all'}
+					teams={data.teams}
+					tieForm={updateTie.for(tie.id)}
+				/>
+			{/each}
+		</div>
+	</DragDropProvider>
+{/if}

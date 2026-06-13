@@ -99,6 +99,11 @@
 							>
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</span>
+							{#if tie.winnerTeamId}
+								<p class="text-[10px] font-medium text-emerald-700">
+									勝者: {tie.winnerTeamId === tie.teamAId ? tie.teamAName : tie.teamBName}
+								</p>
+							{/if}
 							<p class="text-[10px] text-zinc-400">種目</p>
 						</div>
 					{/if}

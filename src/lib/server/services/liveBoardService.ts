@@ -12,6 +12,7 @@ import {
 export type GameScore = { gameNo: number; scoreA: number; scoreB: number };
 
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
+	matchStatus: typeof matches.$inferSelect.status | null;
 	gamesScore: string | null; // games won: "1-0"
 	pointScore: string | null; // current game points: "4-3"
 	gameDetails: GameScore[]; // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
@@ -112,14 +113,20 @@ export async function getPublicRubbersForTie(
 async function fetchGameScores(db: AppDb, matchIds: string[]): Promise<PublicGameScoreInput[]> {
 	if (matchIds.length === 0) return [];
 
-	// Fetch all scoring events ordered by seqNo; for each (matchId, gameNo) keep the last one
+	// Fetch all scoring events ordered by seqNo; for each (matchId, gameNo) keep the last one.
+	// Also fetch scoreABefore/scoreBBefore and side so we can recover the correct final score
+	// from legacy records where the game-winning rally was stored with scoreAAfter=0 due to a bug
+	// (afterState.currentGameNo had already advanced to the next game).
 	const events = await db
 		.select({
 			matchId: scoreEvents.matchId,
 			gameNo: scoreEvents.gameNo,
 			seqNo: scoreEvents.seqNo,
 			scoreA: scoreEvents.scoreAAfter,
-			scoreB: scoreEvents.scoreBAfter
+			scoreB: scoreEvents.scoreBAfter,
+			scoreABefore: scoreEvents.scoreABefore,
+			scoreBBefore: scoreEvents.scoreBBefore,
+			side: scoreEvents.side
 		})
 		.from(scoreEvents)
 		.where(
@@ -134,8 +141,16 @@ async function fetchGameScores(db: AppDb, matchIds: string[]): Promise<PublicGam
 	const gameMap = new Map<string, PublicGameScoreInput>();
 	for (const e of events) {
 		if (e.gameNo === null || e.scoreA === null || e.scoreB === null) continue;
+		let scoreA = e.scoreA;
+		let scoreB = e.scoreB;
+		// Detect legacy game-winning rally bug: scoreAAfter=0 but the before-scores are non-zero.
+		// Reconstruct correct final score from before-score + the scoring side.
+		if (scoreA === 0 && scoreB === 0 && ((e.scoreABefore ?? 0) > 0 || (e.scoreBBefore ?? 0) > 0)) {
+			scoreA = (e.scoreABefore ?? 0) + (e.side === 'A' ? 1 : 0);
+			scoreB = (e.scoreBBefore ?? 0) + (e.side === 'B' ? 1 : 0);
+		}
 		const key = `${e.matchId}:${e.gameNo}`;
-		gameMap.set(key, { matchId: e.matchId, gameNo: e.gameNo, scoreA: e.scoreA, scoreB: e.scoreB });
+		gameMap.set(key, { matchId: e.matchId, gameNo: e.gameNo, scoreA, scoreB });
 	}
 	return Array.from(gameMap.values());
 }
@@ -158,6 +173,7 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 		const scores = scoreFor(match, gameScores);
 		return {
 			...rubber,
+			matchStatus: match?.status ?? null,
 			status: rubberStatusForMatch(rubber.status, match),
 			gamesScore: scores.gamesScore,
 			pointScore: scores.pointScore,

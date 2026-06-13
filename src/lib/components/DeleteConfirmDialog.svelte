@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		formAction = '',
@@ -31,7 +32,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Trigger class="text-xs text-red-500 hover:text-red-700 hover:underline">
+	<Dialog.Trigger class={cn('text-xs text-red-500 hover:text-red-700 hover:underline')}>
 		{triggerLabel}
 	</Dialog.Trigger>
 	<Dialog.Portal>
@@ -52,7 +53,9 @@
 				<button
 					type="button"
 					onclick={confirm}
-					class="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+					class={cn(
+						'rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700'
+					)}
 				>
 					削除する
 				</button>

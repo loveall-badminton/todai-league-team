@@ -25,9 +25,32 @@ export const tieStatusLabel = (status: string) => {
 		lineup_pending: 'オーダー待ち',
 		lineup_submitted: '提出済み',
 		ready: '開始可',
+		called: '呼出中',
+		warmup: '練習中',
 		playing: '進行中',
+		interval: 'インターバル',
+		suspended: '中断中',
 		finished: '結果確認待ち',
+		forfeited: '棄権',
+		retired: 'リタイア',
 		confirmed: '確定',
+		cancelled: '中止'
+	};
+	return labels[status] ?? status;
+};
+
+export const matchStatusLabel = (status: string) => {
+	const labels: Record<string, string> = {
+		scheduled: '開始前',
+		called: '呼出中',
+		warmup: '練習中',
+		playing: '進行中',
+		interval: 'インターバル',
+		suspended: '中断中',
+		finished: '終了',
+		confirmed: '確定',
+		forfeited: '棄権',
+		retired: 'リタイア',
 		cancelled: '中止'
 	};
 	return labels[status] ?? status;
@@ -41,6 +64,8 @@ export const rubberStatusLabel = (status: string) => {
 		playing: '進行中',
 		finished: '終了',
 		confirmed: '確定',
+		forfeited: '棄権',
+		retired: 'リタイア',
 		skipped: 'スキップ',
 		cancelled: '中止'
 	};

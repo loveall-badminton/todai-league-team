@@ -21,7 +21,9 @@ export const load: PageServerLoad = async (event) => {
 	const team = await db.query.teams.findFirst({ where: eq(teams.id, params.teamId) });
 	if (!team) error(404, 'チームが見つかりません');
 
-	const [players, submission] = await Promise.all([
+	const opponentTeamId = side === 'A' ? tie.teamBId : tie.teamAId;
+
+	const [players, submission, opponentTeam] = await Promise.all([
 		db
 			.select()
 			.from(teamPlayers)
@@ -32,7 +34,10 @@ export const load: PageServerLoad = async (event) => {
 				eq(lineupSubmissions.tieId, params.tieId),
 				eq(lineupSubmissions.teamId, params.teamId)
 			)
-		})
+		}),
+		opponentTeamId
+			? db.query.teams.findFirst({ where: eq(teams.id, opponentTeamId) })
+			: Promise.resolve(null)
 	]);
 
 	const items = submission
@@ -43,5 +48,13 @@ export const load: PageServerLoad = async (event) => {
 				.orderBy(asc(lineupItems.rubberCode))
 		: [];
 
-	return { tie, team, side, players, submission: submission ?? null, items };
+	return {
+		tie,
+		team,
+		opponentTeam: opponentTeam ?? null,
+		side,
+		players,
+		submission: submission ?? null,
+		items
+	};
 };

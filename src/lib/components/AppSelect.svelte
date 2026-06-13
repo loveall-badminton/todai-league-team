@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Select } from 'bits-ui';
 	import { ChevronDown } from '@lucide/svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		name,
@@ -35,7 +36,10 @@
 	onValueChange={(v) => onValueChange?.(v ?? '')}
 >
 	<Select.Trigger
-		class="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50 {className}"
+		class={cn(
+			'flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50',
+			className
+		)}
 	>
 		<Select.Value>
 			<span class={value ? 'text-zinc-900' : 'text-zinc-400'}>{selectedLabel}</span>
