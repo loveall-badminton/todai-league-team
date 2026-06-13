@@ -55,9 +55,5 @@ export const actions: Actions = {
 		}
 
 		redirect(303, redirectTo);
-	},
-	signOut: async ({ locals }) => {
-		await locals.auth.api.signOut();
-		redirect(303, '/auth/login');
 	}
 };

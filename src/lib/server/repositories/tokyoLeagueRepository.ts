@@ -206,6 +206,32 @@ export async function createTeamPlayer(
 	return id;
 }
 
+export async function bulkCreateTeamPlayers(
+	db: AppDb,
+	input: {
+		teamId: string;
+		names: string[];
+		gender?: 'male' | 'female' | 'unknown';
+		displayOrderStart: number;
+		now: string;
+	}
+): Promise<number> {
+	if (input.names.length === 0) return 0;
+
+	const rows = input.names.map((name, i) => ({
+		id: crypto.randomUUID(),
+		teamId: input.teamId,
+		name,
+		gender: input.gender ?? ('unknown' as const),
+		displayOrder: input.displayOrderStart + i,
+		createdAt: input.now,
+		updatedAt: input.now
+	}));
+
+	await db.insert(teamPlayers).values(rows);
+	return rows.length;
+}
+
 export async function updateTeamPlayer(
 	db: AppDb,
 	input: {

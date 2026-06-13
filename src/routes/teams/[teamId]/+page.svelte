@@ -13,6 +13,7 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
+	import AppTextarea from '$lib/components/AppTextarea.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -21,7 +22,7 @@
 	import {
 		updateTeam,
 		createPlayer,
-		updatePlayer,
+		bulkCreatePlayers,
 		reorderPlayers,
 		deletePlayer,
 		deleteTeam
@@ -49,6 +50,31 @@
 	let newPlayerGender = $state('unknown');
 	let players = $derived([...data.players]);
 	let snapshot: typeof players = [];
+
+	// Bulk registration state
+	let showBulkForm = $state(false);
+	let bulkNamesText = $state('');
+	let bulkMessage = $state('');
+	let bulkLoading = $state(false);
+
+	async function handleBulkCreate() {
+		if (!bulkNamesText.trim()) return;
+		bulkLoading = true;
+		bulkMessage = '';
+		try {
+			const result = await bulkCreatePlayers({
+				namesText: bulkNamesText,
+				gender: 'unknown'
+			});
+			bulkMessage = `${result.addedCount}名の選手を追加しました`;
+			bulkNamesText = '';
+			await invalidateAll();
+		} catch (e) {
+			bulkMessage = e instanceof Error ? e.message : '一括登録に失敗しました';
+		} finally {
+			bulkLoading = false;
+		}
+	}
 
 	function onDragStart() {
 		snapshot = players.slice();
@@ -113,11 +139,7 @@
 		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
 		<DeleteConfirmDialog
 			onConfirm={async () => {
-				try {
-					await deleteTeam();
-				} catch (e) {
-					// redirect will throw, ignore
-				}
+				await deleteTeam();
 			}}
 			triggerLabel="チームを削除"
 			title="チームを削除しますか？"
@@ -176,24 +198,77 @@
 
 	<!-- Add player form -->
 	<div class="border-b border-zinc-100 bg-zinc-50 px-4 py-4">
-		<p class="mb-3 text-xs font-medium tracking-wide text-zinc-500">選手追加</p>
-		<form {...createPlayer} class="flex flex-wrap items-end gap-3">
-			<div class="min-w-36 flex-1">
+		<div class="mb-3 flex items-center gap-3">
+			<button
+				type="button"
+				class="text-xs font-medium tracking-wide {!showBulkForm
+					? 'text-zinc-950 underline underline-offset-4'
+					: 'text-zinc-400 hover:text-zinc-600'}"
+				onclick={() => (showBulkForm = false)}
+			>
+				1人ずつ追加
+			</button>
+			<button
+				type="button"
+				class="text-xs font-medium tracking-wide {showBulkForm
+					? 'text-zinc-950 underline underline-offset-4'
+					: 'text-zinc-400 hover:text-zinc-600'}"
+				onclick={() => (showBulkForm = true)}
+			>
+				一括登録
+			</button>
+		</div>
+
+		{#if !showBulkForm}
+			<form {...createPlayer} class="flex flex-wrap items-end gap-3">
+				<div class="min-w-36 flex-1">
+					<label class="block">
+						<span class="text-xs font-medium text-zinc-500">氏名 *</span>
+						<AppInput name="name" required placeholder="例: 山田太郎" class="mt-1" />
+					</label>
+				</div>
+				<div class="w-28">
+					<label class="block">
+						<span class="text-xs font-medium text-zinc-500">性別</span>
+						<AppSelect
+							name="gender"
+							bind:value={newPlayerGender}
+							items={genderItems}
+							class="mt-1"
+						/>
+					</label>
+				</div>
+				<AppButton type="submit">追加</AppButton>
+			</form>
+			{#if createPlayer.result?.message}
+				<div class="mt-2 text-sm text-emerald-700">{createPlayer.result.message}</div>
+			{/if}
+		{:else}
+			<div class="space-y-3">
 				<label class="block">
-					<span class="text-xs font-medium text-zinc-500">氏名 *</span>
-					<AppInput name="name" required placeholder="例: 山田太郎" class="mt-1" />
+					<span class="text-xs font-medium text-zinc-500">選手名（1行に1人）</span>
+					<AppTextarea
+						bind:value={bulkNamesText}
+						rows={8}
+						placeholder="山田太郎
+鈴木花子
+田中一郎"
+						class="mt-1 font-mono text-sm"
+					/>
 				</label>
+				{#if bulkNamesText.trim()}
+					{@const lineCount = bulkNamesText.split('\n').filter((l) => l.trim()).length}
+					<p class="text-xs text-zinc-400">{lineCount}名を追加します</p>
+				{/if}
+				<div class="flex flex-wrap items-end gap-3">
+					<AppButton onclick={handleBulkCreate} disabled={bulkLoading || !bulkNamesText.trim()}>
+						{bulkLoading ? '登録中…' : '一括登録'}
+					</AppButton>
+				</div>
+				{#if bulkMessage}
+					<div class="text-sm text-emerald-700">{bulkMessage}</div>
+				{/if}
 			</div>
-			<div class="w-28">
-				<label class="block">
-					<span class="text-xs font-medium text-zinc-500">性別</span>
-					<AppSelect name="gender" bind:value={newPlayerGender} items={genderItems} class="mt-1" />
-				</label>
-			</div>
-			<AppButton type="submit">追加</AppButton>
-		</form>
-		{#if createPlayer.result?.message}
-			<div class="mt-2 text-sm text-emerald-700">{createPlayer.result.message}</div>
 		{/if}
 	</div>
 
@@ -209,14 +284,9 @@
 					<SortablePlayerItem
 						{player}
 						{index}
-						updatePlayerForm={updatePlayer.for(player.id)}
 						onDeleteConfirm={async () => {
-							try {
-								await deletePlayer({ id: player.id });
-								await invalidateAll();
-							} catch (e) {
-								// ignore
-							}
+							await deletePlayer({ id: player.id });
+							await invalidateAll();
 						}}
 					/>
 				{/each}

@@ -7,16 +7,15 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import type { TeamPlayer } from '$lib/server/repositories/tokyoLeagueRepository';
+	import { updatePlayer } from './team.remote';
 
 	let {
 		player,
 		index,
-		updatePlayerForm,
 		onDeleteConfirm
 	}: {
 		player: TeamPlayer;
 		index: number;
-		updatePlayerForm: Record<string, unknown>;
 		onDeleteConfirm?: () => void | Promise<void>;
 	} = $props();
 
@@ -44,12 +43,11 @@
 	let editGender = $state('unknown' as string);
 	let editStatus = $state('active' as string);
 
-	$effect(() => {
-		if (isEditing) {
-			editGender = player.gender;
-			editStatus = player.status;
-		}
-	});
+	function startEditing() {
+		editGender = player.gender;
+		editStatus = player.status;
+		isEditing = true;
+	}
 </script>
 
 <div
@@ -67,7 +65,7 @@
 			</div>
 			<button
 				type="button"
-				onclick={() => (isEditing = true)}
+				onclick={startEditing}
 				class="-mx-1 flex flex-1 items-center gap-3 rounded-lg px-1 text-left transition-colors hover:bg-zinc-50"
 			>
 				<span
@@ -99,7 +97,20 @@
 		</div>
 	{:else}
 		<div class="space-y-3 py-3">
-			<form {...updatePlayerForm} class="space-y-3">
+			<form
+				{...updatePlayer.for(player.id).enhance(async (form) => {
+					try {
+						const result = await form.submit();
+
+						if (result) {
+							isEditing = false;
+						}
+					} catch (error) {
+						console.error(error);
+					}
+				})}
+				class="space-y-3"
+			>
 				<input type="hidden" name="id" value={player.id} />
 				<div class="flex flex-wrap gap-3">
 					<div class="min-w-32 flex-1">

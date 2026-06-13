@@ -5,6 +5,7 @@ import { requireAdmin } from '$lib/server/auth/access';
 import { getRequestDb } from '$lib/server/db/request';
 import {
 	createTeamPlayer,
+	bulkCreateTeamPlayers,
 	deleteTeam as deleteTeamRepo,
 	deleteTeamPlayer,
 	getTeamWithPlayers,
@@ -81,7 +82,41 @@ export const updatePlayer = form(
 			status: status === 'inactive' ? 'inactive' : 'active',
 			now: new Date().toISOString()
 		});
-		return { message: '選手を更新しました' };
+		return { success: true, message: '選手を更新しました' };
+	}
+);
+
+export const bulkCreatePlayers = command(
+	v.object({
+		namesText: v.pipe(v.string(), v.minLength(1, '選手名を入力してください')),
+		gender: genderSchema
+	}),
+	async ({ namesText, gender }) => {
+		const event = getRequestEvent();
+		requireAdmin(event);
+		const db = getRequestDb(event.platform);
+
+		const names = namesText
+			.split('\n')
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
+
+		if (names.length === 0) {
+			error(400, '有効な選手名がありません');
+		}
+
+		const teamData = await getTeamWithPlayers(db, event.params.teamId!);
+		const nextOrder = teamData?.players.length ?? 0;
+
+		const addedCount = await bulkCreateTeamPlayers(db, {
+			teamId: event.params.teamId!,
+			names,
+			gender: gender === 'male' || gender === 'female' ? gender : 'unknown',
+			displayOrderStart: nextOrder,
+			now: new Date().toISOString()
+		});
+
+		return { addedCount };
 	}
 );
 

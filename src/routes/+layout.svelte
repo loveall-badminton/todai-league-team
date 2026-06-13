@@ -18,6 +18,7 @@
 		ClipboardList
 	} from '@lucide/svelte';
 	import type { AppRole } from '$lib/server/auth/access';
+	import { signOut } from './signout.remote';
 
 	let { data, children }: LayoutProps = $props();
 	let drawerOpen = $state(false);
@@ -124,7 +125,7 @@
 				</a>
 			{/each}
 		</nav>
-		<form method="POST" action="/auth/login?/signOut" class="border-t border-zinc-200 p-3">
+		<form {...signOut.for('mobile')} class="border-t border-zinc-200 p-3">
 			<button
 				class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100"
 			>
@@ -158,7 +159,7 @@
 					</a>
 				{/each}
 			</nav>
-			<form method="POST" action="/auth/login?/signOut" class="border-t border-zinc-200 p-3">
+			<form {...signOut.for('desktop')} class="border-t border-zinc-200 p-3">
 				<button
 					class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100"
 				>
