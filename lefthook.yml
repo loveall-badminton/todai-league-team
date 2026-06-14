@@ -23,6 +23,7 @@ pre-commit:
     - run: pnpm format --check {staged_files}
     - run: pnpm lint {staged_files}
     - run: pnpm check
+    - run: pnpm test
 #
 #     - name: rubocop
 #       glob: "*.rb"

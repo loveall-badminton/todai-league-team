@@ -5,11 +5,10 @@
 	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { DragDropProvider } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import type { PageProps } from './$types';
 	import SortableTeamItem from './SortableTeamItem.svelte';
 	import { create, reorder } from './teams.remote';
-	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
+	import { createSortableHandlers } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -24,29 +23,14 @@
 	let showForm = $state(false);
 
 	let teams = $derived([...data.teams]);
-	let snapshot: typeof teams = [];
 
-	function onDragStart() {
-		snapshot = teams.slice();
-	}
-
-	function onDragOver(event: DragOverEvent) {
-		const { source, target } = event.operation;
-		if (isSortable(source) && isSortable(target) && source.index !== target.index) {
-			const next = [...teams];
-			const [moved] = next.splice(source.index, 1);
-			next.splice(target.index, 0, moved);
-			teams = next;
-		}
-	}
-
-	async function onDragEnd(event: DragEndEvent) {
-		if (event.canceled) {
-			teams = snapshot;
-			return;
-		}
-		await reorder({ ids: teams.map((t) => t.id) });
-	}
+	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
+		() => teams,
+		(v) => {
+			teams = v;
+		},
+		(ids) => reorder({ ids })
+	);
 </script>
 
 <svelte:head>

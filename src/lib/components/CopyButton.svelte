@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils/cn';
 	import { Check, Clipboard } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
 
 	let { text, class: className = '' }: { text: string; class?: string } = $props();
 
@@ -8,14 +9,22 @@
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
 	async function copy() {
-		await navigator.clipboard.writeText(text);
-		copied = true;
-		if (timer) clearTimeout(timer);
-		timer = setTimeout(() => {
-			copied = false;
-			timer = null;
-		}, 1500);
+		try {
+			await navigator.clipboard.writeText(text);
+			copied = true;
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => {
+				copied = false;
+				timer = null;
+			}, 1500);
+		} catch {
+			// Permission denied or non-HTTPS — ignore silently
+		}
 	}
+
+	onDestroy(() => {
+		if (timer) clearTimeout(timer);
+	});
 </script>
 
 <button

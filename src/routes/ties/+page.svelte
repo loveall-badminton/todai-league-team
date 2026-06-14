@@ -3,8 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
+	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
 	import { GripVertical, X } from '@lucide/svelte';
 	import AppSwitch from '$lib/components/AppSwitch.svelte';
@@ -42,8 +41,6 @@
 	let dialogOpen = $state(false);
 
 	let allTies = $derived([...data.ties]);
-	let snapshot: typeof allTies = [];
-
 	let hasActive = $derived(data.ties.some((t) => t.status === 'playing'));
 	let realtimeEnabled = $state(true);
 
@@ -135,27 +132,13 @@
 		}))
 	);
 
-	function onDragStart() {
-		snapshot = allTies.slice();
-	}
-
-	function onDragOver(event: DragOverEvent) {
-		const { source, target } = event.operation;
-		if (isSortable(source) && isSortable(target) && source.index !== target.index) {
-			const next = [...allTies];
-			const [moved] = next.splice(source.index, 1);
-			next.splice(target.index, 0, moved);
-			allTies = next;
-		}
-	}
-
-	async function onDragEnd(event: DragEndEvent) {
-		if (event.canceled) {
-			allTies = snapshot;
-			return;
-		}
-		await reorder({ ids: allTies.map((t) => t.id) });
-	}
+	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
+		() => allTies,
+		(v) => {
+			allTies = v;
+		},
+		(ids) => reorder({ ids })
+	);
 </script>
 
 <svelte:head>

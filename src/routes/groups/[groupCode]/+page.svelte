@@ -2,8 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
+	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import Card from '$lib/components/Card.svelte';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Badge from '$lib/components/Badge.svelte';
@@ -30,29 +29,14 @@
 	let { data }: PageProps = $props();
 
 	let allTies = $derived([...data.ties]);
-	let snapshot: typeof allTies = [];
 
-	function onDragStart() {
-		snapshot = allTies.slice();
-	}
-
-	function onDragOver(event: DragOverEvent) {
-		const { source, target } = event.operation;
-		if (isSortable(source) && isSortable(target) && source.index !== target.index) {
-			const next = [...allTies];
-			const [moved] = next.splice(source.index, 1);
-			next.splice(target.index, 0, moved);
-			allTies = next;
-		}
-	}
-
-	async function onDragEnd(event: DragEndEvent) {
-		if (event.canceled) {
-			allTies = snapshot;
-			return;
-		}
-		await reorder({ ids: allTies.map((t) => t.id) });
-	}
+	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
+		() => allTies,
+		(v) => {
+			allTies = v;
+		},
+		(ids) => reorder({ ids })
+	);
 
 	const teamName = (teamId: string | null) =>
 		data.allTeams.find((t) => t.id === teamId)?.name ?? '不明';

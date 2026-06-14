@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
@@ -24,7 +23,7 @@
 		deletePlayer,
 		deleteTeam
 	} from './team.remote';
-	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
+	import { createSortableHandlers } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -45,9 +44,9 @@
 
 	let teamGroupCode = $derived(data.team.groupCode ?? '');
 	let teamStatus = $derived(data.team.status);
+
 	let newPlayerGender = $state('unknown');
 	let players = $derived([...data.players]);
-	let snapshot: typeof players = [];
 
 	// Add player tab state
 	let addTab = $state<'single' | 'bulk'>('single');
@@ -79,27 +78,13 @@
 		}
 	}
 
-	function onDragStart() {
-		snapshot = players.slice();
-	}
-
-	function onDragOver(event: DragOverEvent) {
-		const { source, target } = event.operation;
-		if (isSortable(source) && isSortable(target) && source.index !== target.index) {
-			const next = [...players];
-			const [moved] = next.splice(source.index, 1);
-			next.splice(target.index, 0, moved);
-			players = next;
-		}
-	}
-
-	async function onDragEnd(event: DragEndEvent) {
-		if (event.canceled) {
-			players = snapshot;
-			return;
-		}
-		await reorderPlayers({ ids: players.map((p) => p.id) });
-	}
+	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
+		() => players,
+		(v) => {
+			players = v;
+		},
+		(ids) => reorderPlayers({ ids })
+	);
 </script>
 
 <svelte:head>

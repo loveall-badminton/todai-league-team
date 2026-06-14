@@ -31,6 +31,7 @@ export async function applyMatchAction(params: {
 	if (duplicate) {
 		const payload = parsePayload(duplicate.payloadJson);
 		if (payload.afterState) return payload.afterState;
+		throw new Error('Duplicate request but afterState is missing from stored payload');
 	}
 
 	const beforeState = await getMatchState(matchId);
@@ -53,48 +54,26 @@ export async function applyMatchAction(params: {
 	const serviceStateUpsert = buildServiceStateUpsert(afterState);
 	const rubberUpdate = match?.rubberId ? buildRubberUpdate(match.rubberId, afterState, now) : null;
 
-	if (input.type === 'undo' && input.targetSeqNo) {
+	// Build batch ops array dynamically to avoid repeated near-identical call sites.
+	// Cast to the required tuple type at the call site; the base 4 ops are always present.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const batchOps: any[] = [eventInsert, matchUpdate, snapshotUpsert, serviceStateUpsert];
+	if (rubberUpdate) batchOps.push(rubberUpdate);
+	if (input.type === 'undo' && input.targetSeqNo != null) {
 		const targetEvent = await getScoreEventBySeqNo(matchId, input.targetSeqNo);
 		if (!targetEvent) throw new Error('Undo target event not found after insert');
-		const undoLinkInsert = db.insert(scoreEventUndoLinks).values({
-			id: crypto.randomUUID(),
-			matchId,
-			undoEventId: eventId,
-			targetEventId: targetEvent.id,
-			targetSeqNo: input.targetSeqNo,
-			createdAt: now
-		});
-		if (rubberUpdate) {
-			await db.batch([
-				eventInsert,
-				matchUpdate,
-				snapshotUpsert,
-				serviceStateUpsert,
-				rubberUpdate,
-				undoLinkInsert
-			] as const);
-		} else {
-			await db.batch([
-				eventInsert,
-				matchUpdate,
-				snapshotUpsert,
-				serviceStateUpsert,
-				undoLinkInsert
-			] as const);
-		}
-	} else {
-		if (rubberUpdate) {
-			await db.batch([
-				eventInsert,
-				matchUpdate,
-				snapshotUpsert,
-				serviceStateUpsert,
-				rubberUpdate
-			] as const);
-		} else {
-			await db.batch([eventInsert, matchUpdate, snapshotUpsert, serviceStateUpsert] as const);
-		}
+		batchOps.push(
+			db.insert(scoreEventUndoLinks).values({
+				id: crypto.randomUUID(),
+				matchId,
+				undoEventId: eventId,
+				targetEventId: targetEvent.id,
+				targetSeqNo: input.targetSeqNo,
+				createdAt: now
+			})
+		);
 	}
+	await db.batch(batchOps as unknown as Parameters<typeof db.batch>[0]);
 
 	if (match?.rubberId) {
 		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
@@ -253,7 +232,9 @@ function buildMatchUpdate(state: MatchState) {
 			lastSeqNo: state.lastSeqNo,
 			actualStartAt:
 				state.lastSeqNo === 1 && state.status === 'playing' ? state.updatedAt : undefined,
-			actualEndAt: state.winnerSide ? state.updatedAt : undefined,
+			actualEndAt: ['finished', 'forfeited', 'retired', 'confirmed'].includes(state.status)
+				? state.updatedAt
+				: undefined,
 			updatedAt: state.updatedAt
 		})
 		.where(eq(matches.id, state.matchId));

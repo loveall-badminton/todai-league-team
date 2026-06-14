@@ -236,7 +236,7 @@
 									<div class="flex items-stretch">
 										{#each game.serviceRuns as run, ri (ri)}
 											{#if run.serverPlayerId === player.id}
-												{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
+												{#each run.scores as entry, si (ri + '-' + si)}
 													<div
 														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-pink-700 tabular-nums"
 													>
@@ -247,7 +247,8 @@
 													<div class="flex items-center border-r-2 border-zinc-300"></div>
 												{/if}
 											{:else}
-												{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
+												<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+												{#each run.scores as _entry, si (ri + '-' + si)}
 													<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
 												{/each}
 												{#if ri < game.serviceRuns.length - 1}
@@ -274,7 +275,8 @@
 							<td class="border-y-2 border-zinc-400 bg-zinc-100 p-0">
 								<div class="flex items-stretch">
 									{#each game.serviceRuns as run, ri (ri)}
-										{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
+										<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+										{#each run.scores as _entry, si (ri + '-' + si)}
 											<div class="min-w-7 border-r border-zinc-300 px-1 py-0.5"></div>
 										{/each}
 										{#if ri < game.serviceRuns.length - 1}
