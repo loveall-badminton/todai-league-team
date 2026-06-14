@@ -16,7 +16,7 @@
 	<title>予選リーグ | 東大リーグ団体戦</title>
 </svelte:head>
 
-<PageHeader title="予選リーグ" description="A・Bリーグの管理" />
+<PageHeader title="予選リーグ" />
 
 <div class="grid gap-4 sm:grid-cols-2">
 	{#each groups as group (group.code)}
@@ -24,13 +24,8 @@
 			class="group block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-zinc-400"
 			href={resolve('/groups/[groupCode]', { groupCode: group.code })}
 		>
-			<div class="flex items-start justify-between">
+			<div class="flex items-start">
 				<h2 class="text-xl font-semibold">{group.label}</h2>
-				<span
-					class="rounded-lg bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 group-hover:bg-zinc-200"
-				>
-					{group.code}
-				</span>
 			</div>
 
 			<div class="mt-5 grid grid-cols-2 gap-3">

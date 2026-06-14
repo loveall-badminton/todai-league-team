@@ -11,6 +11,7 @@
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
 	import AppButton from '$lib/components/AppButton.svelte';
+	import AppTabs from '$lib/components/AppTabs.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppTextarea from '$lib/components/AppTextarea.svelte';
@@ -19,6 +20,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
 	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
 	import {
 		updateTeam,
 		createPlayer,
@@ -51,26 +53,31 @@
 	let players = $derived([...data.players]);
 	let snapshot: typeof players = [];
 
-	// Bulk registration state
-	let showBulkForm = $state(false);
+	// Add player tab state
+	let addTab = $state<'single' | 'bulk'>('single');
 	let bulkNamesText = $state('');
-	let bulkMessage = $state('');
 	let bulkLoading = $state(false);
+
+	$effect(() => {
+		if (updateTeam.result?.message) toast.success(updateTeam.result.message);
+	});
+	$effect(() => {
+		if (createPlayer.result?.message) toast.success(createPlayer.result.message);
+	});
 
 	async function handleBulkCreate() {
 		if (!bulkNamesText.trim()) return;
 		bulkLoading = true;
-		bulkMessage = '';
 		try {
 			const result = await bulkCreatePlayers({
 				namesText: bulkNamesText,
 				gender: 'unknown'
 			});
-			bulkMessage = `${result.addedCount}名の選手を追加しました`;
+			toast.success(`${result.addedCount}名の選手を追加しました`);
 			bulkNamesText = '';
 			await invalidateAll();
 		} catch (e) {
-			bulkMessage = e instanceof Error ? e.message : '一括登録に失敗しました';
+			toast.error(e instanceof Error ? e.message : '一括登録に失敗しました');
 		} finally {
 			bulkLoading = false;
 		}
@@ -126,12 +133,6 @@
 	</a>
 	<PageHeader title={data.team.name} actions={headerActions} />
 </header>
-
-{#if updateTeam.result?.message}
-	<div class="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
-		{updateTeam.result.message}
-	</div>
-{/if}
 
 <!-- Team edit form -->
 <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -198,28 +199,16 @@
 
 	<!-- Add player form -->
 	<div class="border-b border-zinc-100 bg-zinc-50 px-4 py-4">
-		<div class="mb-3 flex items-center gap-3">
-			<button
-				type="button"
-				class="text-xs font-medium tracking-wide {!showBulkForm
-					? 'text-zinc-950 underline underline-offset-4'
-					: 'text-zinc-400 hover:text-zinc-600'}"
-				onclick={() => (showBulkForm = false)}
-			>
-				1人ずつ追加
-			</button>
-			<button
-				type="button"
-				class="text-xs font-medium tracking-wide {showBulkForm
-					? 'text-zinc-950 underline underline-offset-4'
-					: 'text-zinc-400 hover:text-zinc-600'}"
-				onclick={() => (showBulkForm = true)}
-			>
-				一括登録
-			</button>
-		</div>
+		<AppTabs
+			bind:value={addTab}
+			items={[
+				{ value: 'single', label: '1人ずつ追加' },
+				{ value: 'bulk', label: '一括登録' }
+			]}
+			listClass="mb-4"
+		/>
 
-		{#if !showBulkForm}
+		{#if addTab === 'single'}
 			<form {...createPlayer} class="flex flex-wrap items-end gap-3">
 				<div class="min-w-36 flex-1">
 					<label class="block">
@@ -240,10 +229,7 @@
 				</div>
 				<AppButton type="submit">追加</AppButton>
 			</form>
-			{#if createPlayer.result?.message}
-				<div class="mt-2 text-sm text-emerald-700">{createPlayer.result.message}</div>
-			{/if}
-		{:else}
+		{:else if addTab === 'bulk'}
 			<div class="space-y-3">
 				<label class="block">
 					<span class="text-xs font-medium text-zinc-500">選手名（1行に1人）</span>
@@ -260,14 +246,9 @@
 					{@const lineCount = bulkNamesText.split('\n').filter((l) => l.trim()).length}
 					<p class="text-xs text-zinc-400">{lineCount}名を追加します</p>
 				{/if}
-				<div class="flex flex-wrap items-end gap-3">
-					<AppButton onclick={handleBulkCreate} disabled={bulkLoading || !bulkNamesText.trim()}>
-						{bulkLoading ? '登録中…' : '一括登録'}
-					</AppButton>
-				</div>
-				{#if bulkMessage}
-					<div class="text-sm text-emerald-700">{bulkMessage}</div>
-				{/if}
+				<AppButton onclick={handleBulkCreate} disabled={bulkLoading || !bulkNamesText.trim()}>
+					{bulkLoading ? '登録中…' : '一括登録'}
+				</AppButton>
 			</div>
 		{/if}
 	</div>

@@ -6,14 +6,13 @@ import {
 	type TiePhase,
 	type VenueCode
 } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { rubbers, teams, ties } from '$lib/server/db/schema';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
 type LineupDuePolicy = 'first_match_before_opening' | 'ten_minutes_before' | 'manual';
 
 export async function createTieWithRubbers(
-	db: AppDb,
 	params: {
 		tieCode: string;
 		phase: TiePhase;
@@ -31,6 +30,7 @@ export async function createTieWithRubbers(
 		now?: string;
 	}
 ): Promise<string> {
+	const db = getRequestDb();
 	const tieCode = params.tieCode.trim();
 	if (!tieCode) throw new Error('tieCode is required');
 
@@ -38,7 +38,7 @@ export async function createTieWithRubbers(
 	if (existing) throw new Error(`tieCode ${tieCode} already exists`);
 
 	const now = params.now ?? new Date().toISOString();
-	const settings = await ensureDefaultSettings(db, now);
+	const settings = await ensureDefaultSettings(now);
 	const lineupDueAt =
 		params.lineupDueAt ??
 		inferLineupDueAt(
@@ -85,9 +85,9 @@ export async function createTieWithRubbers(
 }
 
 export async function ensureRubbersForTie(
-	db: AppDb,
 	params: { tieId: string; scoringRuleId: string; now?: string }
 ) {
+	const db = getRequestDb();
 	const existing = await db
 		.select()
 		.from(rubbers)
@@ -116,7 +116,6 @@ export async function ensureRubbersForTie(
 }
 
 export async function generateGroupRoundRobinTies(
-	db: AppDb,
 	params: {
 		groupCode: GroupCode;
 		scoringRuleId: string;
@@ -124,6 +123,7 @@ export async function generateGroupRoundRobinTies(
 		now?: string;
 	}
 ): Promise<number> {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
 	const groupTeams = await db
 		.select()
@@ -132,7 +132,7 @@ export async function generateGroupRoundRobinTies(
 		.orderBy(asc(teams.displayOrder), asc(teams.name));
 
 	let created = 0;
-	let nextNo = await nextTieNumber(db, params.tieCodePrefix);
+	let nextNo = await nextTieNumber(params.tieCodePrefix);
 
 	for (let i = 0; i < groupTeams.length; i += 1) {
 		for (let j = i + 1; j < groupTeams.length; j += 1) {
@@ -149,7 +149,7 @@ export async function generateGroupRoundRobinTies(
 			});
 			if (duplicate) continue;
 
-			await createTieWithRubbers(db, {
+			await createTieWithRubbers({
 				tieCode: `${params.tieCodePrefix}-${nextNo}`,
 				phase: groupPhaseFor(params.groupCode),
 				groupCode: params.groupCode,
@@ -192,7 +192,8 @@ export function generateRoundRobinPairs<T>(teams: T[]): [T, T][] {
 	return pairs;
 }
 
-async function nextTieNumber(db: AppDb, prefix: GroupCode) {
+async function nextTieNumber(prefix: GroupCode) {
+	const db = getRequestDb();
 	const existing = await db.select({ tieCode: ties.tieCode }).from(ties);
 	const usedNumbers = existing
 		.map((tie) => {

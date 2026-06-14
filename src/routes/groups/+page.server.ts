@@ -1,19 +1,16 @@
-import type { PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import { listGroupTies, listTeamsByGroup } from '$lib/server/repositories/tokyoLeagueRepository';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => {
-	requireAdmin(event);
-	const { platform } = event;
-	const db = getRequestDb(platform);
-	await ensureDefaultSettings(db);
+export const load: PageServerLoad = async () => {
+	requireAdmin();
+	await ensureDefaultSettings();
 	const [teamsA, teamsB, tiesA, tiesB] = await Promise.all([
-		listTeamsByGroup(db, 'A'),
-		listTeamsByGroup(db, 'B'),
-		listGroupTies(db, 'A'),
-		listGroupTies(db, 'B')
+		listTeamsByGroup('A'),
+		listTeamsByGroup('B'),
+		listGroupTies('A'),
+		listGroupTies('B')
 	]);
 	return { teamsA, teamsB, tiesA, tiesB };
 };

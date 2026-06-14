@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { groupStandingOverrides, matches, rubbers, teams, ties } from '$lib/server/db/schema';
 
 export interface GroupStanding {
@@ -38,9 +38,9 @@ export type StandingOverrideRecord = {
 };
 
 export async function calculateGroupStandings(
-	db: AppDb,
 	groupCode: GroupCode
 ): Promise<GroupStanding[]> {
+	const db = getRequestDb();
 	const groupTeams = await db
 		.select()
 		.from(teams)

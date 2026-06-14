@@ -1,6 +1,4 @@
 import { command, getRequestEvent } from '$app/server';
-import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
 import { otherSide } from '$lib/domain/scoring';
 import type {
 	CourtAssignments,
@@ -12,9 +10,10 @@ import type {
 	Side
 } from '$lib/domain/types';
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
 import { applyMatchAction } from '$lib/server/services/matchActionService';
+import { error } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const sideSchema = v.picklist(['A', 'B'] as const);
 
@@ -25,14 +24,11 @@ async function applyAction(
 		players: MatchPlayer[]
 	) => ScoreEventInput
 ) {
-	const event = getRequestEvent();
-	const db = getRequestDb(event.platform);
-	await requireRefereeMatchAccess(event, db, matchId);
-	const state = await getMatchState(db, matchId);
-	const players = await getMatchPlayers(db, matchId);
+	await requireRefereeMatchAccess(matchId);
+	const state = await getMatchState(matchId);
+	const players = await getMatchPlayers(matchId);
 	try {
 		await applyMatchAction({
-			db,
 			matchId,
 			input: buildInput(state, players),
 			actorName: null,

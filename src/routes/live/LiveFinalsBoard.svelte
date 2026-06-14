@@ -1,0 +1,59 @@
+<script lang="ts">
+	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import Card from '$lib/components/Card.svelte';
+	import { getFinalsBoard } from './live.remote';
+
+	let { realtimeEnabled }: { realtimeEnabled: boolean } = $props();
+
+	const finalsBoard = getFinalsBoard();
+
+	$effect(() => {
+		if (!realtimeEnabled) return;
+		const id = setInterval(() => finalsBoard.refresh(), 8000);
+		return () => clearInterval(id);
+	});
+</script>
+
+{#if finalsBoard.current == null}
+	<section class="space-y-3">
+		<div class="h-3 w-28 animate-pulse rounded-full bg-zinc-200"></div>
+		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			{#each [0, 1, 2] as i (i)}
+				<div class="animate-pulse rounded-2xl border border-zinc-100 bg-white p-4 space-y-2">
+					<div class="h-2.5 w-16 rounded-full bg-zinc-200"></div>
+					<div class="flex items-baseline justify-between gap-2">
+						<div class="h-4 w-32 rounded-full bg-zinc-200"></div>
+						<div class="h-6 w-10 rounded-lg bg-zinc-200"></div>
+					</div>
+					<div class="h-2.5 w-12 rounded-full bg-zinc-200"></div>
+				</div>
+			{/each}
+		</div>
+	</section>
+{:else if finalsBoard.current.finalsBoard.length > 0}
+	<section class="space-y-3">
+		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">決勝トーナメント</h2>
+		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			{#each finalsBoard.current.finalsBoard as tie (tie.id)}
+				<Card class={tie.status === 'playing' ? 'border-emerald-200' : ''}>
+					<div class="p-4">
+						<p class="text-xs font-medium text-zinc-400">{phaseLabel(tie.phase)}</p>
+						<div class="mt-1.5 flex items-baseline justify-between gap-2">
+							<p class="min-w-0 truncate text-sm font-semibold">
+								{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
+							</p>
+							<span
+								class="shrink-0 text-lg font-bold tabular-nums {tie.status === 'playing'
+									? 'text-emerald-700'
+									: ''}"
+							>
+								{tie.teamScoreA}–{tie.teamScoreB}
+							</span>
+						</div>
+						<p class="mt-0.5 text-xs text-zinc-400">{tieStatusLabel(tie.status)}</p>
+					</div>
+				</Card>
+			{/each}
+		</div>
+	</section>
+{/if}

@@ -19,7 +19,8 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"gen": "wrangler types"
+		"gen": "wrangler types",
+		"deploy": "pnpm run build && wrangler deploy"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
@@ -58,6 +59,7 @@
 		"@fontsource/line-seed-jp": "^5.2.2",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
+		"svelte-sonner": "^1.1.1",
 		"tailwind-merge": "^3.6.0",
 		"tailwind-variants": "^3.2.2",
 		"valibot": "^1.4.1"

@@ -137,7 +137,7 @@ export const TOKYO_LEAGUE_SCORING_RULES = [
 	},
 	{
 		code: 'KNOCKOUT_21',
-		name: '決勝系21点ルール',
+		name: '決勝トーナメント21点ルール',
 		maxGames: 3,
 		gamesToWin: 2,
 		pointsToWin: 21,

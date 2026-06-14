@@ -18,7 +18,9 @@
 		ClipboardList
 	} from '@lucide/svelte';
 	import type { AppRole } from '$lib/server/auth/access';
-	import { signOut } from './signout.remote';
+	import Footer from './footer.svelte';
+	import Logout from './logout.svelte';
+	import { Toaster } from 'svelte-sonner';
 
 	let { data, children }: LayoutProps = $props();
 	let drawerOpen = $state(false);
@@ -58,13 +60,13 @@
 	function closeDrawer() {
 		drawerOpen = false;
 	}
-
-	const today = new Date();
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
+
+<Toaster richColors position="bottom-right" />
 
 {#if authPage}
 	{@render children()}
@@ -125,13 +127,7 @@
 				</a>
 			{/each}
 		</nav>
-		<form {...signOut.for('mobile')} class="border-t border-zinc-200 p-3">
-			<button
-				class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100"
-			>
-				ログアウト
-			</button>
-		</form>
+		<Logout />
 	</div>
 
 	<!-- Desktop layout -->
@@ -159,13 +155,7 @@
 					</a>
 				{/each}
 			</nav>
-			<form {...signOut.for('desktop')} class="border-t border-zinc-200 p-3">
-				<button
-					class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100"
-				>
-					ログアウト
-				</button>
-			</form>
+			<Logout />
 		</aside>
 
 		<!-- Main content -->
@@ -175,13 +165,7 @@
 					{@render children()}
 				</div>
 			</main>
-			<footer class="flex-0">
-				<div class="border-t border-zinc-200 bg-white">
-					<div class="px-4 py-5 text-center text-xs font-medium text-zinc-500">
-						&copy; {today.getFullYear()} 東京大学ラブオール
-					</div>
-				</div>
-			</footer>
+			<Footer class="flex-0" />
 		</div>
 	</div>
 {/if}

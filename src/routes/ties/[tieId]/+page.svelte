@@ -1,6 +1,14 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import Badge from '$lib/components/Badge.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
+	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import {
 		courtDisplayLabel,
@@ -10,31 +18,31 @@
 		submissionStatusLabel,
 		tieStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { onMount } from 'svelte';
+	import { cn } from '$lib/utils/cn';
+	import { Check } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
+	import TieEditForm from '../TieEditForm.svelte';
 	import type { PageProps } from './$types';
 	import {
-		startTie,
 		confirmTie,
+		deleteTie,
+		getLiveRubbers,
 		lockLineup,
-		unlockLineup,
 		revealLineups,
+		startTie,
+		unlockLineup,
 		unrevealLineups,
-		deleteTie
+		updateTie
 	} from './tie.remote';
-	import { Check } from '@lucide/svelte';
-	import { cn } from '$lib/utils/cn';
 
 	let { data }: PageProps = $props();
 
-	// Auto-refresh when tie is active
-	onMount(() => {
+	const liveRubbers = getLiveRubbers();
+
+	$effect(() => {
 		if (data.tie.status !== 'playing') return;
-		const interval = setInterval(() => invalidateAll(), 10000);
-		return () => clearInterval(interval);
+		const id = setInterval(() => liveRubbers.refresh(), 10000);
+		return () => clearInterval(id);
 	});
 
 	const teamName = (id: string | null) => data.teams.find((t) => t.id === id)?.name ?? '未定';
@@ -43,12 +51,6 @@
 		if (!winnerTeamId) return null;
 		if (winnerTeamId === data.tie.teamAId) return data.teamA?.name ?? 'A側';
 		if (winnerTeamId === data.tie.teamBId) return data.teamB?.name ?? 'B側';
-		return null;
-	};
-
-	const loserStatusLabel = (status: string) => {
-		if (status === 'forfeited') return '棄権';
-		if (status === 'retired') return 'リタイア';
 		return null;
 	};
 
@@ -72,14 +74,32 @@
 		return [item?.player1Id, item?.player2Id].filter((id): id is string => !!id);
 	};
 
-	const submissionBadgeClass = (status: string | null | undefined) => {
-		const map: Record<string, string> = {
-			draft: 'bg-zinc-100 text-zinc-600',
-			submitted: 'bg-blue-100 text-blue-700',
-			locked: 'bg-violet-100 text-violet-700',
-			revealed: 'bg-emerald-100 text-emerald-700'
+	function toRubberRow(rubber: (typeof data.rubbers)[number]): RubberRow {
+		const live = (liveRubbers.current ?? []).find((r) => r.id === rubber.id);
+		const status = live?.status ?? rubber.status;
+		const statusSrc = live?.matchStatus ?? status;
+		return {
+			id: rubber.id,
+			code: rubber.code,
+			matchId: rubber.matchId,
+			status,
+			winnerSide: rubber.winnerSide,
+			playersA: lineupPlayers(rubber.code, 'A').map(playerName),
+			playersB: lineupPlayers(rubber.code, 'B').map(playerName),
+			loserLabel: statusSrc === 'forfeited' ? '棄権' : statusSrc === 'retired' ? 'リタイア' : null,
+			gamesScore: live?.gamesScore ?? null,
+			gameDetails: live?.gameDetails ?? []
 		};
-		return status ? (map[status] ?? 'bg-zinc-100 text-zinc-500') : 'bg-zinc-100 text-zinc-400';
+	}
+
+	const submissionBadgeColor = (status: string | null | undefined) => {
+		const map: Record<string, 'zinc' | 'blue' | 'violet' | 'emerald'> = {
+			draft: 'zinc',
+			submitted: 'blue',
+			locked: 'violet',
+			revealed: 'emerald'
+		};
+		return status ? (map[status] ?? 'zinc') : 'zinc';
 	};
 
 	let canStart = $derived(data.tie.status === 'lineup_submitted' || data.tie.status === 'ready');
@@ -119,10 +139,20 @@
 		{ label: '結果確定', desc: '運営が結果を承認' }
 	];
 
+	let editing = $state(false);
+
+	$effect(() => {
+		const msg = updateTie.result?.message;
+		if (msg) {
+			toast.success(msg);
+			editing = false;
+		}
+	});
+
 	async function run(fn: () => Promise<unknown>) {
 		try {
 			await fn();
-			await invalidateAll();
+			await Promise.all([invalidateAll(), liveRubbers.refresh()]);
 		} catch {
 			// errors thrown by error() are re-thrown; redirect() also throws
 		}
@@ -138,9 +168,7 @@
 		<div class="flex items-center gap-2">
 			<StatusBadge status={data.tie.status} />
 			{#if data.tie.scheduleChanged}
-				<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
-					変更あり
-				</span>
+				<Badge color="amber">変更あり</Badge>
 			{/if}
 		</div>
 		<div
@@ -231,21 +259,11 @@
 <!-- Action buttons -->
 <div class="flex flex-wrap items-center gap-2">
 	{#if canStart}
-		<button
-			class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-			onclick={() => run(() => startTie())}
-		>
-			対戦を開始
-		</button>
+		<AppButton onclick={() => run(() => startTie())}>対戦を開始</AppButton>
 	{/if}
 
 	{#if canConfirm}
-		<button
-			class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-			onclick={() => run(() => confirmTie())}
-		>
-			結果を確定
-		</button>
+		<AppButton variant="success" onclick={() => run(() => confirmTie())}>結果を確定</AppButton>
 	{/if}
 
 	<span class="ml-auto">
@@ -264,43 +282,81 @@
 	</span>
 </div>
 
-<!-- Info grid -->
+<!-- Info / edit panel -->
 <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-	<h2 class="mb-4 text-xs font-medium tracking-wide text-zinc-400">詳細情報</h2>
-	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-		<div>
-			<p class="text-xs font-medium text-zinc-500">ラウンド</p>
-			<p class="mt-0.5 font-medium">{phaseLabel(data.tie.phase)}</p>
-		</div>
-		<div>
-			<p class="text-xs font-medium text-zinc-500">状態</p>
-			<p class="mt-0.5 font-medium">{tieStatusLabel(data.tie.status)}</p>
-		</div>
-		<div>
-			<p class="text-xs font-medium text-zinc-500">予定時刻</p>
-			<p class="mt-0.5 font-medium">{data.tie.scheduledStartAt ?? '未設定'}</p>
-		</div>
-		<div>
-			<p class="text-xs font-medium text-zinc-500">体育館・コート</p>
-			<p class="mt-0.5 font-medium">
-				{courtDisplayLabel(data.tie.venue, data.tie.courtBlockCode)}
-			</p>
-		</div>
-		<div>
-			<p class="text-xs font-medium text-zinc-500">オーダー提出期限</p>
-			<p class="mt-0.5 font-medium">{data.tie.lineupDueAt ?? '未設定'}</p>
-		</div>
-		<div>
-			<p class="text-xs font-medium text-zinc-500">オーダー公開</p>
-			<p class="mt-0.5 font-medium">{data.tie.lineupsRevealedAt ? '公開済' : '未公開'}</p>
-		</div>
-		{#if data.tie.operationNote}
-			<div class="sm:col-span-2 lg:col-span-3">
-				<p class="text-xs font-medium text-zinc-500">運営メモ</p>
-				<p class="mt-0.5 text-sm text-zinc-700">{data.tie.operationNote}</p>
-			</div>
+	<div class="mb-4 flex items-center justify-between">
+		<h2 class="text-xs font-medium tracking-wide text-zinc-400">詳細情報</h2>
+		{#if !editing}
+			<AppButton size="sm" variant="secondary" onclick={() => (editing = true)}>編集</AppButton>
 		{/if}
 	</div>
+
+	{#if editing}
+		<form {...updateTie} class="space-y-4">
+			<TieEditForm tie={data.tie} teams={data.teams} />
+			<div class="flex items-center gap-3 pt-1">
+				<AppButton type="submit" variant="primary">保存</AppButton>
+				<AppButton type="button" variant="secondary" onclick={() => (editing = false)}>
+					キャンセル
+				</AppButton>
+			</div>
+		</form>
+	{:else}
+		<dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+			<div>
+				<dt class="text-xs text-zinc-500">コード</dt>
+				<dd class="mt-0.5 font-medium">{data.tie.tieCode}</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">ラウンド</dt>
+				<dd class="mt-0.5">{phaseLabel(data.tie.phase)}</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">状態</dt>
+				<dd class="mt-0.5">{tieStatusLabel(data.tie.status)}</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">変更あり</dt>
+				<dd class="mt-0.5">{data.tie.scheduleChanged ? 'はい' : 'なし'}</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">予定時刻</dt>
+				<dd class="mt-0.5">{data.tie.scheduledStartAt ?? '—'}</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">体育館・コート</dt>
+				<dd class="mt-0.5">
+					{data.tie.venue || data.tie.courtBlockCode
+						? courtDisplayLabel(data.tie.venue, data.tie.courtBlockCode)
+						: '—'}
+				</dd>
+			</div>
+			<div>
+				<dt class="text-xs text-zinc-500">オーダー期限</dt>
+				<dd class="mt-0.5">{data.tie.lineupDueAt ?? '—'}</dd>
+			</div>
+			{#if data.teams.length > 0}
+				<div>
+					<dt class="text-xs text-zinc-500">審判担当</dt>
+					<dd class="mt-0.5">
+						{data.tie.officiatingTeamId ? teamName(data.tie.officiatingTeamId) : '未割当'}
+					</dd>
+				</div>
+			{/if}
+			{#if data.tie.operationNote}
+				<div class="sm:col-span-2 lg:col-span-4">
+					<dt class="text-xs text-zinc-500">運営メモ</dt>
+					<dd class="mt-0.5 whitespace-pre-wrap">{data.tie.operationNote}</dd>
+				</div>
+			{/if}
+			{#if data.teams.length > 0 && data.tie.officiatingNote}
+				<div class="sm:col-span-2 lg:col-span-4">
+					<dt class="text-xs text-zinc-500">審判メモ</dt>
+					<dd class="mt-0.5 whitespace-pre-wrap">{data.tie.officiatingNote}</dd>
+				</div>
+			{/if}
+		</dl>
+	{/if}
 </section>
 
 <!-- Steps 1-2: Lineup panels -->
@@ -312,19 +368,11 @@
 		>
 			<p class="text-sm text-zinc-500">両チームのオーダーが揃っています。</p>
 			{#if isRevealed}
-				<button
-					class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-					onclick={() => run(() => unrevealLineups())}
-				>
+				<AppButton variant="secondary" onclick={() => run(() => unrevealLineups())}>
 					公開を取り消す
-				</button>
+				</AppButton>
 			{:else}
-				<button
-					class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-					onclick={() => run(() => revealLineups())}
-				>
-					オーダー公開
-				</button>
+				<AppButton onclick={() => run(() => revealLineups())}>オーダー公開</AppButton>
 			{/if}
 		</div>
 	{/if}
@@ -341,138 +389,41 @@
 		<div class="border-b border-zinc-100 px-5 py-4">
 			<h2 class="font-semibold">種目別結果</h2>
 		</div>
-		<div class="overflow-x-auto">
-			<table class="w-full min-w-150 text-sm">
-				<thead>
-					<tr class="border-b border-zinc-100">
-						<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">種目</th>
-						<th class="px-4 py-3 text-left text-xs font-medium text-zinc-400"
-							>{teamName(data.tie.teamAId)}</th
-						>
-						<th class="px-4 py-3 text-left text-xs font-medium text-zinc-400"
-							>{teamName(data.tie.teamBId)}</th
-						>
-						<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">スコア</th>
-						<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
-						<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">操作</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.rubbers as rubber (rubber.id)}
-						{@const playersA = lineupPlayers(rubber.code, 'A')}
-						{@const playersB = lineupPlayers(rubber.code, 'B')}
-						{@const liveRubber = data.liveRubbers.find((r) => r.id === rubber.id)}
-						{@const rubberStatus = liveRubber?.status ?? rubber.status}
-						{@const loserLabel = loserStatusLabel(liveRubber?.matchStatus ?? rubberStatus)}
-						<tr
-							class="border-b border-zinc-100 last:border-0 {rubberStatus === 'playing'
-								? 'bg-emerald-50'
-								: ''}"
-						>
-							<td class="px-4 py-3 font-medium">{rubberLabel(rubber.code)}</td>
-							<td class="px-4 py-3">
-								{#if rubber.winnerSide === 'A'}
-									<div class="space-y-0.5">
-										<p class="text-sm font-bold text-emerald-700">
-											{teamName(data.tie.teamAId)}
-										</p>
-										{#each playersA as id (id)}
-											<p class="text-sm font-bold text-zinc-950">{playerName(id)}</p>
-										{/each}
-									</div>
-								{:else if playersA.length > 0}
-									<div class="space-y-0.5">
-										{#each playersA as id (id)}
-											<p class="text-sm text-zinc-700">{playerName(id)}</p>
-										{/each}
-										{#if loserLabel}
-											<p class="text-[10px] text-zinc-400">{loserLabel}</p>
-										{/if}
-									</div>
-								{:else}
-									<span class="text-xs text-zinc-400">未割当</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3">
-								{#if rubber.winnerSide === 'B'}
-									<div class="space-y-0.5">
-										<p class="text-sm font-bold text-emerald-700">
-											{teamName(data.tie.teamBId)}
-										</p>
-										{#each playersB as id (id)}
-											<p class="text-sm font-bold text-zinc-950">{playerName(id)}</p>
-										{/each}
-									</div>
-								{:else if playersB.length > 0}
-									<div class="space-y-0.5">
-										{#each playersB as id (id)}
-											<p class="text-sm text-zinc-700">{playerName(id)}</p>
-										{/each}
-										{#if loserLabel}
-											<p class="text-[10px] text-zinc-400">{loserLabel}</p>
-										{/if}
-									</div>
-								{:else}
-									<span class="text-xs text-zinc-400">未割当</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3">
-								{#if liveRubber?.gamesScore !== null && liveRubber?.gamesScore !== undefined}
-									<div class="space-y-0.5">
-										<p
-											class="tabular-nums {rubber.winnerSide
-												? 'font-extrabold text-emerald-700'
-												: rubberStatus === 'playing'
-													? 'font-bold text-emerald-700'
-													: 'font-bold text-zinc-700'}"
-										>
-											{liveRubber.gamesScore}
-										</p>
-										{#each liveRubber.gameDetails as g (g.gameNo)}
-											<p
-												class="text-[11px] tabular-nums {rubberStatus === 'playing' &&
-												g.gameNo === liveRubber.gameDetails.length
-													? 'text-emerald-500'
-													: 'text-zinc-400'}"
-											>
-												{g.scoreA}–{g.scoreB}
-											</p>
-										{/each}
-									</div>
-								{:else}
-									<span class="text-xs text-zinc-300">—</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3">
-								<span class="text-xs {rubberStatusBgClass(rubberStatus)}">
-									{rubberStatusLabel(rubberStatus)}
-								</span>
-							</td>
-							<td class="px-4 py-3">
-								{#if rubber.matchId}
-									<div class="flex flex-wrap gap-2">
-										<a
-											class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-											href={resolve('/referee/[matchId]', { matchId: rubber.matchId })}
-										>
-											スコア入力
-										</a>
-									</div>
-								{:else}
-									<span class="text-xs text-zinc-400">—</span>
-								{/if}
-							</td>
-						</tr>
-					{:else}
-						<tr>
-							<td colspan="5" class="px-4 py-6 text-center text-sm text-zinc-400">
-								種目が作成されていません
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+
+		{#snippet rubberExtraHead()}
+			<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
+			<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">操作</th>
+		{/snippet}
+
+		{#snippet rubberExtraCell(row: RubberRow)}
+			<td class="px-4 py-3">
+				<span class="text-xs {rubberStatusBgClass(row.status)}">
+					{rubberStatusLabel(row.status)}
+				</span>
+			</td>
+			<td class="px-4 py-3">
+				{#if row.matchId}
+					<AppButton
+						variant="secondary"
+						size="sm"
+						href={resolve('/referee/[matchId]', { matchId: row.matchId })}
+					>
+						スコア入力
+					</AppButton>
+				{:else}
+					<span class="text-xs text-zinc-400">—</span>
+				{/if}
+			</td>
+		{/snippet}
+
+		<TieRubberList
+			rubbers={data.rubbers.map(toRubberRow)}
+			teamAName={teamName(data.tie.teamAId)}
+			teamBName={teamName(data.tie.teamBId)}
+			variant="table"
+			extraHead={rubberExtraHead}
+			extraCell={rubberExtraCell}
+		/>
 	</section>
 {/if}
 
@@ -488,23 +439,21 @@
 		<div class="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
 			<div class="flex items-center gap-3">
 				<h2 class="text-base font-semibold">{team?.name ?? (side === 'A' ? 'A側' : 'B側')}</h2>
-				<span
-					class="rounded-full px-2.5 py-0.5 text-xs font-medium {submissionBadgeClass(subStatus)}"
-				>
+				<Badge color={submissionBadgeColor(subStatus)}>
 					{submissionStatusLabel(subStatus)}
-				</span>
+				</Badge>
 			</div>
 			<div class="flex items-center gap-2">
 				<!-- Link to team input page -->
 				{#if teamId}
-					<a
+					<AppButton
+						variant="secondary"
+						size="sm"
 						href={resolve('/ties/[tieId]/lineups/[teamId]', { tieId: data.tie.id, teamId })}
-						class="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
 					>
 						入力ページ
-					</a>
+					</AppButton>
 				{/if}
-				<!-- Approve / unapprove -->
 				{#if (subStatus === 'locked' || subStatus === 'revealed') && !isRevealed}
 					{#if teamId}
 						<ConfirmDialog
@@ -519,12 +468,13 @@
 					{/if}
 				{:else if subStatus === 'submitted'}
 					{#if teamId}
-						<button
-							class="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100"
+						<AppButton
+							variant="violet"
+							size="sm"
 							onclick={() => run(() => lockLineup({ teamId: teamId! }))}
 						>
 							承認する
-						</button>
+						</AppButton>
 					{/if}
 				{/if}
 			</div>

@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { TOKYO_LEAGUE_SCORING_RULES } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { appSettings, scoringRules } from '$lib/server/db/schema';
 
-export async function ensureDefaultScoringRules(db: AppDb, now = new Date().toISOString()) {
+export async function ensureDefaultScoringRules(now = new Date().toISOString()) {
+	const db = getRequestDb();
 	for (const rule of TOKYO_LEAGUE_SCORING_RULES) {
 		const existing = await db.query.scoringRules.findFirst({
 			where: eq(scoringRules.code, rule.code)
@@ -26,8 +27,9 @@ export async function ensureDefaultScoringRules(db: AppDb, now = new Date().toIS
 	}
 }
 
-export async function ensureDefaultSettings(db: AppDb, now = new Date().toISOString()) {
-	await ensureDefaultScoringRules(db, now);
+export async function ensureDefaultSettings(now = new Date().toISOString()) {
+	const db = getRequestDb();
+	await ensureDefaultScoringRules(now);
 
 	const existing = await db.query.appSettings.findFirst({
 		where: eq(appSettings.id, 'default')

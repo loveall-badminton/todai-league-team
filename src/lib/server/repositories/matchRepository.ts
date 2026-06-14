@@ -2,7 +2,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { createInitialMatchState, getCurrentGame } from '$lib/domain/scoring';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
 import type { ScoringConfig } from '$lib/domain/types';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import {
 	matchServiceStates,
 	matchSidePlayers,
@@ -31,7 +31,8 @@ export interface CreateMatchWithPlayersInput {
 	now: string;
 }
 
-export async function getMatchWithPlayers(db: AppDb, matchId: string) {
+export async function getMatchWithPlayers(matchId: string) {
+	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({
 		where: eq(matches.id, matchId),
 		with: {
@@ -43,11 +44,12 @@ export async function getMatchWithPlayers(db: AppDb, matchId: string) {
 
 	return {
 		match,
-		players: await getMatchPlayers(db, matchId)
+		players: await getMatchPlayers(matchId)
 	};
 }
 
-export async function getMatchState(db: AppDb, matchId: string): Promise<MatchState> {
+export async function getMatchState(matchId: string): Promise<MatchState> {
+	const db = getRequestDb();
 	const snapshot = await db.query.matchSnapshots.findFirst({
 		where: eq(matchSnapshots.matchId, matchId)
 	});
@@ -55,7 +57,8 @@ export async function getMatchState(db: AppDb, matchId: string): Promise<MatchSt
 	return JSON.parse(snapshot.stateJson) as MatchState;
 }
 
-export async function getMatchPlayers(db: AppDb, matchId: string): Promise<MatchPlayer[]> {
+export async function getMatchPlayers(matchId: string): Promise<MatchPlayer[]> {
+	const db = getRequestDb();
 	const rows = await db
 		.select()
 		.from(matchSidePlayers)
@@ -72,9 +75,9 @@ export async function getMatchPlayers(db: AppDb, matchId: string): Promise<Match
 }
 
 export async function createMatchWithPlayers(
-	db: AppDb,
 	input: CreateMatchWithPlayersInput
 ): Promise<string> {
+	const db = getRequestDb();
 	const matchId = crypto.randomUUID();
 	const sideAId = crypto.randomUUID();
 	const sideBId = crypto.randomUUID();
@@ -148,7 +151,8 @@ export async function createMatchWithPlayers(
 	return matchId;
 }
 
-export async function updateMatchDerivedState(db: AppDb, state: MatchState): Promise<void> {
+export async function updateMatchDerivedState(state: MatchState): Promise<void> {
+	const db = getRequestDb();
 	const currentGame = getCurrentGame(state);
 	await db
 		.update(matches)
@@ -173,15 +177,17 @@ export async function updateMatchDerivedState(db: AppDb, state: MatchState): Pro
 		.where(eq(matches.id, state.matchId));
 }
 
-export async function upsertMatchSnapshot(db: AppDb, state: MatchState): Promise<void> {
+export async function upsertMatchSnapshot(state: MatchState): Promise<void> {
+	const db = getRequestDb();
 	await buildMatchSnapshotUpsert(db, state);
 }
 
-export async function upsertMatchServiceState(db: AppDb, state: MatchState): Promise<void> {
+export async function upsertMatchServiceState(state: MatchState): Promise<void> {
+	const db = getRequestDb();
 	await buildMatchServiceStateUpsert(db, state);
 }
 
-function buildMatchSnapshotUpsert(db: AppDb, state: MatchState) {
+function buildMatchSnapshotUpsert(db: ReturnType<typeof getRequestDb>, state: MatchState) {
 	return db
 		.insert(matchSnapshots)
 		.values({
@@ -200,7 +206,7 @@ function buildMatchSnapshotUpsert(db: AppDb, state: MatchState) {
 		});
 }
 
-function buildMatchServiceStateUpsert(db: AppDb, state: MatchState) {
+function buildMatchServiceStateUpsert(db: ReturnType<typeof getRequestDb>, state: MatchState) {
 	return db
 		.insert(matchServiceStates)
 		.values({
@@ -233,7 +239,8 @@ function buildMatchServiceStateUpsert(db: AppDb, state: MatchState) {
 		});
 }
 
-export async function getMatchSideForPlayer(db: AppDb, matchId: string, playerId: string) {
+export async function getMatchSideForPlayer(matchId: string, playerId: string) {
+	const db = getRequestDb();
 	const player = await db.query.matchSidePlayers.findFirst({
 		where: and(eq(matchSidePlayers.matchId, matchId), eq(matchSidePlayers.id, playerId))
 	});

@@ -1,15 +1,12 @@
-import type { PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import { listTeams } from '$lib/server/repositories/tokyoLeagueRepository';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => {
-	requireAdmin(event);
-	const { platform } = event;
-	const db = getRequestDb(platform);
-	await ensureDefaultSettings(db);
+export const load: PageServerLoad = async () => {
+	requireAdmin();
+	await ensureDefaultSettings();
 	return {
-		teams: await listTeams(db)
+		teams: await listTeams()
 	};
 };

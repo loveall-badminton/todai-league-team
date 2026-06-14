@@ -1,12 +1,14 @@
 import { asc, eq, inArray, isNotNull, and } from 'drizzle-orm';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import {
 	lineupItems,
 	lineupSubmissions,
 	matches,
 	rubbers,
 	scoreEvents,
-	teamPlayers
+	teamPlayers,
+	teams,
+	ties
 } from '$lib/server/db/schema';
 
 export type GameScore = { gameNo: number; scoreA: number; scoreB: number };
@@ -34,10 +36,10 @@ type PublicLineupItemInput = Pick<
 type PublicTeamPlayerInput = Pick<typeof teamPlayers.$inferSelect, 'id' | 'name'>;
 
 export async function getPublicRubbersForTie(
-	db: AppDb,
 	tieId: string,
 	revealed: boolean
 ): Promise<PublicRubberSummary[]> {
+	const db = getRequestDb();
 	const rubberRows = await db
 		.select()
 		.from(rubbers)
@@ -60,7 +62,7 @@ export async function getPublicRubbersForTie(
 					.from(matches)
 					.where(inArray(matches.id, matchIds))
 			: Promise.resolve([]),
-		fetchGameScores(db, matchIds)
+		fetchGameScores(matchIds)
 	]);
 
 	if (!revealed) {
@@ -110,8 +112,9 @@ export async function getPublicRubbersForTie(
 	});
 }
 
-async function fetchGameScores(db: AppDb, matchIds: string[]): Promise<PublicGameScoreInput[]> {
+async function fetchGameScores(matchIds: string[]): Promise<PublicGameScoreInput[]> {
 	if (matchIds.length === 0) return [];
+	const db = getRequestDb();
 
 	// Fetch all scoring events ordered by seqNo; for each (matchId, gameNo) keep the last one.
 	// Also fetch scoreABefore/scoreBBefore and side so we can recover the correct final score
@@ -266,4 +269,68 @@ function lineupNames(
 	const first = players.find((p) => p.id === item.player1Id)?.name ?? '';
 	const second = players.find((p) => p.id === item.player2Id)?.name ?? '';
 	return [first, second].filter(Boolean).join(' / ') || null;
+}
+
+export async function getPublicRubbers(tieId: string): Promise<PublicRubberSummary[]> {
+	const db = getRequestDb();
+	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+	if (!tie) return [];
+	const revealed = ['playing', 'finished', 'confirmed'].includes(tie.status);
+	return getPublicRubbersForTie(tieId, revealed);
+}
+
+export async function getActiveTieBoard() {
+	const db = getRequestDb();
+	const tieRows = await db
+		.select()
+		.from(ties)
+		.where(eq(ties.status, 'playing'))
+		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
+
+	if (!tieRows.length)
+		return { ties: [] as (typeof tieRows[number] & { teamAName: string | null; teamBName: string | null })[], rubbersByTieId: {} as Record<string, PublicRubberSummary[]> };
+
+	const teamIds = [
+		...new Set(tieRows.flatMap((t) => [t.teamAId, t.teamBId]).filter((id): id is string => !!id))
+	];
+	const [teamRows, rubberResults] = await Promise.all([
+		db.select().from(teams).where(inArray(teams.id, teamIds)),
+		Promise.all(tieRows.map((tie) => getPublicRubbersForTie(tie.id, !!tie.lineupsRevealedAt)))
+	]);
+
+	return {
+		ties: tieRows.map((tie) => ({
+			...tie,
+			teamAName: teamRows.find((t) => t.id === tie.teamAId)?.name ?? null,
+			teamBName: teamRows.find((t) => t.id === tie.teamBId)?.name ?? null
+		})),
+		rubbersByTieId: Object.fromEntries(tieRows.map((tie, i) => [tie.id, rubberResults[i]]))
+	};
+}
+
+export async function getFinalsTieBoard() {
+	const db = getRequestDb();
+	const finalPhases = ['semifinal', 'final', 'third_place', 'fifth_place'] as const;
+	const tieRows = await db
+		.select()
+		.from(ties)
+		.where(inArray(ties.phase, finalPhases))
+		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
+
+	if (!tieRows.length) return { finalsBoard: [] };
+
+	const teamIds = [
+		...new Set(tieRows.flatMap((t) => [t.teamAId, t.teamBId]).filter((id): id is string => !!id))
+	];
+	const teamRows = teamIds.length
+		? await db.select().from(teams).where(inArray(teams.id, teamIds))
+		: [];
+
+	return {
+		finalsBoard: tieRows.map((tie) => ({
+			...tie,
+			teamAName: teamRows.find((t) => t.id === tie.teamAId)?.name ?? null,
+			teamBName: teamRows.find((t) => t.id === tie.teamBId)?.name ?? null
+		}))
+	};
 }

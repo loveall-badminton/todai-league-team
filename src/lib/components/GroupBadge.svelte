@@ -1,16 +1,12 @@
 <script lang="ts">
+	import Badge from './Badge.svelte';
+	import { groupBadgeColor } from '$lib/utils/statusStyles';
+
 	let { groupCode }: { groupCode: string | null } = $props();
 
 	let label = $derived(groupCode === 'A' ? 'Aリーグ' : groupCode === 'B' ? 'Bリーグ' : '未割当');
-	let classes = $derived(
-		groupCode === 'A'
-			? 'bg-blue-100 text-blue-800'
-			: groupCode === 'B'
-				? 'bg-violet-100 text-violet-800'
-				: 'bg-zinc-100 text-zinc-600'
-	);
 </script>
 
-<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {classes}">
+<Badge color={groupBadgeColor(groupCode)}>
 	{label}
-</span>
+</Badge>

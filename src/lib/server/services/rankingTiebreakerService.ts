@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import type { ScoringConfig } from '$lib/domain/types';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 import {
 	matches,
@@ -43,20 +43,18 @@ export function validateRankingTiebreakerSelection<
 	return { teamA, teamB, playerA, playerB };
 }
 
-export async function createRankingTiebreaker(
-	db: AppDb,
-	params: {
-		groupCode: GroupCode;
-		reason: string;
-		teamAId: string;
-		teamBId: string;
-		playerAId: string;
-		playerBId: string;
-		now?: string;
-	}
-) {
+export async function createRankingTiebreaker(params: {
+	groupCode: GroupCode;
+	reason: string;
+	teamAId: string;
+	teamBId: string;
+	playerAId: string;
+	playerBId: string;
+	now?: string;
+}) {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
-	const settings = await ensureDefaultSettings(db, now);
+	const settings = await ensureDefaultSettings(now);
 	if (!settings.tiebreakerScoringRuleId) throw new Error('順位決定再試合ルールが未設定です');
 	const scoringRule = await db.query.scoringRules.findFirst({
 		where: eq(scoringRules.id, settings.tiebreakerScoringRuleId)
@@ -71,7 +69,7 @@ export async function createRankingTiebreaker(
 	]);
 	const validated = validateRankingTiebreakerSelection({ teamA, teamB, playerA, playerB });
 
-	await ensureInternalTournament(db, now);
+	await ensureInternalTournament(now);
 	const rankingTiebreakerId = crypto.randomUUID();
 	await db.insert(rankingTiebreakers).values({
 		id: rankingTiebreakerId,
@@ -84,7 +82,7 @@ export async function createRankingTiebreaker(
 		updatedAt: now
 	});
 
-	const matchId = await createMatchWithPlayers(db, {
+	const matchId = await createMatchWithPlayers({
 		tournamentId: internalTournamentId,
 		courtId: null,
 		discipline: 'MS',
@@ -109,10 +107,10 @@ export async function createRankingTiebreaker(
 }
 
 export async function syncRankingTiebreakerResult(
-	db: AppDb,
 	matchId: string,
 	now = new Date().toISOString()
 ) {
+	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rankingTiebreakerId || !match.winnerSide) return;
 	const resultStatus = rubberStatusFromMatchResultStatus(match.status);
@@ -133,7 +131,8 @@ export async function syncRankingTiebreakerResult(
 		.where(eq(rankingTiebreakers.id, tiebreaker.id));
 }
 
-async function ensureInternalTournament(db: AppDb, now: string) {
+async function ensureInternalTournament(now: string) {
+	const db = getRequestDb();
 	const existing = await db.query.tournaments.findFirst({
 		where: eq(tournaments.id, internalTournamentId)
 	});

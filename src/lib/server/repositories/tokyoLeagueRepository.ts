@@ -1,6 +1,6 @@
-import { and, asc, count, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
 import type { GroupCode, TiePhase } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import {
 	appSettings,
 	groupStandingOverrides,
@@ -12,10 +12,7 @@ import {
 	teams,
 	ties
 } from '$lib/server/db/schema';
-import {
-	listUnassignedOfficiatingTies,
-	nextOfficiatingAssignmentStatus
-} from '$lib/server/services/officiatingService';
+import { nextOfficiatingAssignmentStatus } from '$lib/server/services/officiatingService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
 
 export type Team = typeof teams.$inferSelect;
@@ -40,17 +37,17 @@ export interface TieSummary extends Tie {
 	rubberCount: number;
 }
 
-export async function getLeagueSettings(db: AppDb) {
-	return ensureDefaultSettings(db);
+export async function getLeagueSettings() {
+	return ensureDefaultSettings();
 }
 
-export async function listScoringRules(db: AppDb): Promise<ScoringRule[]> {
-	await ensureDefaultSettings(db);
+export async function listScoringRules(): Promise<ScoringRule[]> {
+	const db = getRequestDb();
+	await ensureDefaultSettings();
 	return db.select().from(scoringRules).orderBy(asc(scoringRules.code));
 }
 
 export async function updateLeagueSettings(
-	db: AppDb,
 	input: {
 		eventName: string;
 		groupStageScoringRuleId: string | null;
@@ -61,7 +58,8 @@ export async function updateLeagueSettings(
 		now: string;
 	}
 ) {
-	await ensureDefaultSettings(db, input.now);
+	const db = getRequestDb();
+	await ensureDefaultSettings(input.now);
 	await db
 		.update(appSettings)
 		.set({
@@ -77,7 +75,6 @@ export async function updateLeagueSettings(
 }
 
 export async function updateScoringRule(
-	db: AppDb,
 	input: {
 		id: string;
 		name: string;
@@ -90,7 +87,8 @@ export async function updateScoringRule(
 		now: string;
 	}
 ) {
-	await ensureDefaultSettings(db, input.now);
+	const db = getRequestDb();
+	await ensureDefaultSettings(input.now);
 	await db
 		.update(scoringRules)
 		.set({
@@ -106,7 +104,8 @@ export async function updateScoringRule(
 		.where(eq(scoringRules.id, input.id));
 }
 
-export async function listTeams(db: AppDb): Promise<TeamSummary[]> {
+export async function listTeams(): Promise<TeamSummary[]> {
+	const db = getRequestDb();
 	const rows = await db.select().from(teams).orderBy(asc(teams.displayOrder), asc(teams.name));
 	return Promise.all(
 		rows.map(async (team) => {
@@ -119,12 +118,13 @@ export async function listTeams(db: AppDb): Promise<TeamSummary[]> {
 	);
 }
 
-export async function listTeamsByGroup(db: AppDb, groupCode: GroupCode): Promise<TeamSummary[]> {
-	const all = await listTeams(db);
+export async function listTeamsByGroup(groupCode: GroupCode): Promise<TeamSummary[]> {
+	const all = await listTeams();
 	return all.filter((team) => team.groupCode === groupCode && team.status === 'active');
 }
 
-export async function getTeamWithPlayers(db: AppDb, teamId: string) {
+export async function getTeamWithPlayers(teamId: string) {
+	const db = getRequestDb();
 	const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
 	if (!team) return null;
 	const players = await db
@@ -136,7 +136,6 @@ export async function getTeamWithPlayers(db: AppDb, teamId: string) {
 }
 
 export async function createTeam(
-	db: AppDb,
 	input: {
 		name: string;
 		shortName?: string | null;
@@ -145,6 +144,7 @@ export async function createTeam(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(teams).values({
 		id,
@@ -159,7 +159,6 @@ export async function createTeam(
 }
 
 export async function updateTeam(
-	db: AppDb,
 	input: {
 		id: string;
 		name: string;
@@ -170,6 +169,7 @@ export async function updateTeam(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	await db
 		.update(teams)
 		.set({
@@ -184,7 +184,6 @@ export async function updateTeam(
 }
 
 export async function createTeamPlayer(
-	db: AppDb,
 	input: {
 		teamId: string;
 		name: string;
@@ -193,6 +192,7 @@ export async function createTeamPlayer(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(teamPlayers).values({
 		id,
@@ -207,7 +207,6 @@ export async function createTeamPlayer(
 }
 
 export async function bulkCreateTeamPlayers(
-	db: AppDb,
 	input: {
 		teamId: string;
 		names: string[];
@@ -216,6 +215,7 @@ export async function bulkCreateTeamPlayers(
 		now: string;
 	}
 ): Promise<number> {
+	const db = getRequestDb();
 	if (input.names.length === 0) return 0;
 
 	const rows = input.names.map((name, i) => ({
@@ -233,7 +233,6 @@ export async function bulkCreateTeamPlayers(
 }
 
 export async function updateTeamPlayer(
-	db: AppDb,
 	input: {
 		id: string;
 		name: string;
@@ -243,6 +242,7 @@ export async function updateTeamPlayer(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	await db
 		.update(teamPlayers)
 		.set({
@@ -255,7 +255,8 @@ export async function updateTeamPlayer(
 		.where(eq(teamPlayers.id, input.id));
 }
 
-export async function reorderTeams(db: AppDb, orderedIds: string[], now: string) {
+export async function reorderTeams(orderedIds: string[], now: string) {
+	const db = getRequestDb();
 	for (let i = 0; i < orderedIds.length; i++) {
 		await db
 			.update(teams)
@@ -264,7 +265,8 @@ export async function reorderTeams(db: AppDb, orderedIds: string[], now: string)
 	}
 }
 
-export async function reorderTeamPlayers(db: AppDb, orderedIds: string[], now: string) {
+export async function reorderTeamPlayers(orderedIds: string[], now: string) {
+	const db = getRequestDb();
 	for (let i = 0; i < orderedIds.length; i++) {
 		await db
 			.update(teamPlayers)
@@ -273,19 +275,23 @@ export async function reorderTeamPlayers(db: AppDb, orderedIds: string[], now: s
 	}
 }
 
-export async function deleteTeam(db: AppDb, teamId: string) {
+export async function deleteTeam(teamId: string) {
+	const db = getRequestDb();
 	await db.delete(teams).where(eq(teams.id, teamId));
 }
 
-export async function deleteTeamPlayer(db: AppDb, playerId: string) {
+export async function deleteTeamPlayer(playerId: string) {
+	const db = getRequestDb();
 	await db.delete(teamPlayers).where(eq(teamPlayers.id, playerId));
 }
 
-export async function deleteTie(db: AppDb, tieId: string) {
+export async function deleteTie(tieId: string) {
+	const db = getRequestDb();
 	await db.delete(ties).where(eq(ties.id, tieId));
 }
 
-export async function reorderTies(db: AppDb, orderedIds: string[], now: string) {
+export async function reorderTies(orderedIds: string[], now: string) {
+	const db = getRequestDb();
 	for (let i = 0; i < orderedIds.length; i++) {
 		await db
 			.update(ties)
@@ -294,7 +300,8 @@ export async function reorderTies(db: AppDb, orderedIds: string[], now: string) 
 	}
 }
 
-export async function listTies(db: AppDb, phase?: TiePhase): Promise<TieSummary[]> {
+export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
+	const db = getRequestDb();
 	const tieRows = phase
 		? await db
 				.select()
@@ -351,11 +358,12 @@ export async function listTies(db: AppDb, phase?: TiePhase): Promise<TieSummary[
 	);
 }
 
-export async function listGroupTies(db: AppDb, groupCode: GroupCode): Promise<TieSummary[]> {
-	return listTies(db, groupCode === 'A' ? 'group_a' : 'group_b');
+export async function listGroupTies(groupCode: GroupCode): Promise<TieSummary[]> {
+	return listTies(groupCode === 'A' ? 'group_a' : 'group_b');
 }
 
-export async function getTieWithRubbers(db: AppDb, tieId: string) {
+export async function getTieWithRubbers(tieId: string) {
+	const db = getRequestDb();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) return null;
 	const rubberRows = await db
@@ -417,7 +425,6 @@ function summarizeTieSummaries(
 }
 
 export async function updateTieSchedule(
-	db: AppDb,
 	input: {
 		id: string;
 		tieCode: string;
@@ -430,6 +437,7 @@ export async function updateTieSchedule(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	await db
 		.update(ties)
 		.set({
@@ -446,7 +454,6 @@ export async function updateTieSchedule(
 }
 
 export async function assignOfficiatingTeam(
-	db: AppDb,
 	input: {
 		tieId: string;
 		assignedTeamId: string | null;
@@ -454,6 +461,7 @@ export async function assignOfficiatingTeam(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	const existing = await db.query.officiatingAssignments.findFirst({
 		where: and(
 			eq(officiatingAssignments.tieId, input.tieId),
@@ -494,7 +502,6 @@ export async function assignOfficiatingTeam(
 }
 
 export async function setGroupStandingOverride(
-	db: AppDb,
 	input: {
 		groupCode: GroupCode;
 		teamId: string;
@@ -503,6 +510,7 @@ export async function setGroupStandingOverride(
 		now: string;
 	}
 ) {
+	const db = getRequestDb();
 	const existing = await db.query.groupStandingOverrides.findFirst({
 		where: and(
 			eq(groupStandingOverrides.groupCode, input.groupCode),
@@ -529,9 +537,9 @@ export async function setGroupStandingOverride(
 }
 
 export async function listRankingTiebreakers(
-	db: AppDb,
 	groupCode?: GroupCode
 ): Promise<RankingTiebreaker[]> {
+	const db = getRequestDb();
 	return groupCode
 		? db
 				.select()
@@ -541,25 +549,71 @@ export async function listRankingTiebreakers(
 		: db.select().from(rankingTiebreakers).orderBy(asc(rankingTiebreakers.createdAt));
 }
 
-export async function getDashboard(db: AppDb) {
-	await ensureDefaultSettings(db);
-	const [teamRows, tieRows] = await Promise.all([listTeams(db), listTies(db)]);
-	const groupA = tieRows.filter((tie) => tie.phase === 'group_a');
-	const groupB = tieRows.filter((tie) => tie.phase === 'group_b');
-	const finals = tieRows.filter((tie) =>
-		['semifinal', 'final', 'third_place', 'fifth_place'].includes(tie.phase)
-	);
-	return {
-		settings: await db.query.appSettings.findFirst({ where: eq(appSettings.id, 'default') }),
-		teams: teamRows,
-		ties: tieRows,
-		groupA,
-		groupB,
-		finals,
-		lineupPending: tieRows.filter((tie) => tie.status === 'lineup_pending'),
-		playing: tieRows.filter((tie) => tie.status === 'playing'),
-		confirmPending: tieRows.filter((tie) => tie.status === 'finished'),
-		officiatingMissing: listUnassignedOfficiatingTies(tieRows),
-		scheduleChanged: tieRows.filter((tie) => tie.scheduleChanged)
-	};
+
+export async function getTeam(teamId: string): Promise<Team | null> {
+	const db = getRequestDb();
+	const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
+	return team ?? null;
+}
+
+export async function listPlayersByIds(ids: string[]): Promise<TeamPlayer[]> {
+	if (ids.length === 0) return [];
+	const db = getRequestDb();
+	return db.select().from(teamPlayers).where(inArray(teamPlayers.id, ids));
+}
+
+export async function listPlayersForTeam(teamId: string): Promise<TeamPlayer[]> {
+	const db = getRequestDb();
+	return db
+		.select()
+		.from(teamPlayers)
+		.where(eq(teamPlayers.teamId, teamId))
+		.orderBy(asc(teamPlayers.displayOrder), asc(teamPlayers.name));
+}
+
+export async function listTiesForTeam(teamId: string): Promise<Tie[]> {
+	const db = getRequestDb();
+	return db
+		.select()
+		.from(ties)
+		.where(or(eq(ties.teamAId, teamId), eq(ties.teamBId, teamId)))
+		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
+}
+
+export async function listOfficiatingTieIds(teamId: string): Promise<string[]> {
+	const db = getRequestDb();
+	const rows = await db
+		.select({ tieId: officiatingAssignments.tieId })
+		.from(officiatingAssignments)
+		.where(
+			and(
+				eq(officiatingAssignments.assignedTeamId, teamId),
+				eq(officiatingAssignments.role, 'umpire_team')
+			)
+		);
+	return rows.map((row) => row.tieId);
+}
+
+export async function listTiesByIds(ids: string[]): Promise<Tie[]> {
+	if (ids.length === 0) return [];
+	const db = getRequestDb();
+	return db
+		.select()
+		.from(ties)
+		.where(inArray(ties.id, ids))
+		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
+}
+
+export async function getOfficiatingAssignment(
+	tieId: string
+): Promise<{ assignedTeamId: string | null; note: string | null } | null> {
+	const db = getRequestDb();
+	const assignment = await db.query.officiatingAssignments.findFirst({
+		where: and(
+			eq(officiatingAssignments.tieId, tieId),
+			eq(officiatingAssignments.role, 'umpire_team')
+		)
+	});
+	if (!assignment) return null;
+	return { assignedTeamId: assignment.assignedTeamId, note: assignment.note };
 }

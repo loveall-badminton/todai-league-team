@@ -8,6 +8,8 @@
 	type DragEndEvent = Parameters<
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
+	import Badge from '$lib/components/Badge.svelte';
+	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -116,7 +118,6 @@
 				type="button"
 				variant="ghost"
 				onclick={() => (showForm = true)}
-				class="mt-3 underline underline-offset-2"
 			>
 				最初のチームを追加する
 			</AppButton>

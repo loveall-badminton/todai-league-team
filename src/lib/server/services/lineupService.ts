@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { lineupItems, lineupSubmissions, teamPlayers, ties } from '$lib/server/db/schema';
 
 type LineupItemInput = {
@@ -22,15 +22,13 @@ export type LineupPlayerForValidation = {
 
 const lockedStatuses = new Set(['locked', 'revealed']);
 
-export async function validateLineup(
-	db: AppDb,
-	params: {
-		tieId: string;
-		teamId: string;
-		items: LineupItemInput[];
-		now?: string;
-	}
-): Promise<LineupValidation> {
+export async function validateLineup(params: {
+	tieId: string;
+	teamId: string;
+	items: LineupItemInput[];
+	now?: string;
+}): Promise<LineupValidation> {
+	const db = getRequestDb();
 	const errors: string[] = [];
 	const warnings: string[] = [];
 	const expectedCodes = RUBBER_DEFINITIONS.map((rubber) => rubber.code);
@@ -115,17 +113,15 @@ export function validateLineupWarnings(
 	return [...new Set(warnings)];
 }
 
-export async function saveLineupDraft(
-	db: AppDb,
-	params: {
-		tieId: string;
-		teamId: string;
-		items: LineupItemInput[];
-		now?: string;
-	}
-) {
+export async function saveLineupDraft(params: {
+	tieId: string;
+	teamId: string;
+	items: LineupItemInput[];
+	now?: string;
+}) {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
-	const validation = await validateLineup(db, { ...params, now });
+	const validation = await validateLineup({ ...params, now });
 	if (validation.errors.length > 0) {
 		throw new Error(validation.errors.join('\n'));
 	}
@@ -188,14 +184,12 @@ export async function saveLineupDraft(
 	return validation;
 }
 
-export async function submitLineup(
-	db: AppDb,
-	params: { tieId: string; teamId: string; now?: string }
-) {
+export async function submitLineup(params: { tieId: string; teamId: string; now?: string }) {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
-	const submission = await getSubmission(db, params.tieId, params.teamId);
-	const items = await getSubmissionItems(db, submission.id);
-	const validation = await validateLineup(db, {
+	const submission = await getSubmission(params.tieId, params.teamId);
+	const items = await getSubmissionItems(submission.id);
+	const validation = await validateLineup({
 		tieId: params.tieId,
 		teamId: params.teamId,
 		items,
@@ -209,37 +203,34 @@ export async function submitLineup(
 		.update(lineupSubmissions)
 		.set({ status: 'submitted', submittedAt: now, updatedAt: now })
 		.where(eq(lineupSubmissions.id, submission.id));
-	await updateTieLineupStatus(db, params.tieId, now);
+	await updateTieLineupStatus(params.tieId, now);
 	return validation;
 }
 
-export async function lockLineup(
-	db: AppDb,
-	params: { tieId: string; teamId: string; now?: string }
-) {
+export async function lockLineup(params: { tieId: string; teamId: string; now?: string }) {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
-	const submission = await getSubmission(db, params.tieId, params.teamId);
+	const submission = await getSubmission(params.tieId, params.teamId);
 	await db
 		.update(lineupSubmissions)
 		.set({ status: 'locked', lockedAt: now, updatedAt: now })
 		.where(eq(lineupSubmissions.id, submission.id));
-	await updateTieLineupStatus(db, params.tieId, now);
+	await updateTieLineupStatus(params.tieId, now);
 }
 
-export async function unlockLineup(
-	db: AppDb,
-	params: { tieId: string; teamId: string; now?: string }
-) {
+export async function unlockLineup(params: { tieId: string; teamId: string; now?: string }) {
+	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
-	const submission = await getSubmission(db, params.tieId, params.teamId);
+	const submission = await getSubmission(params.tieId, params.teamId);
 	await db
 		.update(lineupSubmissions)
 		.set({ status: 'submitted', lockedAt: null, updatedAt: now })
 		.where(eq(lineupSubmissions.id, submission.id));
-	await updateTieLineupStatus(db, params.tieId, now);
+	await updateTieLineupStatus(params.tieId, now);
 }
 
-export async function revealLineups(db: AppDb, tieId: string, now = new Date().toISOString()) {
+export async function revealLineups(tieId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
 	const submissions = await db
 		.select()
 		.from(lineupSubmissions)
@@ -261,7 +252,8 @@ export async function revealLineups(db: AppDb, tieId: string, now = new Date().t
 		.where(eq(ties.id, tieId));
 }
 
-export async function unrevealLineups(db: AppDb, tieId: string, now = new Date().toISOString()) {
+export async function unrevealLineups(tieId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
 	const submissions = await db
 		.select()
 		.from(lineupSubmissions)
@@ -278,7 +270,8 @@ export async function unrevealLineups(db: AppDb, tieId: string, now = new Date()
 		.where(eq(ties.id, tieId));
 }
 
-export async function getLineupsForTie(db: AppDb, tieId: string) {
+export async function getLineupsForTie(tieId: string) {
+	const db = getRequestDb();
 	const submissions = await db
 		.select()
 		.from(lineupSubmissions)
@@ -287,13 +280,14 @@ export async function getLineupsForTie(db: AppDb, tieId: string) {
 	const items = await Promise.all(
 		submissions.map(async (submission) => ({
 			submission,
-			items: await getSubmissionItems(db, submission.id)
+			items: await getSubmissionItems(submission.id)
 		}))
 	);
 	return items;
 }
 
-async function getSubmission(db: AppDb, tieId: string, teamId: string) {
+async function getSubmission(tieId: string, teamId: string) {
+	const db = getRequestDb();
 	const submission = await db.query.lineupSubmissions.findFirst({
 		where: and(eq(lineupSubmissions.tieId, tieId), eq(lineupSubmissions.teamId, teamId))
 	});
@@ -301,7 +295,8 @@ async function getSubmission(db: AppDb, tieId: string, teamId: string) {
 	return submission;
 }
 
-async function getSubmissionItems(db: AppDb, submissionId: string): Promise<LineupItemInput[]> {
+async function getSubmissionItems(submissionId: string): Promise<LineupItemInput[]> {
+	const db = getRequestDb();
 	const rows = await db
 		.select()
 		.from(lineupItems)
@@ -314,7 +309,23 @@ async function getSubmissionItems(db: AppDb, submissionId: string): Promise<Line
 	}));
 }
 
-async function updateTieLineupStatus(db: AppDb, tieId: string, now: string) {
+export async function getLineupItemsForTeam(tieId: string, teamId: string) {
+	const db = getRequestDb();
+	const submission = await db.query.lineupSubmissions.findFirst({
+		where: and(eq(lineupSubmissions.tieId, tieId), eq(lineupSubmissions.teamId, teamId))
+	});
+	const items = submission
+		? await db
+				.select()
+				.from(lineupItems)
+				.where(eq(lineupItems.submissionId, submission.id))
+				.orderBy(asc(lineupItems.rubberCode))
+		: [];
+	return { submission: submission ?? null, items };
+}
+
+async function updateTieLineupStatus(tieId: string, now: string) {
+	const db = getRequestDb();
 	const submissions = await db
 		.select()
 		.from(lineupSubmissions)

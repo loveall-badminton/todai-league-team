@@ -2,13 +2,21 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageProps } from './$types';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import FormToast from '$lib/components/FormToast.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+	import { toast } from 'svelte-sonner';
 	import { createAccount, updateAccount, resetPassword, deleteAccount } from './accounts.remote';
 
 	let { data }: PageProps = $props();
+
+	$effect(() => {
+		if (createAccount.result?.message) toast.success(createAccount.result.message);
+	});
 
 	const accountTypeItems = [
 		{ value: 'participant', label: '一般参加者' },
@@ -40,21 +48,10 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<a
-		href={resolve('/settings')}
-		class="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-	>
-		設定へ戻る
-	</a>
+	<AppButton variant="secondary" href={resolve('/settings')}>設定へ戻る</AppButton>
 {/snippet}
 
 <PageHeader eyebrow="設定" title="ユーザー管理" actions={headerActions} />
-
-{#if createAccount.result?.message}
-	<div class="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
-		{createAccount.result.message}
-	</div>
-{/if}
 
 <section class="rounded-xl border border-zinc-200 bg-white p-5">
 	<h2 class="mb-4 font-semibold text-zinc-900">アカウント発行</h2>
@@ -88,11 +85,7 @@
 		</div>
 
 		<div class="flex justify-end border-t border-zinc-100 pt-4">
-			<button
-				class="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-			>
-				発行
-			</button>
+			<AppButton type="submit">発行</AppButton>
 		</div>
 	</form>
 </section>
@@ -122,8 +115,9 @@
 						try {
 							await deleteAccount({ userId: account.id });
 							await invalidateAll();
+							toast.success('アカウントを削除しました');
 						} catch (e) {
-							alert(e instanceof Error ? e.message : 'アカウントの削除に失敗しました');
+							toast.error(e instanceof Error ? e.message : 'アカウントの削除に失敗しました');
 						}
 					}}
 					triggerLabel="削除"
@@ -132,14 +126,7 @@
 				/>
 			</div>
 
-			{#if updateAccountForm.result?.message}
-				<div
-					class="mb-3 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700"
-				>
-					{updateAccountForm.result.message}
-				</div>
-			{/if}
-
+			<FormToast result={updateAccountForm.result} />
 			<form {...updateAccountForm} class="space-y-4">
 				<input type="hidden" name="userId" value={account.id} />
 				<div class="grid gap-4 sm:grid-cols-3">
@@ -166,22 +153,11 @@
 				</div>
 
 				<div class="flex justify-end border-t border-zinc-100 pt-4">
-					<button
-						class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-					>
-						保存
-					</button>
+					<AppButton variant="secondary" type="submit">保存</AppButton>
 				</div>
 			</form>
 
-			{#if resetPasswordForm.result?.message}
-				<div
-					class="mt-3 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700"
-				>
-					{resetPasswordForm.result.message}
-				</div>
-			{/if}
-
+			<FormToast result={resetPasswordForm.result} />
 			<form {...resetPasswordForm} class="mt-4 border-t border-zinc-100 pt-4">
 				<input type="hidden" name="userId" value={account.id} />
 				<div class="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -189,19 +165,11 @@
 						<span class="text-sm font-medium text-zinc-700">新しいパスワード</span>
 						<AppInput name="password" type="password" autocomplete="new-password" required />
 					</label>
-					<button
-						class="self-end rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-					>
-						変更
-					</button>
+				<AppButton variant="secondary" type="submit" class="self-end">変更</AppButton>
 				</div>
 			</form>
 		</div>
 	{:else}
-		<div
-			class="rounded-xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500"
-		>
-			アカウントはまだありません。
-		</div>
+		<EmptyState message="アカウントはまだありません。" />
 	{/each}
 </section>

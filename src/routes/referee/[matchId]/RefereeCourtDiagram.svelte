@@ -1,0 +1,143 @@
+<script lang="ts">
+	import type { ServiceState, MatchPlayer } from '$lib/domain/types';
+	import Card from '$lib/components/Card.svelte';
+	import { cn } from '$lib/utils/cn';
+
+	let {
+		service,
+		sideAIsLeft,
+		leftAccent,
+		rightAccent,
+		leftSidePlayers,
+		rightSidePlayers,
+		players
+	}: {
+		service: ServiceState | null | undefined;
+		sideAIsLeft: boolean;
+		leftAccent: 'emerald' | 'sky';
+		rightAccent: 'emerald' | 'sky';
+		leftSidePlayers: MatchPlayer[];
+		rightSidePlayers: MatchPlayer[];
+		players: MatchPlayer[];
+	} = $props();
+
+	let leftCA = $derived.by(() => {
+		if (service?.discipline !== 'doubles') return null;
+		return sideAIsLeft ? service.courtAssignments.A : service.courtAssignments.B;
+	});
+	let rightCA = $derived.by(() => {
+		if (service?.discipline !== 'doubles') return null;
+		return sideAIsLeft ? service.courtAssignments.B : service.courtAssignments.A;
+	});
+
+	function playerName(id: string | null | undefined): string {
+		return players.find((p) => p.id === id)?.name ?? '-';
+	}
+</script>
+
+{#snippet playerCell(playerId: string, accent: 'emerald' | 'sky', hasBorderBottom: boolean)}
+	{@const isServer = service?.serverPlayerId === playerId}
+	{@const isReceiver = service?.receiverPlayerId === playerId}
+	{@const player = players.find((p) => p.id === playerId)}
+	<div
+		class="flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center
+		{hasBorderBottom ? 'border-b border-zinc-100' : ''}
+		{isServer
+			? accent === 'emerald'
+				? 'bg-emerald-50'
+				: 'bg-sky-50'
+			: isReceiver
+				? 'bg-zinc-50'
+				: ''}"
+	>
+		{#if isServer}
+			<span
+				class={cn('text-xs font-bold', accent === 'emerald' ? 'text-emerald-500' : 'text-sky-500')}
+				>サーバー</span
+			>
+		{:else if isReceiver}
+			<span
+				class={cn(
+					'text-xs text-zinc-400',
+					accent === 'emerald' ? 'text-emerald-500' : 'text-sky-500'
+				)}>レシーバー</span
+			>
+		{:else}
+			<span class="text-xs text-zinc-300">—</span>
+		{/if}
+		<p class="text-sm leading-tight font-medium text-zinc-800">{playerName(playerId)}</p>
+		{#if player?.teamName}
+			<p class="text-[10px] text-zinc-400">{player.teamName}</p>
+		{/if}
+	</div>
+{/snippet}
+
+{#if service}
+	<Card class="p-5">
+		<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">コート配置</h2>
+
+		<div class="mb-1 grid grid-cols-[1fr_2rem_1fr]">
+			<p
+				class="text-center text-xs font-semibold {leftAccent === 'emerald'
+					? 'text-emerald-600'
+					: 'text-sky-600'}"
+			>
+				左
+			</p>
+			<div></div>
+			<p
+				class="text-center text-xs font-semibold {rightAccent === 'emerald'
+					? 'text-emerald-600'
+					: 'text-sky-600'}"
+			>
+				右
+			</p>
+		</div>
+
+		{#if leftCA && rightCA}
+			<div
+				class="grid grid-cols-[1fr_2rem_1fr] overflow-hidden rounded-xl border-2 border-zinc-300"
+			>
+				<div class="col-start-1 row-start-1">
+					{@render playerCell(leftCA.left, leftAccent, true)}
+				</div>
+				<div
+					class="col-start-2 row-span-2 row-start-1 flex items-center justify-center border-x-2 border-zinc-400 bg-zinc-100"
+				>
+					<span
+						class="text-[10px] font-medium tracking-widest text-zinc-400"
+						style="writing-mode: vertical-rl">ネット</span
+					>
+				</div>
+				<div class="col-start-3 row-start-1">
+					{@render playerCell(rightCA.right, rightAccent, true)}
+				</div>
+				<div class="col-start-1 row-start-2">
+					{@render playerCell(leftCA.right, leftAccent, false)}
+				</div>
+				<div class="col-start-3 row-start-2">
+					{@render playerCell(rightCA.left, rightAccent, false)}
+				</div>
+			</div>
+		{:else}
+			{@const leftPlayer = leftSidePlayers[0]}
+			{@const rightPlayer = rightSidePlayers[0]}
+			<div
+				class="grid grid-cols-[1fr_2rem_1fr] overflow-hidden rounded-xl border-2 border-zinc-300"
+			>
+				{#if leftPlayer}
+					<div>{@render playerCell(leftPlayer.id, leftAccent, false)}</div>
+				{/if}
+				<div class="flex items-center justify-center border-x-2 border-zinc-400 bg-zinc-100">
+					<span
+						class="text-[10px] font-medium tracking-widest text-zinc-400"
+						style="writing-mode: vertical-rl">NET</span
+					>
+				</div>
+				{#if rightPlayer}
+					<div>{@render playerCell(rightPlayer.id, rightAccent, false)}</div>
+				{/if}
+			</div>
+		{/if}
+	</Card>
+{/if}

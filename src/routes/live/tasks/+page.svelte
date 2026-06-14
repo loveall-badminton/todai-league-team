@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ClipboardList, Shield } from '@lucide/svelte';
+	import Badge from '$lib/components/Badge.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { statusBadgeColor } from '$lib/utils/statusStyles';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -51,16 +54,9 @@
 									{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 								</p>
 							</div>
-							<span
-								class="ml-2 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium
-										{tie.status === 'lineup_pending'
-									? 'bg-amber-100 text-amber-800'
-									: tie.status === 'lineup_submitted'
-										? 'bg-blue-100 text-blue-800'
-										: 'bg-zinc-100 text-zinc-600'}"
-							>
+							<Badge color={statusBadgeColor(tie.status)}>
 								{tieStatusLabel(tie.status)}
-							</span>
+							</Badge>
 						</a>
 					{/each}
 				</div>
@@ -88,13 +84,15 @@
 							{:else}
 								<div class="space-y-1">
 									{#each playableRubbers as rubber (rubber.id)}
-										<a
+										<AppButton
 											href={resolve('/referee/[matchId]', { matchId: rubber.matchId! })}
-											class="flex items-center justify-between rounded-lg border border-zinc-100 px-3 py-2 text-xs transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+											variant="secondary"
+											size="sm"
+											class="w-full justify-between"
 										>
-											<span class="font-medium text-zinc-700">{rubberLabel(rubber.code)}</span>
+											<span>{rubberLabel(rubber.code)}</span>
 											<span class="text-zinc-400">{rubberStatusLabel(rubber.status)} →</span>
-										</a>
+										</AppButton>
 									{/each}
 								</div>
 							{/if}

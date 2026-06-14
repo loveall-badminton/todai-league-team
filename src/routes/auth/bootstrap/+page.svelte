@@ -1,11 +1,19 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
+	import InlineMessage from '$lib/components/InlineMessage.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
-	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
+	import { createAdmin } from './bootstrap.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
+
+	$effect(() => {
+		const msg = createAdmin.result?.data?.message;
+		if (msg) toast.error(msg);
+	});
 </script>
 
 <svelte:head>
@@ -17,49 +25,30 @@
 		<PageHeader title="初回管理者作成" />
 
 		{#if data.hasUsers}
-			<p class="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-				初回管理者は作成済みです。
-			</p>
-			<a
-				href={resolve('/auth/login')}
-				class="mt-5 block rounded-lg bg-zinc-950 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-zinc-800"
-			>
-				ログインへ
-			</a>
+			<InlineMessage>初回管理者は作成済みです。</InlineMessage>
+			<AppButton href={resolve('/auth/login')} class="mt-5 w-full" size="lg">ログインへ</AppButton>
 		{:else}
-			{#if form?.message}
-				<p class="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-					{form.message}
-				</p>
-			{/if}
-
-			<form method="POST" action="?/createAdmin" use:enhance class="mt-6 space-y-4">
+			<form {...createAdmin} class="mt-6 space-y-4">
 				<label class="grid gap-1.5">
 					<span class="text-sm font-medium text-zinc-700">ID</span>
-					<AppInput
-						name="accountId"
-						type="text"
-						autocomplete="username"
-						value={form?.accountId ?? ''}
-						required
-					/>
+					<AppInput {...createAdmin.fields.accountId.as('text')} autocomplete="username" required />
 				</label>
 
 				<label class="grid gap-1.5">
 					<span class="text-sm font-medium text-zinc-700">表示名</span>
-					<AppInput name="name" value={form?.name ?? ''} required />
+					<AppInput {...createAdmin.fields.name.as('text')} required />
 				</label>
 
 				<label class="grid gap-1.5">
 					<span class="text-sm font-medium text-zinc-700">パスワード</span>
-					<AppInput name="password" type="password" autocomplete="new-password" required />
+					<AppInput
+						{...createAdmin.fields.password.as('password')}
+						autocomplete="new-password"
+						required
+					/>
 				</label>
 
-				<button
-					class="w-full rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-				>
-					作成
-				</button>
+				<AppButton type="submit" class="w-full" size="lg">作成</AppButton>
 			</form>
 		{/if}
 	</section>

@@ -1,9 +1,6 @@
-import { command, form, getRequestEvent } from '$app/server';
-import { redirect } from '@sveltejs/kit';
-import * as v from 'valibot';
+import { command, form } from '$app/server';
 import { groupPhaseFor, type TiePhase } from '$lib/domain/tokyoLeague';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import {
 	assignOfficiatingTeam,
 	listTies,
@@ -11,6 +8,8 @@ import {
 	updateTieSchedule
 } from '$lib/server/repositories/tokyoLeagueRepository';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
+import { redirect } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const emptyToNull = (s: string | undefined | null): string | null => {
 	const text = (s ?? '').trim();
@@ -58,9 +57,7 @@ export const create = form(
 		lineupDueAt,
 		lineupDuePolicy
 	}) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
+		requireAdmin();
 		const resolvedGroupCode: 'A' | 'B' | null =
 			groupCode === 'A' || groupCode === 'B' ? groupCode : null;
 		const resolvedPhase: TiePhase = resolvedGroupCode
@@ -78,8 +75,8 @@ export const create = form(
 					return 'semifinal';
 				})();
 
-		const existing = await listTies(db);
-		const id = await createTieWithRubbers(db, {
+		const existing = await listTies();
+		const id = await createTieWithRubbers({
 			tieCode,
 			phase: resolvedPhase,
 			groupCode: resolvedGroupCode,
@@ -101,9 +98,8 @@ export const create = form(
 );
 
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
-	await reorderTies(getRequestDb(event.platform), ids, new Date().toISOString());
+	requireAdmin();
+	await reorderTies(ids, new Date().toISOString());
 });
 
 export const updateTie = form(
@@ -131,12 +127,10 @@ export const updateTie = form(
 		assignedTeamId,
 		officiatingNote
 	}) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
+		requireAdmin();
 		const now = new Date().toISOString();
 
-		await updateTieSchedule(db, {
+		await updateTieSchedule({
 			id,
 			tieCode,
 			scheduledStartAt: emptyToNull(scheduledStartAt),
@@ -148,7 +142,7 @@ export const updateTie = form(
 			now
 		});
 
-		await assignOfficiatingTeam(db, {
+		await assignOfficiatingTeam({
 			tieId: id,
 			assignedTeamId: emptyToNull(assignedTeamId),
 			note: emptyToNull(officiatingNote),

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { ties } from '$lib/server/db/schema';
 import { calculateGroupStandings } from './standingService';
 import { createTieWithRubbers, ensureRubbersForTie } from './tieService';
@@ -94,18 +94,18 @@ export function buildFinalAndThirdPlaceAssignments(
 	];
 }
 
-export async function generateSemifinalsAndFifthPlace(db: AppDb, now = new Date().toISOString()) {
-	const settings = await ensureDefaultSettings(db, now);
-	if (!settings.knockoutScoringRuleId) throw new Error('決勝系得点ルールが未設定です');
+export async function generateSemifinalsAndFifthPlace(now = new Date().toISOString()) {
+	const settings = await ensureDefaultSettings(now);
+	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
 	const [standingA, standingB] = await Promise.all([
-		calculateGroupStandings(db, 'A'),
-		calculateGroupStandings(db, 'B')
+		calculateGroupStandings('A'),
+		calculateGroupStandings('B')
 	]);
 
 	let changed = 0;
 	for (const assignment of buildSemifinalsAndFifthPlaceAssignments(standingA, standingB)) {
-		await upsertFinalTie(db, {
+		await upsertFinalTie({
 			tieCode: assignment.tieCode,
 			phase: assignment.phase,
 			roundLabel: assignment.roundLabel,
@@ -120,9 +120,10 @@ export async function generateSemifinalsAndFifthPlace(db: AppDb, now = new Date(
 	return changed;
 }
 
-export async function generateFinalAndThirdPlace(db: AppDb, now = new Date().toISOString()) {
-	const settings = await ensureDefaultSettings(db, now);
-	if (!settings.knockoutScoringRuleId) throw new Error('決勝系得点ルールが未設定です');
+export async function generateFinalAndThirdPlace(now = new Date().toISOString()) {
+	const db = getRequestDb();
+	const settings = await ensureDefaultSettings(now);
+	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
 	const semi1 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-1') });
 	const semi2 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-2') });
@@ -130,7 +131,7 @@ export async function generateFinalAndThirdPlace(db: AppDb, now = new Date().toI
 	const assignments = buildFinalAndThirdPlaceAssignments(semi1, semi2);
 
 	for (const assignment of assignments) {
-		await upsertFinalTie(db, {
+		await upsertFinalTie({
 			tieCode: assignment.tieCode,
 			phase: assignment.phase,
 			roundLabel: assignment.roundLabel,
@@ -144,22 +145,20 @@ export async function generateFinalAndThirdPlace(db: AppDb, now = new Date().toI
 	return assignments.length;
 }
 
-async function upsertFinalTie(
-	db: AppDb,
-	params: {
-		tieCode: string;
-		phase: 'semifinal' | 'final' | 'third_place' | 'fifth_place';
-		roundLabel: string;
-		teamAId: string | null;
-		teamBId: string | null;
-		scoringRuleId: string;
-		displayOrder: number;
-		now: string;
-	}
-) {
+async function upsertFinalTie(params: {
+	tieCode: string;
+	phase: 'semifinal' | 'final' | 'third_place' | 'fifth_place';
+	roundLabel: string;
+	teamAId: string | null;
+	teamBId: string | null;
+	scoringRuleId: string;
+	displayOrder: number;
+	now: string;
+}) {
+	const db = getRequestDb();
 	const existing = await db.query.ties.findFirst({ where: eq(ties.tieCode, params.tieCode) });
 	if (!existing) {
-		await createTieWithRubbers(db, {
+		await createTieWithRubbers({
 			tieCode: params.tieCode,
 			phase: params.phase,
 			roundLabel: params.roundLabel,
@@ -183,7 +182,7 @@ async function upsertFinalTie(
 			updatedAt: params.now
 		})
 		.where(eq(ties.id, existing.id));
-	await ensureRubbersForTie(db, {
+	await ensureRubbersForTie({
 		tieId: existing.id,
 		scoringRuleId: params.scoringRuleId,
 		now: params.now

@@ -2,7 +2,6 @@ import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { createAuth } from '$lib/server/auth';
 import { getAuthProfile } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 
 const AUTH_PATHS = ['/auth/login', '/auth/bootstrap'];
@@ -20,7 +19,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
-		event.locals.authProfile = await getAuthProfile(getRequestDb(event.platform), session.user);
+		event.locals.authProfile = await getAuthProfile(session.user);
 	}
 
 	if (pathname.startsWith('/api/auth')) {

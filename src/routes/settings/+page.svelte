@@ -1,12 +1,19 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import FormToast from '$lib/components/FormToast.svelte';
 	import type { PageProps } from './$types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
+	import { toast } from 'svelte-sonner';
 	import { updateSettings, updateScoringRule } from './settings.remote';
 
 	let { data }: PageProps = $props();
+
+	$effect(() => {
+		if (updateSettings.result?.message) toast.success(updateSettings.result.message);
+	});
 
 	let scoringRuleItems = $derived(
 		data.scoringRules.map((r) => ({ value: r.id, label: r.name ?? r.code }))
@@ -43,7 +50,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-sm font-medium text-zinc-700">決勝系ルール</span>
+				<span class="text-sm font-medium text-zinc-700">決勝トーナメントルール</span>
 				<AppSelect
 					name="knockoutScoringRuleId"
 					value={data.settings.knockoutScoringRuleId ?? ''}
@@ -81,18 +88,9 @@
 		</div>
 
 		<div class="flex justify-end border-t border-zinc-100 pt-4">
-			<button
-				class="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-			>
-				保存
-			</button>
+			<AppButton type="submit">保存</AppButton>
 		</div>
 	</form>
-	{#if updateSettings.result?.message}
-		<div class="mt-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
-			{updateSettings.result.message}
-		</div>
-	{/if}
 </section>
 
 <!-- Accounts -->
@@ -102,12 +100,7 @@
 			<h2 class="font-semibold text-zinc-900">ユーザー管理</h2>
 			<p class="mt-1 text-sm text-zinc-500">運営、一般参加者、チーム用のIDを管理します。</p>
 		</div>
-		<a
-			href={resolve('/settings/accounts')}
-			class="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-		>
-			開く
-		</a>
+		<AppButton href={resolve('/settings/accounts')}>開く</AppButton>
 	</div>
 </section>
 
@@ -129,11 +122,7 @@
 						class="w-auto rounded-xl border border-zinc-200 bg-white px-3 py-1.5 font-semibold focus:ring-2 focus:ring-zinc-950"
 					/>
 				</div>
-				<button
-					class="rounded-xl border border-zinc-200 bg-white px-4 py-1.5 text-sm font-medium hover:bg-zinc-50"
-				>
-					保存
-				</button>
+				<AppButton variant="secondary" type="submit">保存</AppButton>
 			</div>
 
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -168,13 +157,7 @@
 				</div>
 			</div>
 
-			{#if ruleForm.result?.message}
-				<div
-					class="mt-3 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700"
-				>
-					{ruleForm.result.message}
-				</div>
-			{/if}
+			<FormToast result={ruleForm.result} />
 		</form>
 	{/each}
 </section>

@@ -1,7 +1,8 @@
-import { error, redirect, type RequestEvent } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { authUserProfiles, matches, officiatingAssignments, rubbers } from '$lib/server/db/schema';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestEvent } from '$app/server';
+import { getRequestDb } from '$lib/server/db/request';
 
 export type AppRole = 'admin' | 'participant' | 'team';
 
@@ -43,11 +44,12 @@ export function invalidateAuthProfile(userId: string): void {
 	_profileCache.delete(userId);
 }
 
-export async function getAuthProfile(db: AppDb, user: RoleCarrier): Promise<AuthProfile> {
+export async function getAuthProfile(user: RoleCarrier): Promise<AuthProfile> {
 	const now = Date.now();
 	const cached = _profileCache.get(user.id);
 	if (cached && cached.expiresAt > now) return cached.profile;
 
+	const db = getRequestDb();
 	const existing = await db.query.authUserProfiles.findFirst({
 		where: eq(authUserProfiles.userId, user.id)
 	});
@@ -70,30 +72,30 @@ export async function getAuthProfile(db: AppDb, user: RoleCarrier): Promise<Auth
 	return profile;
 }
 
-export function requireUser(event: RequestEvent) {
+export function requireUser() {
+	const event = getRequestEvent();
 	if (event.locals.user) return event.locals.user;
 	const redirectTo = `${event.url.pathname}${event.url.search}`;
 	redirect(303, `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
 }
 
-export function requireAdmin(event: RequestEvent) {
-	const user = requireUser(event);
+export function requireAdmin() {
+	const user = requireUser();
 	if (!isAdminUser(user)) error(403, '運営アカウントでログインしてください');
 	return user;
 }
 
-export function requireTeamLineupAccess(event: RequestEvent, teamId: string) {
-	const user = requireUser(event);
+export function requireTeamLineupAccess(teamId: string) {
+	const event = getRequestEvent();
+	const user = requireUser();
 	if (!canAccessTeamLineup({ user, profile: event.locals.authProfile, teamId })) {
 		error(403, 'このチームのオーダー提出権限がありません');
 	}
 	return user;
 }
 
-export async function getAssignedOfficiatingTeamId(
-	db: AppDb,
-	matchId: string
-): Promise<string | null> {
+export async function getAssignedOfficiatingTeamId(matchId: string): Promise<string | null> {
+	const db = getRequestDb();
 	const [row] = await db
 		.select({
 			assignedTeamId: officiatingAssignments.assignedTeamId
@@ -113,11 +115,12 @@ export async function getAssignedOfficiatingTeamId(
 	return row?.assignedTeamId ?? null;
 }
 
-export async function requireRefereeMatchAccess(event: RequestEvent, db: AppDb, matchId: string) {
-	const user = requireUser(event);
+export async function requireRefereeMatchAccess(matchId: string) {
+	const event = getRequestEvent();
+	const user = requireUser();
 	if (isAdminUser(user)) return user;
 
-	const assignedTeamId = await getAssignedOfficiatingTeamId(db, matchId);
+	const assignedTeamId = await getAssignedOfficiatingTeamId(matchId);
 	if (
 		!assignedTeamId ||
 		!canAccessTeamLineup({ user, profile: event.locals.authProfile, teamId: assignedTeamId })

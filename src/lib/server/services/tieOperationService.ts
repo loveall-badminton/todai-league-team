@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { ScoringConfig } from '$lib/domain/types';
 import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import {
 	lineupItems,
 	lineupSubmissions,
@@ -54,11 +54,8 @@ export function rubberStatusFromMatchResultStatus(
 	return matchStatus === 'confirmed' ? 'confirmed' : 'finished';
 }
 
-export async function startTie(
-	db: AppDb,
-	tieId: string,
-	options: { force?: boolean; now?: string } = {}
-) {
+export async function startTie(tieId: string, options: { force?: boolean; now?: string } = {}) {
+	const db = getRequestDb();
 	const now = options.now ?? new Date().toISOString();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('対戦が見つかりません');
@@ -75,7 +72,7 @@ export async function startTie(
 	if (!ready && !options.force) throw new Error('両チームのオーダー提出が必要です');
 
 	if (!tie.lineupsRevealedAt) {
-		await revealLineups(db, tieId, now);
+		await revealLineups(tieId, now);
 	}
 
 	await db
@@ -89,7 +86,7 @@ export async function startTie(
 	for (const rubber of allRubbers) {
 		if (!rubber.matchId) {
 			try {
-				await createMatchFromRubber(db, rubber.id, now);
+				await createMatchFromRubber(rubber.id, now);
 			} catch {
 				// continue even if one rubber fails (e.g. missing lineup item)
 			}
@@ -98,10 +95,10 @@ export async function startTie(
 }
 
 export async function createMatchFromRubber(
-	db: AppDb,
 	rubberId: string,
 	now = new Date().toISOString()
 ): Promise<string> {
+	const db = getRequestDb();
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');
 	if (rubber.matchId) return rubber.matchId;
@@ -111,17 +108,17 @@ export async function createMatchFromRubber(
 	if (!tie.lineupsRevealedAt) throw new Error('オーダー公開後にmatchを作成できます');
 
 	const [sideA, sideB] = await Promise.all([
-		getLineupPlayersForRubber(db, tie.id, 'A', rubber.code),
-		getLineupPlayersForRubber(db, tie.id, 'B', rubber.code)
+		getLineupPlayersForRubber(tie.id, 'A', rubber.code),
+		getLineupPlayersForRubber(tie.id, 'B', rubber.code)
 	]);
 	const scoringRule = await db.query.scoringRules.findFirst({
 		where: eq(scoringRules.id, rubber.scoringRuleId)
 	});
 	if (!scoringRule) throw new Error('Scoring rule not found');
 
-	await ensureInternalTournament(db, now);
+	await ensureInternalTournament(now);
 
-	const matchId = await createMatchWithPlayers(db, {
+	const matchId = await createMatchWithPlayers({
 		tournamentId: internalTournamentId,
 		courtId: null,
 		discipline: rubber.discipline,
@@ -156,10 +153,10 @@ export async function createMatchFromRubber(
 }
 
 export async function syncRubberResultFromMatch(
-	db: AppDb,
 	matchId: string,
 	now = new Date().toISOString()
 ) {
+	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) return;
 	const rubberStatus = rubberStatusFromMatchResultStatus(match.status);
@@ -175,14 +172,11 @@ export async function syncRubberResultFromMatch(
 		.where(eq(rubbers.id, match.rubberId));
 
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
-	if (rubber) await recalculateTieResult(db, rubber.tieId, now);
+	if (rubber) await recalculateTieResult(rubber.tieId, now);
 }
 
-export async function recalculateTieResult(
-	db: AppDb,
-	tieId: string,
-	now = new Date().toISOString()
-) {
+export async function recalculateTieResult(tieId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('Tie not found');
 	const rubberRows = await db
@@ -205,17 +199,14 @@ export async function recalculateTieResult(
 		.where(eq(ties.id, tieId));
 }
 
-export async function confirmTie(db: AppDb, tieId: string, now = new Date().toISOString()) {
-	await recalculateTieResult(db, tieId, now);
+export async function confirmTie(tieId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
+	await recalculateTieResult(tieId, now);
 	await db.update(ties).set({ status: 'confirmed', updatedAt: now }).where(eq(ties.id, tieId));
 }
 
-async function getLineupPlayersForRubber(
-	db: AppDb,
-	tieId: string,
-	side: 'A' | 'B',
-	rubberCode: string
-) {
+async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberCode: string) {
+	const db = getRequestDb();
 	const submission = await db.query.lineupSubmissions.findFirst({
 		where: and(eq(lineupSubmissions.tieId, tieId), eq(lineupSubmissions.side, side))
 	});
@@ -241,7 +232,8 @@ async function getLineupPlayersForRubber(
 	});
 }
 
-async function ensureInternalTournament(db: AppDb, now: string) {
+async function ensureInternalTournament(now: string) {
+	const db = getRequestDb();
 	const existing = await db.query.tournaments.findFirst({
 		where: eq(tournaments.id, internalTournamentId)
 	});

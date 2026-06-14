@@ -1,20 +1,25 @@
+import { requireAdmin } from '$lib/server/auth/access';
+import {
+	getOfficiatingAssignment,
+	getTeam,
+	getTieWithRubbers,
+	listPlayersByIds,
+	listTeams
+} from '$lib/server/repositories/tokyoLeagueRepository';
+import { getLineupsForTie } from '$lib/server/services/lineupService';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
-import { getTieWithRubbers, listTeams } from '$lib/server/repositories/tokyoLeagueRepository';
-import { getLineupsForTie } from '$lib/server/services/lineupService';
-import { getPublicRubbersForTie } from '$lib/server/services/liveBoardService';
-import { teamPlayers, teams as teamsTable } from '$lib/server/db/schema';
-import { eq, inArray } from 'drizzle-orm';
 
 export const load: PageServerLoad = async (event) => {
-	requireAdmin(event);
-	const { params, platform } = event;
-	const db = getRequestDb(platform);
-	const [tie, teams] = await Promise.all([getTieWithRubbers(db, params.tieId), listTeams(db)]);
-	if (!tie) error(404, 'Tie not found');
-	const lineups = await getLineupsForTie(db, params.tieId);
+	requireAdmin();
+	const { params } = event;
+	const [tieResult, teams, officiating] = await Promise.all([
+		getTieWithRubbers(params.tieId),
+		listTeams(),
+		getOfficiatingAssignment(params.tieId)
+	]);
+	if (!tieResult) error(404, 'Tie not found');
+	const lineups = await getLineupsForTie(params.tieId);
 	const playerIds = [
 		...new Set(
 			lineups
@@ -22,27 +27,23 @@ export const load: PageServerLoad = async (event) => {
 				.filter((id): id is string => !!id)
 		)
 	];
-	const revealed =
-		tie.tie.status === 'playing' || tie.tie.status === 'finished' || tie.tie.status === 'confirmed';
-	const [players, teamA, teamB, liveRubbers] = await Promise.all([
-		playerIds.length > 0
-			? db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
-			: Promise.resolve([]),
-		tie.tie.teamAId
-			? db.query.teams.findFirst({ where: eq(teamsTable.id, tie.tie.teamAId) })
-			: null,
-		tie.tie.teamBId
-			? db.query.teams.findFirst({ where: eq(teamsTable.id, tie.tie.teamBId) })
-			: null,
-		getPublicRubbersForTie(db, params.tieId, revealed)
+
+	const [players, teamA, teamB] = await Promise.all([
+		listPlayersByIds(playerIds),
+		tieResult.tie.teamAId ? getTeam(tieResult.tie.teamAId) : null,
+		tieResult.tie.teamBId ? getTeam(tieResult.tie.teamBId) : null
 	]);
 	return {
-		...tie,
+		...tieResult,
+		tie: {
+			...tieResult.tie,
+			officiatingTeamId: officiating?.assignedTeamId ?? null,
+			officiatingNote: officiating?.note ?? null
+		},
 		teams,
 		lineups,
 		players,
 		teamA: teamA ?? null,
-		teamB: teamB ?? null,
-		liveRubbers
+		teamB: teamB ?? null
 	};
 };

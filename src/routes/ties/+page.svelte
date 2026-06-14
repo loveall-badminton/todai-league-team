@@ -11,9 +11,10 @@
 	type DragEndEvent = Parameters<
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
-	import { Dialog, Tabs } from 'bits-ui';
+	import { Dialog } from 'bits-ui';
 	import { X } from '@lucide/svelte';
-	import { onMount } from 'svelte';
+	import AppSwitch from '$lib/components/AppSwitch.svelte';
+	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
@@ -27,7 +28,7 @@
 	let { data }: PageProps = $props();
 
 	const groupCodeItems = [
-		{ value: '', label: '決勝系' },
+		{ value: '', label: '決勝トーナメント' },
 		{ value: 'A', label: 'Aリーグ' },
 		{ value: 'B', label: 'Bリーグ' }
 	];
@@ -49,11 +50,13 @@
 	let allTies = $derived([...data.ties]);
 	let snapshot: typeof allTies = [];
 
-	onMount(() => {
-		const hasActive = data.ties.some((t) => t.status === 'playing');
-		if (!hasActive) return;
-		const interval = setInterval(() => invalidateAll(), 12000);
-		return () => clearInterval(interval);
+	let hasActive = $derived(data.ties.some((t) => t.status === 'playing'));
+	let realtimeEnabled = $state(true);
+
+	$effect(() => {
+		if (!hasActive || !realtimeEnabled) return;
+		const id = setInterval(() => invalidateAll(), 12000);
+		return () => clearInterval(id);
 	});
 
 	type Filter =
@@ -127,6 +130,17 @@
 
 	let filteredTies = $derived(allTies.filter((t) => tieMatchesFilter(t, filter)));
 
+	let tabItems = $derived(
+		filters.map((f) => ({
+			value: f.id,
+			label: f.label,
+			count:
+				f.id === 'all'
+					? data.ties.length
+					: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length
+		}))
+	);
+
 	function onDragStart() {
 		snapshot = allTies.slice();
 	}
@@ -155,7 +169,12 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<AppButton type="button" onclick={() => (dialogOpen = true)}>+ 新規作成</AppButton>
+	<div class="flex items-center gap-3">
+		{#if hasActive}
+			<AppSwitch bind:checked={realtimeEnabled} label="自動更新" />
+		{/if}
+		<AppButton type="button" onclick={() => (dialogOpen = true)}>+ 新規作成</AppButton>
+	</div>
 {/snippet}
 
 <PageHeader title="対戦管理" actions={headerActions} />
@@ -200,7 +219,7 @@
 							name="groupCode"
 							bind:value={newGroupCode}
 							items={groupCodeItems}
-							placeholder="決勝系"
+							placeholder="決勝トーナメント"
 						/>
 					</div>
 					<div class="space-y-1">
@@ -258,29 +277,7 @@
 	</Dialog.Portal>
 </Dialog.Root>
 
-<!-- Filter tabs (horizontally scrollable) -->
-<Tabs.Root value={filter} onValueChange={setFilter}>
-	<Tabs.List class="flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5">
-		{#each filters as f (f.id)}
-			{@const count =
-				f.id === 'all'
-					? data.ties.length
-					: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length}
-			<Tabs.Trigger
-				value={f.id}
-				class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors {filter ===
-				f.id
-					? 'bg-zinc-900 text-white'
-					: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400'}"
-			>
-				{f.label}
-				{#if count > 0}
-					<span class="ml-1 {filter === f.id ? 'text-zinc-300' : 'text-zinc-400'}">{count}</span>
-				{/if}
-			</Tabs.Trigger>
-		{/each}
-	</Tabs.List>
-</Tabs.Root>
+<AppTabs value={filter} items={tabItems} onValueChange={setFilter} />
 
 <!-- Ties list -->
 {#if filteredTies.length === 0}

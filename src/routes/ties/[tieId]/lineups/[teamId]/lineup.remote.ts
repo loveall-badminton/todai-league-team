@@ -1,25 +1,23 @@
 import { command, getRequestEvent } from '$app/server';
-import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
 import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 import { requireTeamLineupAccess } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import { saveLineupDraft, submitLineup } from '$lib/server/services/lineupService';
+import { error } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const itemsSchema = v.record(v.string(), v.string());
 
 export const saveDraft = command(itemsSchema, async (formData) => {
 	const event = getRequestEvent();
-	const { params, platform } = event;
-	requireTeamLineupAccess(event, params.teamId!);
-	const db = getRequestDb(platform);
+	const { params } = event;
+	requireTeamLineupAccess(params.teamId!);
 	const items = RUBBER_DEFINITIONS.map((r) => ({
 		rubberCode: r.code as RubberCode,
 		player1Id: formData[`${r.code}_1`] ?? '',
 		player2Id: formData[`${r.code}_2`] ?? ''
 	}));
 	try {
-		const validation = await saveLineupDraft(db, {
+		const validation = await saveLineupDraft({
 			tieId: params.tieId!,
 			teamId: params.teamId!,
 			items
@@ -32,17 +30,16 @@ export const saveDraft = command(itemsSchema, async (formData) => {
 
 export const submit = command(itemsSchema, async (formData) => {
 	const event = getRequestEvent();
-	const { params, platform } = event;
-	requireTeamLineupAccess(event, params.teamId!);
-	const db = getRequestDb(platform);
+	const { params } = event;
+	requireTeamLineupAccess(params.teamId!);
 	const items = RUBBER_DEFINITIONS.map((r) => ({
 		rubberCode: r.code as RubberCode,
 		player1Id: formData[`${r.code}_1`] ?? '',
 		player2Id: formData[`${r.code}_2`] ?? ''
 	}));
 	try {
-		await saveLineupDraft(db, { tieId: params.tieId!, teamId: params.teamId!, items });
-		const validation = await submitLineup(db, {
+		await saveLineupDraft({ tieId: params.tieId!, teamId: params.teamId!, items });
+		const validation = await submitLineup({
 			tieId: params.tieId!,
 			teamId: params.teamId!
 		});

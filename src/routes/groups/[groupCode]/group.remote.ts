@@ -1,8 +1,5 @@
 import { command, form, getRequestEvent } from '$app/server';
-import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import {
 	assignOfficiatingTeam,
 	reorderTies,
@@ -15,6 +12,8 @@ import {
 } from '$lib/server/services/rankingTiebreakerService';
 import { generateGroupRoundRobinTies } from '$lib/server/services/tieService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import { error } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 function parseGroupCode(value: string): 'A' | 'B' {
 	if (value === 'A' || value === 'B') return value;
@@ -33,14 +32,13 @@ const venueOrNull = (s: string | undefined | null): 'first_gym' | 'second_gym' |
 
 export const generateRoundRobin = command(async () => {
 	const event = getRequestEvent();
-	requireAdmin(event);
+	requireAdmin();
 	const groupCode = parseGroupCode(event.params.groupCode!);
-	const db = getRequestDb(event.platform);
-	const settings = await ensureDefaultSettings(db);
+	const settings = await ensureDefaultSettings();
 	const scoringRuleId = settings.groupStageScoringRuleId;
 	if (!scoringRuleId) error(400, '予選用得点ルールが未設定です');
 
-	const created = await generateGroupRoundRobinTies(db, {
+	const created = await generateGroupRoundRobinTies({
 		groupCode,
 		tieCodePrefix: groupCode,
 		scoringRuleId,
@@ -74,12 +72,10 @@ export const updateTie = form(
 		assignedTeamId,
 		officiatingNote
 	}) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
+		requireAdmin();
 		const now = new Date().toISOString();
 
-		await updateTieSchedule(db, {
+		await updateTieSchedule({
 			id,
 			tieCode,
 			scheduledStartAt: emptyToNull(scheduledStartAt),
@@ -91,7 +87,7 @@ export const updateTie = form(
 			now
 		});
 
-		await assignOfficiatingTeam(db, {
+		await assignOfficiatingTeam({
 			tieId: id,
 			assignedTeamId: emptyToNull(assignedTeamId),
 			note: emptyToNull(officiatingNote),
@@ -110,9 +106,9 @@ export const setManualRank = form(
 	}),
 	async ({ teamId, manualRank, reason }) => {
 		const event = getRequestEvent();
-		requireAdmin(event);
+		requireAdmin();
 		const groupCode = parseGroupCode(event.params.groupCode!);
-		await setGroupStandingOverride(getRequestDb(event.platform), {
+		await setGroupStandingOverride({
 			groupCode,
 			teamId,
 			manualRank,
@@ -133,9 +129,9 @@ export const createTiebreaker = form(
 	}),
 	async ({ teamAId, teamBId, playerAId, playerBId, reason }) => {
 		const event = getRequestEvent();
-		requireAdmin(event);
+		requireAdmin();
 		const groupCode = parseGroupCode(event.params.groupCode!);
-		const result = await createRankingTiebreaker(getRequestDb(event.platform), {
+		const result = await createRankingTiebreaker({
 			groupCode,
 			teamAId,
 			teamBId,
@@ -149,17 +145,11 @@ export const createTiebreaker = form(
 );
 
 export const syncTiebreaker = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
-	await syncRankingTiebreakerResult(
-		getRequestDb(event.platform),
-		matchId,
-		new Date().toISOString()
-	);
+	requireAdmin();
+	await syncRankingTiebreakerResult(matchId, new Date().toISOString());
 });
 
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
-	await reorderTies(getRequestDb(event.platform), ids, new Date().toISOString());
+	requireAdmin();
+	await reorderTies(ids, new Date().toISOString());
 });

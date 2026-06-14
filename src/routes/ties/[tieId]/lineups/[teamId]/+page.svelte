@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { toast } from 'svelte-sonner';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
@@ -49,9 +50,6 @@
 		return `${order}人目`;
 	}
 
-	let cmdMessage = $state<string | null>(null);
-	let cmdWarnings = $state<string[]>([]);
-	let cmdError = $state<string | null>(null);
 	let lineupAction = $state<'draft' | 'submit'>('draft');
 
 	async function handleLineup(e: SubmitEvent) {
@@ -61,9 +59,6 @@
 		for (const [key, val] of fd.entries()) {
 			formData[key] = String(val);
 		}
-		cmdMessage = null;
-		cmdWarnings = [];
-		cmdError = null;
 		try {
 			let result: { message: string; warnings?: string[] } | undefined;
 			if (lineupAction === 'draft') {
@@ -71,11 +66,17 @@
 			} else {
 				result = await submit(formData);
 			}
-			cmdMessage = result?.message ?? null;
-			cmdWarnings = result?.warnings ?? [];
+			if (result?.message) {
+				const warnings = result.warnings ?? [];
+				if (warnings.length > 0) {
+					toast.warning(result.message, { description: warnings.join('\n') });
+				} else {
+					toast.success(result.message);
+				}
+			}
 			await invalidateAll();
 		} catch (err) {
-			cmdError = err instanceof Error ? err.message : '失敗';
+			toast.error(err instanceof Error ? err.message : '失敗');
 		}
 	}
 </script>
@@ -102,27 +103,6 @@
 		{submissionStatusLabel(status)}
 	</span>
 </header>
-
-<!-- Form feedback -->
-{#if cmdMessage}
-	<div
-		class="rounded-xl border px-4 py-3 text-sm {cmdWarnings.length
-			? 'border-amber-200 bg-amber-50 text-amber-800'
-			: 'border-emerald-200 bg-emerald-50 text-emerald-800'}"
-	>
-		<p class="font-medium">{cmdMessage}</p>
-		{#if cmdWarnings.length}
-			<ul class="mt-1.5 list-disc space-y-0.5 pl-5 text-amber-700">
-				{#each cmdWarnings as w (w)}<li>{w}</li>{/each}
-			</ul>
-		{/if}
-	</div>
-{/if}
-{#if cmdError}
-	<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-		{cmdError}
-	</div>
-{/if}
 
 <!-- Locked/revealed: read-only display -->
 {#if isLocked}

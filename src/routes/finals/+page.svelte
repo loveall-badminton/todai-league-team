@@ -1,22 +1,50 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { invalidateAll } from '$app/navigation';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { Trophy } from '@lucide/svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import type { PageProps } from './$types';
-	import { generateSemifinals, generateFinals } from './finals.remote';
+	import { toast } from 'svelte-sonner';
+	import { generateSemifinals, generateFinals, getFinalsData } from './finals.remote';
 
-	let { data }: PageProps = $props();
-
-	let cmdMessage = $state<string | null>(null);
-	let cmdError = $state<string | null>(null);
+	const finalsData = getFinalsData();
 
 	const orderedCodes = ['x-1', 'x-2', 'x-3', 'x-4', 'x-5'];
 	let orderedTies = $derived(
-		orderedCodes.map((code) => data.ties.find((tie) => tie.tieCode === code)).filter((tie) => !!tie)
+		orderedCodes
+			.map((code) => finalsData.current?.ties.find((tie) => tie.tieCode === code))
+			.filter((tie) => !!tie)
 	);
+
+	let semifinalsCanGenerate = $derived(finalsData.current?.groupStandingsReady ?? false);
+	let semifinalsHint = $derived.by(() => {
+		if (!finalsData.current) return null;
+		const { groupAAllDone, groupBAllDone, noTiebreakerA, noTiebreakerB } = finalsData.current;
+		if (!groupAAllDone || !groupBAllDone) {
+			const incomplete = [!groupAAllDone && 'Aリーグ', !groupBAllDone && 'Bリーグ']
+				.filter(Boolean)
+				.join('・');
+			return `${incomplete}の試合が全て完了してから生成できます`;
+		}
+		if (!noTiebreakerA || !noTiebreakerB) return '同点チームの順位を確定してから生成できます';
+		return null;
+	});
+
+	let finalsCanGenerate = $derived.by(() => {
+		const semi1 = orderedTies.find((t) => t.tieCode === 'x-1');
+		const semi2 = orderedTies.find((t) => t.tieCode === 'x-2');
+		const done = (t: typeof semi1) => t?.status === 'finished' || t?.status === 'confirmed';
+		return !!semi1 && !!semi2 && done(semi1) && done(semi2);
+	});
+	let finalsHint = $derived.by(() => {
+		const semi1 = orderedTies.find((t) => t.tieCode === 'x-1');
+		const semi2 = orderedTies.find((t) => t.tieCode === 'x-2');
+		if (!semi1 || !semi2) return '先に準決勝・5位決定戦を生成してください';
+		const done = (t: typeof semi1) => t?.status === 'finished' || t?.status === 'confirmed';
+		if (!done(semi1) || !done(semi2)) return '準決勝1・準決勝2の結果確定後に生成できます';
+		return null;
+	});
 </script>
 
 <svelte:head>
@@ -24,56 +52,62 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<div class="flex gap-2">
-		<button
-			class="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-			onclick={async () => {
-				cmdMessage = null;
-				cmdError = null;
-				try {
-					const r = await generateSemifinals();
-					await invalidateAll();
-					cmdMessage = r?.message ?? null;
-				} catch (e) {
-					cmdError = e instanceof Error ? e.message : '失敗';
-				}
-			}}
-		>
-			準決勝・5位決定戦生成
-		</button>
-		<button
-			class="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-			onclick={async () => {
-				cmdMessage = null;
-				cmdError = null;
-				try {
-					const r = await generateFinals();
-					await invalidateAll();
-					cmdMessage = r?.message ?? null;
-				} catch (e) {
-					cmdError = e instanceof Error ? e.message : '失敗';
-				}
-			}}
-		>
-			決勝・3位決定戦生成
-		</button>
+	<div class="flex flex-col items-end gap-2">
+		<div class="flex gap-2">
+			<AppButton
+				variant="secondary"
+				disabled={!semifinalsCanGenerate}
+				onclick={async () => {
+					try {
+						const r = await generateSemifinals();
+						await finalsData.refresh();
+						if (r?.message) toast.success(r.message);
+					} catch (e) {
+						toast.error(e instanceof Error ? e.message : '失敗');
+					}
+				}}
+			>
+				準決勝・5位決定戦生成
+			</AppButton>
+			<AppButton
+				disabled={!finalsCanGenerate}
+				onclick={async () => {
+					try {
+						const r = await generateFinals();
+						await finalsData.refresh();
+						if (r?.message) toast.success(r.message);
+					} catch (e) {
+						toast.error(e instanceof Error ? e.message : '失敗');
+					}
+				}}
+			>
+				決勝・3位決定戦生成
+			</AppButton>
+		</div>
+		{#if semifinalsHint || finalsHint}
+			<p class="text-xs text-zinc-400">
+				{semifinalsHint ?? finalsHint}
+			</p>
+		{/if}
 	</div>
 {/snippet}
 
 <PageHeader title="決勝トーナメント" actions={headerActions} />
 
-{#if cmdMessage}
-	<div class="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700">
-		{cmdMessage}
+{#if finalsData.current === null}
+	<div class="grid gap-2 sm:grid-cols-2">
+		{#each [0, 1, 2, 3, 4] as i (i)}
+			<div class="animate-pulse rounded-xl border border-zinc-100 bg-white p-4 space-y-2">
+				<div class="h-2.5 w-24 rounded-full bg-zinc-200"></div>
+				<div class="flex items-center justify-between gap-2">
+					<div class="h-4 w-36 rounded-full bg-zinc-200"></div>
+					<div class="h-6 w-10 rounded-lg bg-zinc-200"></div>
+				</div>
+				<div class="h-2.5 w-16 rounded-full bg-zinc-200"></div>
+			</div>
+		{/each}
 	</div>
-{/if}
-{#if cmdError}
-	<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-		{cmdError}
-	</div>
-{/if}
-
-{#if orderedTies.length === 0}
+{:else if orderedTies.length === 0}
 	<EmptyState message="予選順位から準決勝・5位決定戦を生成してください">
 		<Trophy class="mx-auto mb-3 h-8 w-8 text-zinc-300" />
 	</EmptyState>

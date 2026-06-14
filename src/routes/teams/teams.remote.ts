@@ -1,13 +1,12 @@
-import { command, form, getRequestEvent } from '$app/server';
-import { redirect } from '@sveltejs/kit';
-import * as v from 'valibot';
+import { command, form } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import {
 	createTeam,
 	listTeams,
 	reorderTeams
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { redirect } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 export const create = form(
 	v.object({
@@ -16,11 +15,9 @@ export const create = form(
 		groupCode: v.optional(v.picklist(['', 'A', 'B'] as const))
 	}),
 	async ({ name, shortName, groupCode }) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
-		const existing = await listTeams(db);
-		const id = await createTeam(db, {
+		requireAdmin();
+		const existing = await listTeams();
+		const id = await createTeam({
 			name,
 			shortName: shortName?.trim() || null,
 			groupCode: groupCode === 'A' || groupCode === 'B' ? groupCode : null,
@@ -32,7 +29,6 @@ export const create = form(
 );
 
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
-	await reorderTeams(getRequestDb(event.platform), ids, new Date().toISOString());
+	requireAdmin();
+	await reorderTeams(ids, new Date().toISOString());
 });

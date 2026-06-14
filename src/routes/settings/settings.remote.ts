@@ -1,12 +1,11 @@
-import { form, getRequestEvent } from '$app/server';
-import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
+import { form } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import {
 	updateLeagueSettings,
 	updateScoringRule as updateScoringRuleRepo
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { error } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const intPositive = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(1));
 const intNonNeg = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0));
@@ -32,11 +31,9 @@ export const updateSettings = form(
 		lineupRevealPolicy,
 		defaultLineupDueMinutesBefore
 	}) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
+		requireAdmin();
 		try {
-			await updateLeagueSettings(db, {
+			await updateLeagueSettings({
 				eventName,
 				groupStageScoringRuleId: emptyToNull(groupStageScoringRuleId),
 				knockoutScoringRuleId: emptyToNull(knockoutScoringRuleId),
@@ -73,13 +70,11 @@ export const updateScoringRule = form(
 		maxPoints,
 		midGameIntervalPoint
 	}) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
+		requireAdmin();
 		if (pointsToWin > maxPoints) error(400, '勝利点は上限点以下にしてください。');
 		if (gamesToWin > maxGames) error(400, '必要ゲーム数は最大ゲーム数以下にしてください。');
-		const db = getRequestDb(event.platform);
 		try {
-			await updateScoringRuleRepo(db, {
+			await updateScoringRuleRepo({
 				id,
 				name,
 				maxGames,

@@ -1,11 +1,18 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { PageProps } from './$types';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
-	import { enhance } from '$app/forms';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+	import Footer from '../../footer.svelte';
+	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
+	import { signIn } from './login.remote';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
+
+	$effect(() => {
+		if (signIn.result?.message) toast.error(signIn.result.message);
+	});
 </script>
 
 <svelte:head>
@@ -16,36 +23,27 @@
 	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
 		<PageHeader title="ログイン" />
 
-		{#if form?.message}
-			<p class="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-				{form.message}
-			</p>
-		{/if}
-
-		<form method="POST" action="?/signIn" class="mt-6 space-y-4" use:enhance>
-			<input type="hidden" name="redirectTo" value={form?.redirectTo ?? data.redirectTo} />
+		<form {...signIn} class="mt-6 space-y-4">
+			<input
+				{...signIn.fields.redirectTo.as('hidden', signIn.result?.redirectTo ?? data.redirectTo)}
+			/>
 
 			<label class="grid gap-1.5">
 				<span class="text-sm font-medium text-zinc-700">ID</span>
 				<AppInput
-					name="accountId"
 					type="text"
 					autocomplete="username"
-					value={form?.accountId ?? ''}
+					{...signIn.fields.accountId.as('text')}
 					required
 				/>
 			</label>
 
 			<label class="grid gap-1.5">
 				<span class="text-sm font-medium text-zinc-700">パスワード</span>
-				<AppInput name="password" type="password" autocomplete="current-password" required />
+				<AppInput {...signIn.fields.password.as('password')} required />
 			</label>
 
-			<button
-				class="w-full rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-			>
-				ログイン
-			</button>
+			<AppButton type="submit" class="w-full" size="lg">ログイン</AppButton>
 		</form>
 
 		{#if data.showBootstrap}
@@ -56,5 +54,7 @@
 				初回管理者作成
 			</a>
 		{/if}
+
+		<Footer />
 	</section>
 </div>

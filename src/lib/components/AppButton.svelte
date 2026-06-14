@@ -6,30 +6,38 @@
 
 	let {
 		variant = 'primary',
+		size = 'md',
 		class: className = '',
 		children,
 		...restProps
 	}: ComponentProps<typeof Button.Root> & {
 		variant?: VariantProps<typeof buttonStyles>['variant'];
+		size?: VariantProps<typeof buttonStyles>['size'];
 	} = $props();
 
 	const buttonStyles = tv({
-		base: 'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+		base: 'inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer',
 		variants: {
 			variant: {
-				primary:
-					'rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800',
+				primary: 'rounded-xl bg-zinc-950 font-medium text-white hover:bg-zinc-800',
 				secondary:
-					'rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50',
-				ghost: 'text-sm font-medium text-zinc-700 hover:text-zinc-950'
+					'rounded-xl border border-zinc-200 bg-white font-medium text-zinc-700 hover:bg-zinc-50',
+				ghost: 'font-medium text-zinc-700 hover:text-zinc-950',
+				danger: 'rounded-xl bg-red-600 font-bold text-white shadow-sm hover:bg-red-700',
+				success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
+				warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',
+				violet:
+					'rounded-lg border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
+			},
+			size: {
+				sm: 'px-3 py-1.5 text-xs',
+				md: 'px-4 py-2 text-sm',
+				lg: 'px-6 py-2.5 text-sm'
 			}
-		},
-		defaultVariants: {
-			variant: 'primary'
 		}
 	});
 </script>
 
-<Button.Root class={cn(buttonStyles({ variant }), className)} {...restProps}>
+<Button.Root class={cn(buttonStyles({ variant, size }), className)} {...restProps}>
 	{@render children?.()}
 </Button.Root>

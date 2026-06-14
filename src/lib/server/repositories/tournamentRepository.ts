@@ -1,5 +1,5 @@
 import { asc, eq } from 'drizzle-orm';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import { courts, matchSidePlayers, matchSides, matches, tournaments } from '$lib/server/db/schema';
 
 export type Tournament = typeof tournaments.$inferSelect;
@@ -32,7 +32,6 @@ export interface LiveMatchSummary {
 }
 
 export async function createTournament(
-	db: AppDb,
 	input: {
 		name: string;
 		venue?: string | null;
@@ -41,6 +40,7 @@ export async function createTournament(
 		now: string;
 	}
 ): Promise<string> {
+	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(tournaments).values({
 		id,
@@ -54,11 +54,13 @@ export async function createTournament(
 	return id;
 }
 
-export async function listTournaments(db: AppDb): Promise<Tournament[]> {
+export async function listTournaments(): Promise<Tournament[]> {
+	const db = getRequestDb();
 	return db.select().from(tournaments).orderBy(asc(tournaments.startsAt), asc(tournaments.name));
 }
 
-export async function getTournament(db: AppDb, tournamentId: string): Promise<Tournament | null> {
+export async function getTournament(tournamentId: string): Promise<Tournament | null> {
+	const db = getRequestDb();
 	const tournament = await db.query.tournaments.findFirst({
 		where: eq(tournaments.id, tournamentId)
 	});
@@ -66,9 +68,9 @@ export async function getTournament(db: AppDb, tournamentId: string): Promise<To
 }
 
 export async function createCourt(
-	db: AppDb,
 	input: { tournamentId: string; name: string; displayOrder: number; now: string }
 ): Promise<string> {
+	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(courts).values({
 		id,
@@ -81,7 +83,8 @@ export async function createCourt(
 	return id;
 }
 
-export async function listCourts(db: AppDb, tournamentId: string): Promise<Court[]> {
+export async function listCourts(tournamentId: string): Promise<Court[]> {
+	const db = getRequestDb();
 	const courtRows = db
 		.select()
 		.from(courts)
@@ -92,15 +95,15 @@ export async function listCourts(db: AppDb, tournamentId: string): Promise<Court
 }
 
 export async function listMatchesForTournament(
-	db: AppDb,
 	tournamentId: string
 ): Promise<LiveMatchSummary[]> {
+	const db = getRequestDb();
 	const matchRows = await db
 		.select()
 		.from(matches)
 		.where(eq(matches.tournamentId, tournamentId))
 		.orderBy(asc(matches.displayOrder), asc(matches.createdAt));
-	const courtRows = await listCourts(db, tournamentId);
+	const courtRows = await listCourts(tournamentId);
 	const sideRows = await db
 		.select()
 		.from(matchSides)

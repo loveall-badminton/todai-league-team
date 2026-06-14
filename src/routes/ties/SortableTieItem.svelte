@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { GripVertical, ChevronDown } from '@lucide/svelte';
+	import { ChevronDown, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import { Collapsible } from 'bits-ui';
 	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import AppCheckbox from '$lib/components/AppCheckbox.svelte';
-	import CourtPicker from '$lib/components/CourtPicker.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
+	import TieEditForm from './TieEditForm.svelte';
 
 	type Team = { id: string; name: string };
 
@@ -38,13 +36,6 @@
 			return !sortableEnabled;
 		}
 	});
-
-	let teamItems = $derived([
-		{ value: '', label: '未割当' },
-		...teams.map((t) => ({ value: t.id, label: t.name }))
-	]);
-
-	let assignedTeamId = $derived(tie.officiatingTeamId ?? '');
 </script>
 
 <div
@@ -125,51 +116,9 @@
 			<div class="border-t border-zinc-100 px-5 py-4">
 				<form {...tieForm} class="space-y-4">
 					<input type="hidden" name="id" value={tie.id} />
-
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">コード</span>
-							<AppInput name="tieCode" value={tie.tieCode} required />
-						</div>
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">予定時刻</span>
-							<AppInput name="scheduledStartAt" type="time" value={tie.scheduledStartAt ?? ''} />
-						</div>
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">オーダー期限</span>
-							<AppInput name="lineupDueAt" type="time" value={tie.lineupDueAt ?? ''} />
-						</div>
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">審判担当</span>
-							<AppSelect name="assignedTeamId" bind:value={assignedTeamId} items={teamItems} />
-						</div>
-					</div>
-
-					<div class="grid gap-1">
-						<span class="text-xs font-medium text-zinc-500">体育館・コート</span>
-						<CourtPicker initialVenue={tie.venue} initialCourts={tie.courtBlockCode} />
-					</div>
-
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">運営メモ</span>
-							<AppInput name="operationNote" value={tie.operationNote ?? ''} />
-						</div>
-						<div class="grid gap-1">
-							<span class="text-xs font-medium text-zinc-500">審判メモ</span>
-							<AppInput name="officiatingNote" value={tie.officiatingNote ?? ''} />
-						</div>
-					</div>
-
+					<TieEditForm {tie} {teams} />
 					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-4">
-							<button
-								class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-							>
-								保存
-							</button>
-							<AppCheckbox name="scheduleChanged" checked={tie.scheduleChanged} label="変更あり" />
-						</div>
+						<AppButton variant="primary">保存</AppButton>
 						<a
 							href={resolve('/ties/[tieId]', { tieId: tie.id })}
 							class="text-xs text-zinc-400 hover:text-zinc-700 hover:underline"

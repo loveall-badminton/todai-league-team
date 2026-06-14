@@ -1,18 +1,17 @@
 import { command, form, getRequestEvent } from '$app/server';
-import { error, redirect } from '@sveltejs/kit';
-import * as v from 'valibot';
 import { requireAdmin } from '$lib/server/auth/access';
-import { getRequestDb } from '$lib/server/db/request';
 import {
-	createTeamPlayer,
 	bulkCreateTeamPlayers,
-	deleteTeam as deleteTeamRepo,
+	createTeamPlayer,
 	deleteTeamPlayer,
+	deleteTeam as deleteTeamRepo,
 	getTeamWithPlayers,
 	reorderTeamPlayers,
-	updateTeam as updateTeamRepo,
-	updateTeamPlayer
+	updateTeamPlayer,
+	updateTeam as updateTeamRepo
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { error, redirect } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const groupCodeSchema = v.optional(v.picklist(['', 'A', 'B'] as const));
 const teamStatusSchema = v.optional(v.picklist(['active', 'withdrawn'] as const));
@@ -28,9 +27,8 @@ export const updateTeam = form(
 	}),
 	async ({ name, shortName, groupCode, status }) => {
 		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
-		await updateTeamRepo(db, {
+		requireAdmin();
+		await updateTeamRepo({
 			id: event.params.teamId!,
 			name,
 			shortName: shortName?.trim() || null,
@@ -49,11 +47,10 @@ export const createPlayer = form(
 	}),
 	async ({ name, gender }) => {
 		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
-		const teamData = await getTeamWithPlayers(db, event.params.teamId!);
+		requireAdmin();
+		const teamData = await getTeamWithPlayers(event.params.teamId!);
 		const nextOrder = teamData?.players.length ?? 0;
-		await createTeamPlayer(db, {
+		await createTeamPlayer({
 			teamId: event.params.teamId!,
 			name,
 			gender: gender === 'male' || gender === 'female' ? gender : 'unknown',
@@ -72,10 +69,8 @@ export const updatePlayer = form(
 		status: playerStatusSchema
 	}),
 	async ({ id, name, gender, status }) => {
-		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
-		await updateTeamPlayer(db, {
+		requireAdmin();
+		await updateTeamPlayer({
 			id,
 			name,
 			gender: gender === 'male' || gender === 'female' ? gender : 'unknown',
@@ -93,8 +88,7 @@ export const bulkCreatePlayers = command(
 	}),
 	async ({ namesText, gender }) => {
 		const event = getRequestEvent();
-		requireAdmin(event);
-		const db = getRequestDb(event.platform);
+		requireAdmin();
 
 		const names = namesText
 			.split('\n')
@@ -105,10 +99,10 @@ export const bulkCreatePlayers = command(
 			error(400, '有効な選手名がありません');
 		}
 
-		const teamData = await getTeamWithPlayers(db, event.params.teamId!);
+		const teamData = await getTeamWithPlayers(event.params.teamId!);
 		const nextOrder = teamData?.players.length ?? 0;
 
-		const addedCount = await bulkCreateTeamPlayers(db, {
+		const addedCount = await bulkCreateTeamPlayers({
 			teamId: event.params.teamId!,
 			names,
 			gender: gender === 'male' || gender === 'female' ? gender : 'unknown',
@@ -121,21 +115,19 @@ export const bulkCreatePlayers = command(
 );
 
 export const reorderPlayers = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
-	await reorderTeamPlayers(getRequestDb(event.platform), ids, new Date().toISOString());
+	requireAdmin();
+	await reorderTeamPlayers(ids, new Date().toISOString());
 });
 
 export const deletePlayer = command(v.object({ id: v.string() }), async ({ id }) => {
-	const event = getRequestEvent();
-	requireAdmin(event);
+	requireAdmin();
 	if (!id) error(400, '選手IDが不正です');
-	await deleteTeamPlayer(getRequestDb(event.platform), id);
+	await deleteTeamPlayer(id);
 });
 
 export const deleteTeam = command(async () => {
 	const event = getRequestEvent();
-	requireAdmin(event);
-	await deleteTeamRepo(getRequestDb(event.platform), event.params.teamId!);
+	requireAdmin();
+	await deleteTeamRepo(event.params.teamId!);
 	redirect(303, '/teams');
 });

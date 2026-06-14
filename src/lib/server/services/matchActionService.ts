@@ -1,6 +1,6 @@
 import { applyScoreEvent, getCurrentGame } from '$lib/domain/scoring';
 import type { GameScore, MatchState, ScoreEventInput, ServiceState } from '$lib/domain/types';
-import type { AppDb } from '$lib/server/db/client';
+import { getRequestDb } from '$lib/server/db/request';
 import {
 	matchServiceStates,
 	matchSnapshots,
@@ -20,44 +20,35 @@ import { recalculateTieResult } from '$lib/server/services/tieOperationService';
 import { eq } from 'drizzle-orm';
 
 export async function applyMatchAction(params: {
-	db: AppDb;
 	matchId: string;
 	input: ScoreEventInput;
 	actorName?: string | null;
 	now: string;
 }): Promise<MatchState> {
-	const { db, matchId, actorName, now } = params;
-	const duplicate = await getScoreEventByIdempotencyKey(db, matchId, params.input.idempotencyKey);
+	const db = getRequestDb();
+	const { matchId, actorName, now } = params;
+	const duplicate = await getScoreEventByIdempotencyKey(matchId, params.input.idempotencyKey);
 	if (duplicate) {
 		const payload = parsePayload(duplicate.payloadJson);
 		if (payload.afterState) return payload.afterState;
 	}
 
-	const beforeState = await getMatchState(db, matchId);
+	const beforeState = await getMatchState(matchId);
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
-	const players = await getMatchPlayers(db, matchId);
-	const input = await prepareUndoInput(db, matchId, params.input);
+	const players = await getMatchPlayers(matchId);
+	const input = await prepareUndoInput(matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
 	const eventId = crypto.randomUUID();
-	const eventInsert = buildScoreEventInsert({
-		db,
-		eventId,
-		matchId,
-		input,
-		beforeState,
-		afterState,
-		actorName,
-		now
-	});
-	const matchUpdate = buildMatchUpdate(db, afterState);
-	const snapshotUpsert = buildSnapshotUpsert(db, afterState);
-	const serviceStateUpsert = buildServiceStateUpsert(db, afterState);
+	const eventInsert = buildScoreEventInsert({ eventId, matchId, input, beforeState, afterState, actorName, now });
+	const matchUpdate = buildMatchUpdate(afterState);
+	const snapshotUpsert = buildSnapshotUpsert(afterState);
+	const serviceStateUpsert = buildServiceStateUpsert(afterState);
 	const rubberUpdate = match?.rubberId
-		? buildRubberUpdate(db, match.rubberId, afterState, now)
+		? buildRubberUpdate(match.rubberId, afterState, now)
 		: null;
 
 	if (input.type === 'undo' && input.targetSeqNo) {
-		const targetEvent = await getScoreEventBySeqNo(db, matchId, input.targetSeqNo);
+		const targetEvent = await getScoreEventBySeqNo(matchId, input.targetSeqNo);
 		if (!targetEvent) throw new Error('Undo target event not found after insert');
 		const undoLinkInsert = db.insert(scoreEventUndoLinks).values({
 			id: crypto.randomUUID(),
@@ -101,32 +92,39 @@ export async function applyMatchAction(params: {
 
 	if (match?.rubberId) {
 		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
-		if (rubber) await recalculateTieResult(db, rubber.tieId, now);
+		if (rubber) await recalculateTieResult(rubber.tieId, now);
 	}
 
 	return afterState;
 }
 
-async function prepareUndoInput(
-	db: AppDb,
-	matchId: string,
-	input: ScoreEventInput
-): Promise<ScoreEventInput> {
+async function prepareUndoInput(matchId: string, input: ScoreEventInput): Promise<ScoreEventInput> {
 	if (input.type !== 'undo') return input;
 
 	const targetEvent =
 		input.targetSeqNo === undefined
-			? await getLastUndoableScoreEvent(db, matchId)
-			: await getScoreEventBySeqNo(db, matchId, input.targetSeqNo);
+			? await getLastUndoableScoreEvent(matchId)
+			: await getScoreEventBySeqNo(matchId, input.targetSeqNo);
 	if (!targetEvent) throw new Error('Undo target event not found');
 	if (
-		!['rally_won', 'correction_applied', 'match_suspended', 'match_resumed'].includes(
-			targetEvent.eventType
-		)
+		![
+			'rally_won',
+			'correction_applied',
+			'match_suspended',
+			'match_resumed',
+			'match_started',
+			'game_started'
+		].includes(targetEvent.eventType)
 	) {
 		throw new Error('Event cannot be undone');
 	}
-	if (await hasUndoLink(db, matchId, targetEvent.seqNo)) {
+	if (
+		['match_started', 'game_started'].includes(targetEvent.eventType) &&
+		(targetEvent.scoreAAfter !== 0 || targetEvent.scoreBAfter !== 0)
+	) {
+		throw new Error('得点が記録されているため修正できません');
+	}
+	if (await hasUndoLink(matchId, targetEvent.seqNo)) {
 		throw new Error('Target event has already been undone');
 	}
 
@@ -160,7 +158,6 @@ function reasonForInput(input: ScoreEventInput): string | null {
 }
 
 function buildScoreEventInsert(params: {
-	db: AppDb;
 	eventId: string;
 	matchId: string;
 	input: ScoreEventInput;
@@ -184,7 +181,6 @@ function buildScoreEventInsert(params: {
 
 function scoreEventsInsert(
 	params: {
-		db: AppDb;
 		eventId: string;
 		matchId: string;
 		input: ScoreEventInput;
@@ -196,7 +192,8 @@ function scoreEventsInsert(
 	beforeScore: GameScore | null,
 	afterScore: GameScore | null
 ) {
-	return params.db.insert(scoreEvents).values({
+	const db = getRequestDb();
+	return db.insert(scoreEvents).values({
 		id: params.eventId,
 		matchId: params.matchId,
 		seqNo: params.afterState.lastSeqNo,
@@ -230,7 +227,8 @@ function scoreEventsInsert(
 	});
 }
 
-function buildMatchUpdate(db: AppDb, state: MatchState) {
+function buildMatchUpdate(state: MatchState) {
+	const db = getRequestDb();
 	const currentGame = getCurrentGame(state);
 	return db
 		.update(matches)
@@ -255,7 +253,8 @@ function buildMatchUpdate(db: AppDb, state: MatchState) {
 		.where(eq(matches.id, state.matchId));
 }
 
-function buildRubberUpdate(db: AppDb, rubberId: string, state: MatchState, now: string) {
+function buildRubberUpdate(rubberId: string, state: MatchState, now: string) {
+	const db = getRequestDb();
 	const activeStatuses = new Set(['playing', 'interval', 'suspended']);
 	const finishedStatuses = new Set(['finished', 'forfeited', 'retired']);
 	const status =
@@ -281,7 +280,8 @@ function buildRubberUpdate(db: AppDb, rubberId: string, state: MatchState, now: 
 		.where(eq(rubbers.id, rubberId));
 }
 
-function buildSnapshotUpsert(db: AppDb, state: MatchState) {
+function buildSnapshotUpsert(state: MatchState) {
+	const db = getRequestDb();
 	return db
 		.insert(matchSnapshots)
 		.values({
@@ -300,7 +300,8 @@ function buildSnapshotUpsert(db: AppDb, state: MatchState) {
 		});
 }
 
-function buildServiceStateUpsert(db: AppDb, state: MatchState) {
+function buildServiceStateUpsert(state: MatchState) {
+	const db = getRequestDb();
 	return db
 		.insert(matchServiceStates)
 		.values(serviceStateValues(state))
