@@ -1,34 +1,26 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
-	import { getGroupStandings } from './live.remote';
+	import type { getGroupStandings } from './live.remote';
 
-	let { realtimeEnabled }: { realtimeEnabled: boolean } = $props();
-
-	const standings = getGroupStandings();
-
-	$effect(() => {
-		if (!realtimeEnabled) return;
-		const id = setInterval(() => standings.refresh(), 8000);
-		return () => clearInterval(id);
-	});
+	let { query }: { query: ReturnType<typeof getGroupStandings> } = $props();
 
 	const groups = $derived(
-		standings.current
+		query.current
 			? [
-					{ label: 'Aリーグ', rows: standings.current.standingA, ties: standings.current.groupA },
-					{ label: 'Bリーグ', rows: standings.current.standingB, ties: standings.current.groupB }
+					{ label: 'Aリーグ', rows: query.current.standingA, ties: query.current.groupA },
+					{ label: 'Bリーグ', rows: query.current.standingB, ties: query.current.groupB }
 				].filter((g) => g.rows.length > 0)
 			: []
 	);
 
-	type StandingData = NonNullable<typeof standings.current>;
+	type StandingData = NonNullable<typeof query.current>;
 	function groupTeams(rows: StandingData['standingA'], allTeams: StandingData['teams']) {
 		return rows.map((row) => allTeams.find((t) => t.id === row.teamId)).filter((t) => t != null);
 	}
 </script>
 
-{#if standings.current == null}
+{#if query.current == null}
 	<section class="space-y-3">
 		<div class="h-3 w-16 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-4 xl:grid-cols-2">
@@ -55,7 +47,7 @@
 		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">順位表</h2>
 		<div class="grid gap-4 xl:grid-cols-2">
 			{#each groups as group (group.label)}
-				{@const teams = groupTeams(group.rows, standings.current!.teams)}
+				{@const teams = groupTeams(group.rows, query.current!.teams)}
 				<Card class="overflow-hidden">
 					<div class="border-b border-zinc-100 px-4 py-3">
 						<h3 class="text-sm font-semibold text-zinc-950">{group.label}</h3>

@@ -89,27 +89,31 @@
 
 {#if variant === 'compact'}
 	<!-- Compact grid layout (live page card style) -->
-	<div
-		class="grid grid-cols-[4rem_1fr_5rem_1fr] items-center gap-x-2 px-4 py-1 text-[10px] font-medium tracking-wider text-zinc-300"
-	>
-		<span></span>
-		<span class="truncate">{teamAName}</span>
-		<span class="text-center">スコア</span>
-		<span class="truncate text-right">{teamBName}</span>
-	</div>
-	{#each rubbers as rubber (rubber.id)}
-		{@const isPlaying = rubber.status === 'playing'}
-		<div
-			class="grid grid-cols-[4rem_1fr_auto_1fr] items-center gap-x-2 border-t border-zinc-50 px-4 py-2 text-xs {isPlaying
-				? 'bg-emerald-50'
-				: ''}"
-		>
-			<span class="font-medium text-zinc-400">{rubberLabel(rubber.code)}</span>
-			<div class="min-w-0">{@render playerNames(rubber.playersA, 'A', rubber)}</div>
-			<div class="shrink-0 text-center">{@render scoreCell(rubber)}</div>
-			<div class="min-w-0 text-right">{@render playerNames(rubber.playersB, 'B', rubber)}</div>
+	<div class="overflow-x-auto">
+		<div class="min-w-[22rem]">
+			<div
+				class="grid grid-cols-[4rem_1fr_5rem_1fr] items-center gap-x-2 px-4 py-1 text-[10px] font-medium tracking-wider text-zinc-300"
+			>
+				<span></span>
+				<span class="truncate">{teamAName}</span>
+				<span class="text-center">スコア</span>
+				<span class="truncate text-right">{teamBName}</span>
+			</div>
+			{#each rubbers as rubber (rubber.id)}
+				{@const isPlaying = rubber.status === 'playing'}
+				<div
+					class="grid grid-cols-[4rem_1fr_auto_1fr] items-center gap-x-2 border-t border-zinc-50 px-4 py-2 text-xs {isPlaying
+						? 'bg-emerald-50'
+						: ''}"
+				>
+					<span class="font-medium text-zinc-400">{rubberLabel(rubber.code)}</span>
+					<div class="min-w-0">{@render playerNames(rubber.playersA, 'A', rubber)}</div>
+					<div class="shrink-0 text-center">{@render scoreCell(rubber)}</div>
+					<div class="min-w-0 text-right">{@render playerNames(rubber.playersB, 'B', rubber)}</div>
+				</div>
+			{/each}
 		</div>
-	{/each}
+	</div>
 {:else}
 	<!-- Full table layout (tie detail style) -->
 	<div class="overflow-x-auto">

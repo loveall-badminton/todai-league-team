@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
-	import { DragDropProvider } from '@dnd-kit/svelte';
+	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import type { ComponentProps } from 'svelte';
 	type DragOverEvent = Parameters<
@@ -10,6 +10,7 @@
 	type DragEndEvent = Parameters<
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
+	import Card from '$lib/components/Card.svelte';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Badge from '$lib/components/Badge.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
@@ -19,7 +20,8 @@
 	import AppInput from '$lib/components/AppInput.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
-	import SortableGroupTie from './SortableGroupTie.svelte';
+	import { GripVertical } from '@lucide/svelte';
+	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
 	import {
@@ -114,7 +116,7 @@
 <PageHeader eyebrow="予選リーグ" title={`${data.groupCode}リーグ`} actions={headerActions} />
 
 <!-- Teams -->
-<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+<Card class="p-5">
 	<h2 class="text-sm font-medium tracking-wide text-zinc-500">所属チーム</h2>
 	<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 		{#each data.groupTeams as team (team.id)}
@@ -129,49 +131,49 @@
 			<p class="col-span-full text-sm text-zinc-500">チームが登録されていません。</p>
 		{/each}
 	</div>
-</section>
+</Card>
 
 <!-- Standings + round-robin matrix (merged) -->
-<section class="min-w-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+{#snippet standingsExtraHead()}
+	<th class="w-20 px-4 py-2 text-left text-xs font-medium text-zinc-400">状態</th>
+	<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-zinc-400">手動順位</th>
+{/snippet}
+
+{#snippet standingsExtraCell(row: typeof data.standings[number])}
+	{@const rankForm = setManualRank.for(row.teamId)}
+	<td class="px-4 py-2.5">
+		{#if row.requiresTiebreaker}
+			<Badge color="amber">再試合必要</Badge>
+		{:else if row.manualRank}
+			<Badge>手動</Badge>
+		{:else}
+			<span class="text-xs text-zinc-500">{row.headToHeadSummary ?? '自動判定'}</span>
+		{/if}
+	</td>
+	<td class="px-4 py-2.5">
+		<form {...rankForm} class="flex items-center gap-2">
+			<input type="hidden" name="teamId" value={row.teamId} />
+			<AppInput
+				name="manualRank"
+				type="number"
+				min="1"
+				value={row.manualRank ?? row.rank ?? ''}
+				class="w-14 px-2 py-1.5 tabular-nums"
+			/>
+			<AppInput name="reason" placeholder="理由" class="w-24 px-2 py-1.5" />
+			<button
+				class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+			>
+				保存
+			</button>
+		</form>
+	</td>
+{/snippet}
+
+<Card class="min-w-0">
 	<div class="border-b border-zinc-100 px-5 py-4">
 		<h2 class="font-semibold">順位表</h2>
 	</div>
-
-	{#snippet standingsExtraHead()}
-		<th class="w-20 px-4 py-2 text-left text-xs font-medium text-zinc-400">状態</th>
-		<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-zinc-400">手動順位</th>
-	{/snippet}
-
-	{#snippet standingsExtraCell(row: typeof data.standings[number])}
-		{@const rankForm = setManualRank.for(row.teamId)}
-		<td class="px-4 py-2.5">
-			{#if row.requiresTiebreaker}
-				<Badge color="amber">再試合必要</Badge>
-			{:else if row.manualRank}
-				<Badge>手動</Badge>
-			{:else}
-				<span class="text-xs text-zinc-500">{row.headToHeadSummary ?? '自動判定'}</span>
-			{/if}
-		</td>
-		<td class="px-4 py-2.5">
-			<form {...rankForm} class="flex items-center gap-2">
-				<input type="hidden" name="teamId" value={row.teamId} />
-				<AppInput
-					name="manualRank"
-					type="number"
-					min="1"
-					value={row.manualRank ?? row.rank ?? ''}
-					class="w-14 px-2 py-1.5 tabular-nums"
-				/>
-				<AppInput name="reason" placeholder="理由" class="w-24 px-2 py-1.5" />
-				<button
-					class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-				>
-					保存
-				</button>
-			</form>
-		</td>
-	{/snippet}
 
 	<GroupStandingsTable
 		standings={data.standings}
@@ -181,7 +183,7 @@
 		extraHead={standingsExtraHead}
 		extraCell={standingsExtraCell}
 	/>
-</section>
+</Card>
 
 <!-- Ties -->
 <section class="space-y-3">
@@ -193,20 +195,47 @@
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 			<div class="space-y-2">
 				{#each allTies as tie, index (tie.id)}
-					<SortableGroupTie
+					<SortableTieItem
 						{tie}
 						{index}
-						allTeams={data.allTeams}
+						teams={data.allTeams}
 						tieForm={updateTie.for(tie.id)}
 					/>
 				{/each}
 			</div>
+			<DragOverlay dropAnimation={null}>
+				{#snippet children(draggable)}
+					{@const tie = allTies.find((t) => t.id === String(draggable.id))}
+					{#if tie}
+						<div
+							class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl opacity-95"
+						>
+							<div class="flex items-stretch">
+								<div
+									class="flex shrink-0 cursor-grabbing items-center border-r border-zinc-100 px-3 text-zinc-400"
+								>
+									<GripVertical class="h-4 w-4" />
+								</div>
+								<div class="flex flex-1 items-center px-4 py-3">
+									<div class="flex min-w-0 flex-col gap-0.5">
+										<span class="font-semibold text-zinc-900">{tie.tieCode}</span>
+										<p class="truncate text-sm text-zinc-600">
+											{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
+											{tie.teamBName ?? '未定'}
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+				{/snippet}
+			</DragOverlay>
 		</DragDropProvider>
 	{/if}
 </section>
 
 <!-- Ranking Tiebreakers -->
-<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm">
+<Card>
 	<div class="border-b border-zinc-100 px-5 py-4">
 		<h2 class="font-semibold">順位決定再試合</h2>
 	</div>
@@ -290,4 +319,4 @@
 			<p class="text-sm text-zinc-500">作成済みの順位決定再試合はありません。</p>
 		{/if}
 	</div>
-</section>
+</Card>

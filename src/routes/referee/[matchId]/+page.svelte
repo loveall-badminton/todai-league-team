@@ -1,35 +1,28 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
-	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import { GripVertical, ArrowLeftRight } from '@lucide/svelte';
-	import { onMount } from 'svelte';
-	import type { ComponentProps } from 'svelte';
-	import type { PageProps } from './$types';
-	import type { MatchPlayer } from '$lib/domain/types';
+	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { matchStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import type { MatchPlayer } from '$lib/domain/types';
+	import { cn } from '$lib/utils/cn';
+	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
+	import { isSortable } from '@dnd-kit/svelte/sortable';
+	import { ArrowLeftRight, GripVertical } from '@lucide/svelte';
+	import type { ComponentProps } from 'svelte';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import type { PageProps } from './$types';
 	import CourtSideSortableItem from './CourtSideSortableItem.svelte';
 	import RefereeAdvancedControls from './RefereeAdvancedControls.svelte';
 	import RefereeCourtDiagram from './RefereeCourtDiagram.svelte';
 	import RefereeEventLog from './RefereeEventLog.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
-	import {
-		rallyWon,
-		start,
-		startGame,
-		undo,
-		suspend,
-		resume,
-		confirm
-	} from './referee.remote';
-	import { cn } from '$lib/utils/cn';
-	import { toast } from 'svelte-sonner';
+	import { confirm, rallyWon, resume, start, startGame, suspend, undo } from './referee.remote';
 
 	type DragOverEvent = Parameters<
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
@@ -40,7 +33,6 @@
 
 	let { data }: PageProps = $props();
 
-
 	let currentGame = $derived(
 		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
 	);
@@ -49,6 +41,41 @@
 			(currentGame?.score.A ?? 0) === 0 &&
 			(currentGame?.score.B ?? 0) === 0
 	);
+
+	// Undo: find last undoable event that hasn't been undone yet
+	const undoableEventTypes = [
+		'rally_won',
+		'correction_applied',
+		'match_suspended',
+		'match_resumed',
+		'match_started',
+		'game_started'
+	];
+	let undoneSeqNos = $derived(
+		new Set(
+			data.events
+				.filter((e) => e.eventType === 'undo_applied' && e.targetSeqNo != null)
+				.map((e) => e.targetSeqNo!)
+		)
+	);
+	let lastUndoableEvent = $derived(
+		[...data.events]
+			.reverse()
+			.find((e) => undoableEventTypes.includes(e.eventType) && !undoneSeqNos.has(e.seqNo)) ?? null
+	);
+
+	function undoLabel(e: (typeof data.events)[number]): string {
+		if (e.eventType === 'rally_won') {
+			const name = e.side === 'A' ? sideAName : e.side === 'B' ? sideBName : '?';
+			return `${name} 得点 (${e.scoreAAfter}–${e.scoreBAfter})`;
+		}
+		if (e.eventType === 'match_started' || e.eventType === 'game_started') return 'サービス設定';
+		if (e.eventType === 'match_suspended') return '中断';
+		if (e.eventType === 'match_resumed') return '再開';
+		if (e.eventType === 'correction_applied') return '訂正';
+		return e.eventType;
+	}
+
 	let sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
 	let sideBPlayers = $derived(data.players.filter((player) => player.side === 'B'));
 	let sideAName = $derived(data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A');
@@ -129,8 +156,8 @@
 		return (side === 'A' ? sideAPlayers : sideBPlayers)[0]?.teamName;
 	}
 
-	function sideAccent(side: 'A' | 'B'): 'emerald' | 'sky' {
-		return side === 'A' ? 'emerald' : 'sky';
+	function sideAccent(side: 'A' | 'B'): 'pink' | 'cyan' {
+		return side === 'A' ? 'pink' : 'cyan';
 	}
 
 	function dndSide(id: unknown): 'A' | 'B' {
@@ -153,8 +180,8 @@
 	let rightSidePlayers = $derived(sideAIsLeft ? sideBPlayers : sideAPlayers);
 
 	// Accent colors per physical side
-	let leftAccent = $derived<'emerald' | 'sky'>(leftSide === 'A' ? 'emerald' : 'sky');
-	let rightAccent = $derived<'emerald' | 'sky'>(leftSide === 'A' ? 'sky' : 'emerald');
+	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
+	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
 	async function run(fn: () => Promise<unknown>) {
 		try {
@@ -171,15 +198,15 @@
 	name: string,
 	teamName: string | null | undefined,
 	score: number,
-	accent: 'emerald' | 'sky',
+	accent: 'pink' | 'cyan',
 	serviceActive: boolean
 )}
-	<div
-		class="rounded-2xl border bg-white p-5 shadow-sm {serviceActive
-			? accent === 'emerald'
-				? 'border-2 border-emerald-500'
-				: 'border-2 border-sky-500'
-			: 'border-zinc-200'}"
+	<Card
+		class="p-5 {serviceActive
+			? accent === 'pink'
+				? 'border-2 border-pink-500'
+				: 'border-2 border-cyan-500'
+			: ''}"
 	>
 		<p class="text-sm font-medium text-zinc-500">{name}</p>
 		{#if teamName}
@@ -187,21 +214,19 @@
 		{/if}
 		<p class="mt-1 text-7xl leading-none font-bold tabular-nums">{score}</p>
 		<div class="mt-4">
-			<AppButton
+			<LongPressButton
 				class={cn(
 					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400',
-					accent === 'emerald'
-						? 'bg-emerald-600 hover:bg-emerald-700'
-						: 'bg-sky-600 hover:bg-sky-700'
+					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 				)}
 				disabled={data.state.status !== 'playing'}
-				type="button"
 				onclick={() => run(() => rallyWon({ side }))}
+				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 			>
 				+1
-			</AppButton>
+			</LongPressButton>
 		</div>
-	</div>
+	</Card>
 {/snippet}
 
 <svelte:head>
@@ -210,7 +235,7 @@
 
 <div class="grid gap-4">
 	<!-- Header -->
-	<header class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+	<Card class="p-5">
 		<a
 			class="text-sm text-zinc-500 hover:text-zinc-700"
 			href={resolve('/tournaments/[tournamentId]', { tournamentId: data.match.tournamentId })}
@@ -231,7 +256,7 @@
 				</p>
 			</div>
 		</div>
-	</header>
+	</Card>
 
 	<!-- Start game form -->
 	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}
@@ -269,7 +294,7 @@
 								<div
 									class={cn(
 										'min-h-24 rounded-xl border bg-white/95 p-3 shadow-xl backdrop-blur-sm',
-										sideAccent(side) === 'emerald' ? 'border-emerald-200' : 'border-sky-200'
+										sideAccent(side) === 'pink' ? 'border-pink-200' : 'border-cyan-200'
 									)}
 									style:width={courtSideCardWidth ? `${courtSideCardWidth}px` : undefined}
 								>
@@ -277,9 +302,9 @@
 										<span
 											class={cn(
 												'rounded-full px-2 py-0.5 text-xs font-bold',
-												sideAccent(side) === 'emerald'
-													? 'bg-emerald-100 text-emerald-700'
-													: 'bg-sky-100 text-sky-700'
+												sideAccent(side) === 'pink'
+													? 'bg-pink-100 text-pink-700'
+													: 'bg-cyan-100 text-cyan-700'
 											)}>{courtSideLabel(side)}</span
 										>
 										<div class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300">
@@ -435,11 +460,15 @@
 		<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">操作</h2>
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 			<AppButton
-				class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+				class="col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 sm:col-span-1"
 				type="button"
+				disabled={!lastUndoableEvent}
 				onclick={() => run(() => undo({}))}
 			>
-				取り消し
+				<span class="block text-xs text-zinc-400">取り消し</span>
+				<span class="block leading-tight wrap-break-word">
+					{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
+				</span>
 			</AppButton>
 			<AppButton
 				class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
@@ -449,7 +478,7 @@
 				中断
 			</AppButton>
 			<AppButton
-				class="w-full rounded-xl bg-emerald-100 px-3 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-200"
+				class="w-full rounded-xl bg-green-100 px-3 py-2.5 text-sm font-medium text-green-800 hover:bg-green-200"
 				type="button"
 				onclick={() => run(() => resume({}))}
 			>
@@ -477,7 +506,7 @@
 
 	<!-- Advanced controls -->
 	<RefereeAdvancedControls
-		currentGame={currentGame}
+		{currentGame}
 		{sideAName}
 		{sideBName}
 		service={data.state.service}

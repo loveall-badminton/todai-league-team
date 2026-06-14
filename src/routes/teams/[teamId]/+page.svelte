@@ -15,6 +15,7 @@
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppTextarea from '$lib/components/AppTextarea.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -135,7 +136,7 @@
 </header>
 
 <!-- Team edit form -->
-<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+<Card class="p-5">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
 		<DeleteConfirmDialog
@@ -186,10 +187,10 @@
 			</div>
 		</div>
 	</form>
-</section>
+</Card>
 
 <!-- Players section -->
-<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+<Card class="overflow-hidden">
 	<div class="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
 		<h2 class="text-base font-semibold text-zinc-950">
 			選手
@@ -274,4 +275,4 @@
 			</div>
 		</DragDropProvider>
 	{/if}
-</section>
+</Card>

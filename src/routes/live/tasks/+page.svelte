@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Card from '$lib/components/Card.svelte';
 	import { resolve } from '$app/paths';
 	import { ClipboardList, Shield } from '@lucide/svelte';
 	import Badge from '$lib/components/Badge.svelte';
@@ -25,7 +26,7 @@
 
 {#if isTeamAccount}
 	<div class="grid gap-4 sm:grid-cols-2">
-		<div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+		<Card class="p-5">
 			<div class="mb-3 flex items-center gap-2">
 				<ClipboardList class="h-4 w-4 text-zinc-500" />
 				<h2 class="text-sm font-semibold text-zinc-950">オーダー提出</h2>
@@ -61,9 +62,9 @@
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</Card>
 
-		<div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+		<Card class="p-5">
 			<div class="mb-3 flex items-center gap-2">
 				<Shield class="h-4 w-4 text-zinc-500" />
 				<h2 class="text-sm font-semibold text-zinc-950">審判担当</h2>
@@ -100,12 +101,12 @@
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</Card>
 	</div>
 {:else}
-	<div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+	<Card class="p-6">
 		<p class="text-sm text-zinc-500">
 			チームアカウントでログインすると、オーダー提出と審判担当が表示されます。
 		</p>
-	</div>
+	</Card>
 {/if}

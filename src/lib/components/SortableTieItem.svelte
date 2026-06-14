@@ -7,7 +7,7 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
-	import TieEditForm from './TieEditForm.svelte';
+	import TieEditForm from '$lib/components/TieEditForm.svelte';
 
 	type Team = { id: string; name: string };
 
@@ -98,18 +98,17 @@
 							<p class="text-[10px] text-zinc-400">種目</p>
 						</div>
 					{/if}
-					<a
-						href={resolve('/ties/[tieId]', { tieId: tie.id })}
-						onclick={(e) => e.stopPropagation()}
-						class="hidden rounded-lg border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 sm:block"
-					>
-						詳細 →
-					</a>
 					<ChevronDown
 						class="size-4 text-zinc-400 transition-transform group-data-[state=open]/tie:rotate-180"
 					/>
 				</div>
 			</Collapsible.Trigger>
+			<a
+				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				class="hidden shrink-0 items-center border-l border-zinc-100 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 sm:flex"
+			>
+				詳細 →
+			</a>
 		</div>
 
 		<Collapsible.Content>

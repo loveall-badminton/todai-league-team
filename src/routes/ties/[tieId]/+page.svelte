@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Badge from '$lib/components/Badge.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -21,7 +22,7 @@
 	import { cn } from '$lib/utils/cn';
 	import { Check } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
-	import TieEditForm from '../TieEditForm.svelte';
+	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import type { PageProps } from './$types';
 	import {
 		confirmTie,
@@ -171,9 +172,7 @@
 				<Badge color="amber">変更あり</Badge>
 			{/if}
 		</div>
-		<div
-			class="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-6 py-3 shadow-sm"
-		>
+		<Card class="flex items-center gap-3 px-6 py-3">
 			<div class="text-center">
 				<div class="flex items-center gap-2">
 					<span class="text-4xl font-bold tabular-nums">{data.tie.teamScoreA}</span>
@@ -186,11 +185,10 @@
 					</p>
 				{/if}
 			</div>
-		</div>
+		</Card>
 	</div>
 {/snippet}
 
-<!-- Header -->
 <header>
 	<a class="text-sm text-zinc-500 hover:text-zinc-700" href={resolve('/ties')}> ← 対戦一覧 </a>
 	<div class="mt-2">
@@ -203,7 +201,7 @@
 </header>
 
 <!-- Workflow progress -->
-<section class="rounded-2xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
+<Card class="px-5 py-4">
 	<div class="flex items-start gap-0 overflow-x-auto">
 		{#each workflowSteps as step, i (i)}
 			{@const stepNum = i + 1}
@@ -254,7 +252,7 @@
 			</div>
 		{/each}
 	</div>
-</section>
+</Card>
 
 <!-- Action buttons -->
 <div class="flex flex-wrap items-center gap-2">
@@ -283,7 +281,7 @@
 </div>
 
 <!-- Info / edit panel -->
-<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+<Card class="p-5">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-xs font-medium tracking-wide text-zinc-400">詳細情報</h2>
 		{#if !editing}
@@ -357,15 +355,13 @@
 			{/if}
 		</dl>
 	{/if}
-</section>
+</Card>
 
 <!-- Steps 1-2: Lineup panels -->
 {#if currentStep <= 2}
 	<!-- Reveal / unreveal -->
 	{#if isRevealed || bothReadyToReveal}
-		<div
-			class="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-3 shadow-sm"
-		>
+		<Card class="flex items-center justify-between px-5 py-3">
 			<p class="text-sm text-zinc-500">両チームのオーダーが揃っています。</p>
 			{#if isRevealed}
 				<AppButton variant="secondary" onclick={() => run(() => unrevealLineups())}>
@@ -374,7 +370,7 @@
 			{:else}
 				<AppButton onclick={() => run(() => revealLineups())}>オーダー公開</AppButton>
 			{/if}
-		</div>
+		</Card>
 	{/if}
 
 	<!-- Per-team lineup panels -->
@@ -385,37 +381,36 @@
 
 	<!-- Steps 3+: Rubber results -->
 {:else}
-	<section class="rounded-2xl border border-zinc-200 bg-white shadow-sm">
+	{#snippet rubberExtraHead()}
+		<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
+		<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">操作</th>
+	{/snippet}
+
+	{#snippet rubberExtraCell(row: RubberRow)}
+		<td class="px-4 py-3">
+			<span class="text-xs {rubberStatusBgClass(row.status)}">
+				{rubberStatusLabel(row.status)}
+			</span>
+		</td>
+		<td class="px-4 py-3">
+			{#if row.matchId}
+				<AppButton
+					variant="secondary"
+					size="sm"
+					href={resolve('/referee/[matchId]', { matchId: row.matchId })}
+				>
+					スコア入力
+				</AppButton>
+			{:else}
+				<span class="text-xs text-zinc-400">—</span>
+			{/if}
+		</td>
+	{/snippet}
+
+	<Card>
 		<div class="border-b border-zinc-100 px-5 py-4">
 			<h2 class="font-semibold">種目別結果</h2>
 		</div>
-
-		{#snippet rubberExtraHead()}
-			<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
-			<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">操作</th>
-		{/snippet}
-
-		{#snippet rubberExtraCell(row: RubberRow)}
-			<td class="px-4 py-3">
-				<span class="text-xs {rubberStatusBgClass(row.status)}">
-					{rubberStatusLabel(row.status)}
-				</span>
-			</td>
-			<td class="px-4 py-3">
-				{#if row.matchId}
-					<AppButton
-						variant="secondary"
-						size="sm"
-						href={resolve('/referee/[matchId]', { matchId: row.matchId })}
-					>
-						スコア入力
-					</AppButton>
-				{:else}
-					<span class="text-xs text-zinc-400">—</span>
-				{/if}
-			</td>
-		{/snippet}
-
 		<TieRubberList
 			rubbers={data.rubbers.map(toRubberRow)}
 			teamAName={teamName(data.tie.teamAId)}
@@ -424,7 +419,7 @@
 			extraHead={rubberExtraHead}
 			extraCell={rubberExtraCell}
 		/>
-	</section>
+	</Card>
 {/if}
 
 {#snippet lineupPanel(
@@ -434,7 +429,7 @@
 )}
 	{@const lineup = lineupBySide(side)}
 	{@const subStatus = lineup?.submission.status ?? null}
-	<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+	<Card class="overflow-hidden">
 		<!-- Panel header -->
 		<div class="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
 			<div class="flex items-center gap-3">
@@ -505,5 +500,5 @@
 				{/each}
 			</div>
 		{/if}
-	</section>
+	</Card>
 {/snippet}

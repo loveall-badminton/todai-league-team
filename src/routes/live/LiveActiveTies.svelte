@@ -1,20 +1,22 @@
 <script lang="ts">
+	import AppButton from '$lib/components/AppButton.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
-	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { courtDisplayLabel, phaseLabel, rubberLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { PublicRubberSummary } from '$lib/server/services/liveBoardService';
-	import { getActiveTies } from './live.remote';
+	import { ChartLine } from '@lucide/svelte';
+	import { Dialog } from 'bits-ui';
+	import type { getActiveTies, getScoreProgression } from './live.remote';
+	import ScoreProgressChart from './ScoreProgressChart.svelte';
 
-	let { realtimeEnabled }: { realtimeEnabled: boolean } = $props();
-
-	const activeTies = getActiveTies();
-
-	$effect(() => {
-		if (!realtimeEnabled) return;
-		const id = setInterval(() => activeTies.refresh(), 8000);
-		return () => clearInterval(id);
-	});
+	let {
+		query,
+		progressionQuery
+	}: {
+		query: ReturnType<typeof getActiveTies>;
+		progressionQuery: ReturnType<typeof getScoreProgression>;
+	} = $props();
 
 	function toRubberRow(rubber: PublicRubberSummary): RubberRow {
 		const statusSrc = rubber.matchStatus ?? rubber.status;
@@ -30,9 +32,36 @@
 			gameDetails: rubber.gameDetails
 		};
 	}
+
+	function progressionPoints(
+		rubber: PublicRubberSummary,
+		byMatchId: NonNullable<typeof progressionQuery.current>['byMatchId']
+	) {
+		if (!rubber.matchId) return [];
+		return byMatchId[rubber.matchId] ?? [];
+	}
+
+	// Dialog state — one shared dialog, shows chart(s) for the selected tie
+	let dialogOpen = $state(false);
+	let selectedTieId = $state<string | null>(null);
+
+	let selectedTie = $derived(
+		selectedTieId ? (query.current?.ties.find((t) => t.id === selectedTieId) ?? null) : null
+	);
+	let selectedPlayingRubbers = $derived(
+		selectedTieId
+			? (query.current?.rubbersByTieId[selectedTieId] ?? []).filter((r) => r.status === 'playing')
+			: []
+	);
+	let byMatchId = $derived(progressionQuery.current?.byMatchId ?? {});
+
+	function openChart(tieId: string) {
+		selectedTieId = tieId;
+		dialogOpen = true;
+	}
 </script>
 
-{#if activeTies.current == null}
+{#if query.current == null}
 	<section class="space-y-3">
 		<div class="h-3 w-16 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-4 md:grid-cols-2">
@@ -55,21 +84,32 @@
 			{/each}
 		</div>
 	</section>
-{:else if activeTies.current.ties.length > 0}
-	{@const { ties, rubbersByTieId } = activeTies.current}
+{:else if query.current.ties.length > 0}
+	{@const { ties, rubbersByTieId } = query.current}
 	<section class="space-y-3">
 		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">進行中</h2>
 		<div class="grid gap-4 md:grid-cols-2">
 			{#each ties as tie (tie.id)}
 				{@const tieRubbers = rubbersByTieId[tie.id] ?? []}
+				{@const hasPlayingRubber = tieRubbers.some((r) => r.status === 'playing')}
 				<Card class="overflow-hidden border-emerald-200">
 					<div class="px-5 pt-4 pb-3">
-						<p class="text-xs font-medium text-zinc-400">
-							{phaseLabel(tie.phase)} · {tie.tieCode}
-						</p>
-						<p class="mt-1 text-[11px] text-zinc-400">
-							コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
-						</p>
+						<div class="flex items-start justify-between gap-2">
+							<div class="min-w-0">
+								<p class="text-xs font-medium text-zinc-400">
+									{phaseLabel(tie.phase)} · {tie.tieCode}
+								</p>
+								<p class="mt-0.5 text-[11px] text-zinc-400">
+									コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
+								</p>
+							</div>
+							{#if hasPlayingRubber}
+								<AppButton variant="secondary" size="sm" onclick={() => openChart(tie.id)}>
+									<ChartLine class="size-4" />
+									スコア推移
+								</AppButton>
+							{/if}
+						</div>
 						<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
 							<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
 							<div class="text-center">
@@ -94,3 +134,46 @@
 		</div>
 	</section>
 {/if}
+
+<!-- Score progression dialog (shared, one per page) -->
+<Dialog.Root bind:open={dialogOpen}>
+	<Dialog.Portal>
+		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
+		<Dialog.Content
+			class="fixed top-1/2 left-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-xl outline-none max-h-[90dvh]"
+		>
+			{#if selectedTie}
+				<!-- Fixed header -->
+				<div class="flex shrink-0 items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-zinc-100">
+					<div>
+						<Dialog.Title class="text-base font-semibold text-zinc-950">スコア推移</Dialog.Title>
+						<p class="mt-0.5 text-sm text-zinc-500">
+							{selectedTie.teamAName ?? '未定'} vs {selectedTie.teamBName ?? '未定'}
+						</p>
+					</div>
+					<Dialog.Close
+						class="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+					>
+						閉じる
+					</Dialog.Close>
+				</div>
+				<!-- Scrollable chart area -->
+				<div class="overflow-y-auto px-6 py-5 space-y-5">
+					{#each selectedPlayingRubbers as rubber (rubber.id)}
+						{@const points = progressionPoints(rubber, byMatchId)}
+						<div>
+							<p class="mb-2 text-xs font-semibold tracking-wide text-zinc-400">
+								{rubberLabel(rubber.code)}
+							</p>
+							<ScoreProgressChart
+								{points}
+								nameA={selectedTie.teamAName ?? 'A'}
+								nameB={selectedTie.teamBName ?? 'B'}
+							/>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</Dialog.Content>
+	</Dialog.Portal>
+</Dialog.Root>

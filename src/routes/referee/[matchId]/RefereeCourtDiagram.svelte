@@ -14,8 +14,8 @@
 	}: {
 		service: ServiceState | null | undefined;
 		sideAIsLeft: boolean;
-		leftAccent: 'emerald' | 'sky';
-		rightAccent: 'emerald' | 'sky';
+		leftAccent: 'pink' | 'cyan';
+		rightAccent: 'pink' | 'cyan';
 		leftSidePlayers: MatchPlayer[];
 		rightSidePlayers: MatchPlayer[];
 		players: MatchPlayer[];
@@ -35,7 +35,7 @@
 	}
 </script>
 
-{#snippet playerCell(playerId: string, accent: 'emerald' | 'sky', hasBorderBottom: boolean)}
+{#snippet playerCell(playerId: string, accent: 'pink' | 'cyan', hasBorderBottom: boolean)}
 	{@const isServer = service?.serverPlayerId === playerId}
 	{@const isReceiver = service?.receiverPlayerId === playerId}
 	{@const player = players.find((p) => p.id === playerId)}
@@ -43,23 +43,23 @@
 		class="flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center
 		{hasBorderBottom ? 'border-b border-zinc-100' : ''}
 		{isServer
-			? accent === 'emerald'
-				? 'bg-emerald-50'
-				: 'bg-sky-50'
+			? accent === 'pink'
+				? 'bg-pink-50'
+				: 'bg-cyan-50'
 			: isReceiver
 				? 'bg-zinc-50'
 				: ''}"
 	>
 		{#if isServer}
 			<span
-				class={cn('text-xs font-bold', accent === 'emerald' ? 'text-emerald-500' : 'text-sky-500')}
+				class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
 				>サーバー</span
 			>
 		{:else if isReceiver}
 			<span
 				class={cn(
 					'text-xs text-zinc-400',
-					accent === 'emerald' ? 'text-emerald-500' : 'text-sky-500'
+					accent === 'pink' ? 'text-pink-500' : 'text-cyan-500'
 				)}>レシーバー</span
 			>
 		{:else}
@@ -78,17 +78,17 @@
 
 		<div class="mb-1 grid grid-cols-[1fr_2rem_1fr]">
 			<p
-				class="text-center text-xs font-semibold {leftAccent === 'emerald'
-					? 'text-emerald-600'
-					: 'text-sky-600'}"
+				class="text-center text-xs font-semibold {leftAccent === 'pink'
+					? 'text-pink-600'
+					: 'text-cyan-600'}"
 			>
 				左
 			</p>
 			<div></div>
 			<p
-				class="text-center text-xs font-semibold {rightAccent === 'emerald'
-					? 'text-emerald-600'
-					: 'text-sky-600'}"
+				class="text-center text-xs font-semibold {rightAccent === 'pink'
+					? 'text-pink-600'
+					: 'text-cyan-600'}"
 			>
 				右
 			</p>

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
-	import type { PageProps } from './$types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
+	import FormToast from '$lib/components/FormToast.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
-	import { updateSettings, updateScoringRule } from './settings.remote';
+	import type { PageProps } from './$types';
+	import { updateScoringRule, updateSettings } from './settings.remote';
 
 	let { data }: PageProps = $props();
 
@@ -32,7 +33,7 @@
 <PageHeader title="設定" />
 
 <!-- League settings -->
-<section class="rounded-xl border border-zinc-200 bg-white p-5">
+<Card class="p-5">
 	<h2 class="mb-4 font-semibold text-zinc-900">運営設定</h2>
 	<form {...updateSettings} class="space-y-4">
 		<div class="grid gap-1">
@@ -91,10 +92,10 @@
 			<AppButton type="submit">保存</AppButton>
 		</div>
 	</form>
-</section>
+</Card>
 
 <!-- Accounts -->
-<section class="rounded-xl border border-zinc-200 bg-white p-5">
+<Card class="p-5">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
 			<h2 class="font-semibold text-zinc-900">ユーザー管理</h2>
@@ -102,14 +103,14 @@
 		</div>
 		<AppButton href={resolve('/settings/accounts')}>開く</AppButton>
 	</div>
-</section>
+</Card>
 
 <!-- Scoring rules -->
 <section class="space-y-3">
 	<h2 class="font-semibold text-zinc-900">得点ルール</h2>
 	{#each data.scoringRules as rule (rule.id)}
 		{@const ruleForm = updateScoringRule.for(rule.id)}
-		<form {...ruleForm} class="rounded-xl border border-zinc-200 bg-white p-5">
+		<Card class="p-5"><form {...ruleForm}>
 			<input type="hidden" name="id" value={rule.id} />
 
 			<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -158,6 +159,6 @@
 			</div>
 
 			<FormToast result={ruleForm.result} />
-		</form>
+		</form></Card>
 	{/each}
 </section>

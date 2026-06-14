@@ -8,6 +8,7 @@
 	type DragEndEvent = Parameters<
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
+	import Card from '$lib/components/Card.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
@@ -70,7 +71,7 @@
 
 <!-- Creation form (inline) -->
 {#if showForm}
-	<div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+	<Card class="p-5">
 		<h2 class="mb-4 text-base font-semibold text-zinc-950">チーム追加</h2>
 		<form {...create} class="space-y-4">
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,11 +107,11 @@
 				>
 			</div>
 		</form>
-	</div>
+	</Card>
 {/if}
 
 <!-- Team list -->
-<div class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+<Card class="overflow-hidden">
 	{#if teams.length === 0}
 		<div class="p-10 text-center">
 			<p class="text-sm text-zinc-400">チームはまだ登録されていません</p>
@@ -143,4 +144,4 @@
 			</div>
 		</DragDropProvider>
 	{/if}
-</div>
+</Card>

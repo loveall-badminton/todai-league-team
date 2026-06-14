@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageProps } from './$types';
+	import Card from '$lib/components/Card.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
@@ -53,7 +54,7 @@
 
 <PageHeader eyebrow="設定" title="ユーザー管理" actions={headerActions} />
 
-<section class="rounded-xl border border-zinc-200 bg-white p-5">
+<Card class="p-5">
 	<h2 class="mb-4 font-semibold text-zinc-900">アカウント発行</h2>
 	<form {...createAccount} class="space-y-4">
 		<div class="grid gap-4 sm:grid-cols-2">
@@ -88,7 +89,7 @@
 			<AppButton type="submit">発行</AppButton>
 		</div>
 	</form>
-</section>
+</Card>
 
 <section class="space-y-3">
 	<div class="flex items-center justify-between">
@@ -99,7 +100,7 @@
 	{#each data.accounts as account (account.id)}
 		{@const updateAccountForm = updateAccount.for(account.id)}
 		{@const resetPasswordForm = resetPassword.for(account.id)}
-		<div class="rounded-xl border border-zinc-200 bg-white p-5">
+		<Card class="p-5">
 			<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 				<div>
 					<p class="font-mono text-sm font-semibold text-zinc-950">{account.accountId}</p>
@@ -168,7 +169,7 @@
 				<AppButton variant="secondary" type="submit" class="self-end">変更</AppButton>
 				</div>
 			</form>
-		</div>
+		</Card>
 	{:else}
 		<EmptyState message="アカウントはまだありません。" />
 	{/each}

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { GameState, MatchPlayer } from '$lib/domain/types';
 	import Card from '$lib/components/Card.svelte';
+	import type { GameState, MatchPlayer } from '$lib/domain/types';
 	import { cn } from '$lib/utils/cn';
 
 	interface EventRow {
@@ -12,6 +12,7 @@
 		serverPlayerIdBefore: string | null;
 		serverPlayerIdAfter: string | null;
 		receiverPlayerIdAfter: string | null;
+		targetSeqNo: number | null;
 	}
 
 	interface ScoreEntry {
@@ -51,6 +52,16 @@
 	let scoresheetByGame = $derived.by((): GameSheet[] => {
 		const allEvents = [...events].sort((a, b) => a.seqNo - b.seqNo);
 
+		// Exclude events that have been undone
+		const undoneSeqNos = new Set(
+			allEvents
+				.filter((e) => e.eventType === 'undo_applied' && e.targetSeqNo != null)
+				.map((e) => e.targetSeqNo!)
+		);
+		const activeEvents = allEvents.filter(
+			(e) => e.eventType !== 'undo_applied' && !undoneSeqNos.has(e.seqNo)
+		);
+
 		const result: GameSheet[] = [];
 		let currentGameNo = 1;
 		let runs: ServiceRun[] = [];
@@ -58,7 +69,7 @@
 		let lastScoreA = 0;
 		let lastScoreB = 0;
 
-		for (const ev of allEvents) {
+		for (const ev of activeEvents) {
 			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo > currentGameNo) {
 				if (currentRun) runs.push(currentRun);
 				{
@@ -82,8 +93,7 @@
 				const serverId = ev.serverPlayerIdAfter;
 				const receiverId = ev.receiverPlayerIdAfter;
 				const serverSide = players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
-				const receiverSide =
-					players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
+				const receiverSide = players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
 
 				currentRun = {
 					serverPlayerId: serverId ?? '',
@@ -102,8 +112,7 @@
 				const serverId = ev.serverPlayerIdAfter;
 				const receiverId = ev.receiverPlayerIdAfter;
 				const serverSide = players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
-				const receiverSide =
-					players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
+				const receiverSide = players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
 
 				runs.push({
 					serverPlayerId: receiverId ?? '',
@@ -183,7 +192,7 @@
 				{#if game.winnerSide}
 					<span
 						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
-								{game.winnerSide === 'A' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}"
+								{game.winnerSide === 'A' ? 'bg-pink-100 text-pink-700' : 'bg-cyan-100 text-cyan-700'}"
 					>
 						{game.finalScoreA}–{game.finalScoreB}
 					</span>
@@ -195,14 +204,9 @@
 					<tbody>
 						{#each aPlayers as player (player.id)}
 							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
-							<tr
-								class={cn(
-									'w-fit border-b border-zinc-100',
-									playerRuns.length > 0 ? '' : 'opacity-50'
-								)}
-							>
+							<tr class={cn('w-fit border-b border-zinc-100')}>
 								<td
-									class="sticky left-0 z-10 border-r border-zinc-200 bg-emerald-50 px-2 py-1.5 font-medium whitespace-nowrap text-emerald-800"
+									class="sticky left-0 z-10 border-r border-zinc-200 bg-pink-50 px-2 py-1.5 font-medium whitespace-nowrap text-pink-800"
 									style="min-width: 5rem; max-width: 7rem;"
 								>
 									<div class="flex items-center gap-1 truncate">
@@ -215,7 +219,7 @@
 											{#if run.serverPlayerId === player.id}
 												{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
 													<div
-														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-emerald-700 tabular-nums"
+														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-pink-700 tabular-nums"
 													>
 														{entry.scoreA}
 													</div>
@@ -266,14 +270,9 @@
 					<tbody>
 						{#each bPlayers as player (player.id)}
 							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
-							<tr
-								class={cn(
-									'w-fit border-b border-zinc-100',
-									playerRuns.length > 0 ? '' : 'opacity-50'
-								)}
-							>
+							<tr class={cn('w-fit border-b border-zinc-100')}>
 								<td
-									class="sticky left-0 z-10 border-r border-zinc-200 bg-sky-50 px-2 py-1.5 font-medium whitespace-nowrap text-sky-800"
+									class="sticky left-0 z-10 border-r border-zinc-200 bg-cyan-50 px-2 py-1.5 font-medium whitespace-nowrap text-cyan-800"
 									style="min-width: 5rem; max-width: 7rem;"
 								>
 									<div class="flex items-center gap-1 truncate">
@@ -286,7 +285,7 @@
 											{#if run.serverPlayerId === player.id}
 												{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
 													<div
-														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-sky-700 tabular-nums"
+														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-cyan-700 tabular-nums"
 													>
 														{entry.scoreB}
 													</div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
+	import Card from '$lib/components/Card.svelte';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { toast } from 'svelte-sonner';
@@ -106,7 +107,7 @@
 
 <!-- Locked/revealed: read-only display -->
 {#if isLocked}
-	<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+	<Card class="overflow-hidden">
 		<div class="border-b border-zinc-100 px-5 py-4">
 			<p class="text-sm text-zinc-500">
 				{status === 'revealed'
@@ -132,7 +133,7 @@
 				</div>
 			{/each}
 		</div>
-	</section>
+	</Card>
 {:else}
 	{#if isSubmitted}
 		<div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
@@ -145,7 +146,7 @@
 			<p class="text-sm text-zinc-400">選手が登録されていません</p>
 		</div>
 	{:else}
-		<section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+		<Card class="overflow-hidden">
 			<form onsubmit={handleLineup} class="divide-y divide-zinc-100">
 				{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
 					<div class="px-5 py-4">
@@ -191,6 +192,6 @@
 					</button>
 				</div>
 			</form>
-		</section>
+		</Card>
 	{/if}
 {/if}

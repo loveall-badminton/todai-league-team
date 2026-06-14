@@ -1,20 +1,12 @@
 <script lang="ts">
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Card from '$lib/components/Card.svelte';
-	import { getFinalsBoard } from './live.remote';
+	import type { getFinalsBoard } from './live.remote';
 
-	let { realtimeEnabled }: { realtimeEnabled: boolean } = $props();
-
-	const finalsBoard = getFinalsBoard();
-
-	$effect(() => {
-		if (!realtimeEnabled) return;
-		const id = setInterval(() => finalsBoard.refresh(), 8000);
-		return () => clearInterval(id);
-	});
+	let { query }: { query: ReturnType<typeof getFinalsBoard> } = $props();
 </script>
 
-{#if finalsBoard.current == null}
+{#if query.current == null}
 	<section class="space-y-3">
 		<div class="h-3 w-28 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -30,11 +22,11 @@
 			{/each}
 		</div>
 	</section>
-{:else if finalsBoard.current.finalsBoard.length > 0}
+{:else if query.current.finalsBoard.length > 0}
 	<section class="space-y-3">
 		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">決勝トーナメント</h2>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each finalsBoard.current.finalsBoard as tie (tie.id)}
+			{#each query.current.finalsBoard as tie (tie.id)}
 				<Card class={tie.status === 'playing' ? 'border-emerald-200' : ''}>
 					<div class="p-4">
 						<p class="text-xs font-medium text-zinc-400">{phaseLabel(tie.phase)}</p>

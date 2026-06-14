@@ -21,7 +21,7 @@
 <div class="grid gap-4 sm:grid-cols-2">
 	{#each groups as group (group.code)}
 		<a
-			class="group block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-zinc-400"
+			class="group block rounded-2xl border border-zinc-200 bg-white p-6 transition-colors hover:border-zinc-400"
 			href={resolve('/groups/[groupCode]', { groupCode: group.code })}
 		>
 			<div class="flex items-start">

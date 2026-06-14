@@ -15,7 +15,7 @@
 		name: string;
 		teamName?: string | null;
 		sideLabel: '左' | '右';
-		accent: 'emerald' | 'sky';
+		accent: 'pink' | 'cyan';
 		index: number;
 	} = $props();
 
@@ -35,15 +35,15 @@
 		'min-h-24 rounded-xl border bg-white p-3 transition-colors',
 		sortable.isDragging ? 'border-dashed opacity-60' : 'hover:bg-zinc-50',
 		sortable.isDropTarget &&
-			(accent === 'emerald' ? 'border-emerald-400 bg-emerald-50' : 'border-sky-400 bg-sky-50'),
-		!sortable.isDropTarget && (accent === 'emerald' ? 'border-emerald-200' : 'border-sky-200')
+			(accent === 'pink' ? 'border-pink-400 bg-pink-50' : 'border-cyan-400 bg-cyan-50'),
+		!sortable.isDropTarget && (accent === 'pink' ? 'border-pink-200' : 'border-cyan-200')
 	)}
 >
 	<div class="mb-2 flex items-center justify-between gap-2">
 		<span
 			class={cn(
 				'rounded-full px-2 py-0.5 text-xs font-bold',
-				accent === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'
+				accent === 'pink' ? 'bg-pink-100 text-pink-700' : 'bg-cyan-100 text-cyan-700'
 			)}>{sideLabel}</span
 		>
 		<div

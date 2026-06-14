@@ -4,12 +4,37 @@
 	import LiveActiveTies from './LiveActiveTies.svelte';
 	import LiveStandings from './LiveStandings.svelte';
 	import LiveFinalsBoard from './LiveFinalsBoard.svelte';
-	import { getActiveTies } from './live.remote';
+	import LiveSchedule from './LiveSchedule.svelte';
+	import { getActiveTies, getGroupStandings, getFinalsBoard, getSchedule, getScoreProgression } from './live.remote';
 
 	let realtimeEnabled = $state(true);
 
 	const activeTies = getActiveTies();
+	const standings = getGroupStandings();
+	const finalsBoard = getFinalsBoard();
+	const schedule = getSchedule();
+	const progression = getScoreProgression();
 
+	function refreshAll() {
+		activeTies.refresh();
+		standings.refresh();
+		finalsBoard.refresh();
+		schedule.refresh();
+		progression.refresh();
+	}
+
+	$effect(() => {
+		if (!realtimeEnabled) return;
+		const id = setInterval(refreshAll, 8000);
+		function onVisibilityChange() {
+			if (document.visibilityState === 'visible') refreshAll();
+		}
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		return () => {
+			clearInterval(id);
+			document.removeEventListener('visibilitychange', onVisibilityChange);
+		};
+	});
 </script>
 
 <svelte:head>
@@ -43,6 +68,7 @@
 
 <PageHeader title="ライブ表示" actions={headerActions} />
 
-<LiveActiveTies {realtimeEnabled} />
-<LiveStandings {realtimeEnabled} />
-<LiveFinalsBoard {realtimeEnabled} />
+<LiveActiveTies query={activeTies} progressionQuery={progression} />
+<LiveStandings query={standings} />
+<LiveFinalsBoard query={finalsBoard} />
+<LiveSchedule query={schedule} />

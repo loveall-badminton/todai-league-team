@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { DragDropProvider } from '@dnd-kit/svelte';
+	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import type { ComponentProps } from 'svelte';
 	type DragOverEvent = Parameters<
@@ -12,7 +12,7 @@
 		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
 	>[0];
 	import { Dialog } from 'bits-ui';
-	import { X } from '@lucide/svelte';
+	import { GripVertical, X } from '@lucide/svelte';
 	import AppSwitch from '$lib/components/AppSwitch.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -21,7 +21,7 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import SortableTieItem from './SortableTieItem.svelte';
+	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import type { PageProps } from './$types';
 	import { create, reorder, updateTie } from './ties.remote';
 
@@ -299,5 +299,30 @@
 				/>
 			{/each}
 		</div>
+		<DragOverlay dropAnimation={null}>
+			{#snippet children(draggable)}
+				{@const tie = allTies.find((t) => t.id === String(draggable.id))}
+				{#if tie}
+					<div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl opacity-95">
+						<div class="flex items-stretch">
+							<div
+								class="flex shrink-0 cursor-grabbing items-center border-r border-zinc-100 px-3 text-zinc-400"
+							>
+								<GripVertical class="h-4 w-4" />
+							</div>
+							<div class="flex flex-1 items-center px-4 py-3">
+								<div class="flex min-w-0 flex-col gap-0.5">
+									<span class="font-semibold text-zinc-900">{tie.tieCode}</span>
+									<p class="truncate text-sm text-zinc-600">
+										{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
+										{tie.teamBName ?? '未定'}
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			{/snippet}
+		</DragOverlay>
 	</DragDropProvider>
 {/if}
