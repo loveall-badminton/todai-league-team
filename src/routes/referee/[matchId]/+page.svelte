@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
@@ -236,12 +235,6 @@
 <div class="grid gap-4">
 	<!-- Header -->
 	<Card class="p-5">
-		<a
-			class="text-sm text-zinc-500 hover:text-zinc-700"
-			href={resolve('/tournaments/[tournamentId]', { tournamentId: data.match.tournamentId })}
-		>
-			← 大会詳細
-		</a>
 		<PageHeader
 			title={`${leftSideName} vs ${rightSideName}`}
 			description={`${data.match.court?.name ?? 'コート未設定'} · ゲーム ${data.state.currentGameNo} · ${matchStatusLabel(
@@ -430,15 +423,19 @@
 			<div class="col-span-2 sm:col-span-1">
 				<p class="text-xs text-zinc-500">サービスコート</p>
 				<p class="mt-0.5 font-medium">
-					{data.state.service?.servingSide === 'A'
-						? sideAName
-						: data.state.service?.servingSide === 'B'
-							? sideBName
-							: '-'}が{data.state.service?.serviceCourt == 'right'
-						? '右'
-						: data.state.service?.serviceCourt == 'left'
-							? '左'
-							: '-'}からサーブ
+					{#if data.state.service}
+						{data.state.service?.servingSide === 'A'
+							? sideAName
+							: data.state.service?.servingSide === 'B'
+								? sideBName
+								: '-'}が{data.state.service?.serviceCourt == 'right'
+							? '右'
+							: data.state.service?.serviceCourt == 'left'
+								? '左'
+								: '-'}からサーブ
+					{:else}
+						-
+					{/if}
 				</p>
 			</div>
 		</div>

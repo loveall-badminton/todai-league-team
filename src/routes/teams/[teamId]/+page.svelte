@@ -19,6 +19,7 @@
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
@@ -196,6 +197,9 @@
 			選手
 			<span class="ml-1.5 text-sm font-normal text-zinc-400">{players.length}名</span>
 		</h2>
+		{#if players.length > 0}
+			<CopyButton text={players.map((p) => p.name).join('\n')} />
+		{/if}
 	</div>
 
 	<!-- Add player form -->

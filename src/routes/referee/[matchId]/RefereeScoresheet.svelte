@@ -6,11 +6,13 @@
 	interface EventRow {
 		seqNo: number;
 		eventType: string;
+		side: string | null;
 		gameNo: number | null;
 		scoreAAfter: number | null;
 		scoreBAfter: number | null;
 		serverPlayerIdBefore: string | null;
 		serverPlayerIdAfter: string | null;
+		receiverPlayerIdBefore: string | null;
 		receiverPlayerIdAfter: string | null;
 		targetSeqNo: number | null;
 	}
@@ -128,21 +130,38 @@
 			}
 
 			if (ev.eventType === 'rally_won' && ev.scoreAAfter !== null && ev.scoreBAfter !== null) {
-				const scoreA = ev.scoreAAfter;
-				const scoreB = ev.scoreBAfter;
+				let scoreA = ev.scoreAAfter;
+				let scoreB = ev.scoreBAfter;
 				const serverBefore = ev.serverPlayerIdBefore;
 				const serverAfter = ev.serverPlayerIdAfter;
-				const serviceChanged = serverBefore !== serverAfter;
+				// When game/match ends, service is cleared (serverAfter = null).
+				// Historical events may have scoreAAfter=0 due to a recording bug; use the
+				// game state's actual final score instead.
+				if (serverAfter === null) {
+					const gs = games.find((g) => g.gameNo === currentGameNo);
+					if (gs && gs.winnerSide) {
+						scoreA = gs.score.A;
+						scoreB = gs.score.B;
+					}
+				}
+				// Use ev.side vs the server's side to detect if the receiver won the game-ending point.
+				const serverBeforeSide = players.find((p) => p.id === serverBefore)?.side;
+				const serviceChanged =
+					serverAfter !== null
+						? serverBefore !== serverAfter
+						: ev.side !== null && serverBeforeSide !== undefined && ev.side !== serverBeforeSide;
 
 				if (serviceChanged && currentRun) {
 					if (currentRun.scores.length > 0) {
 						currentRun.scores[currentRun.scores.length - 1].isServiceOver = true;
 					}
 					runs.push(currentRun);
+					// Use serverAfter normally; fall back to receiverPlayerIdBefore for game-ending rallies
+					const newServerId = serverAfter ?? ev.receiverPlayerIdBefore ?? '';
 					const newServerSide =
-						players.find((p) => p.id === serverAfter)?.side ?? ('A' as 'A' | 'B');
+						players.find((p) => p.id === newServerId)?.side ?? ('A' as 'A' | 'B');
 					currentRun = {
-						serverPlayerId: serverAfter ?? '',
+						serverPlayerId: newServerId,
 						side: newServerSide,
 						scores: [{ scoreA, scoreB, isServiceOver: false }]
 					};

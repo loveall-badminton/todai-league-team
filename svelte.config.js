@@ -20,6 +20,11 @@ const config = {
 				include: [...config.include, '../drizzle.config.ts']
 			})
 		}
+	},
+	vitePlugin: {
+		inspector: {
+			showToggleButton: 'always'
+		}
 	}
 };
 
