@@ -31,15 +31,13 @@ export interface LiveMatchSummary {
 	serverName: string | null;
 }
 
-export async function createTournament(
-	input: {
-		name: string;
-		venue?: string | null;
-		startsAt?: string | null;
-		endsAt?: string | null;
-		now: string;
-	}
-): Promise<string> {
+export async function createTournament(input: {
+	name: string;
+	venue?: string | null;
+	startsAt?: string | null;
+	endsAt?: string | null;
+	now: string;
+}): Promise<string> {
 	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(tournaments).values({
@@ -67,9 +65,12 @@ export async function getTournament(tournamentId: string): Promise<Tournament | 
 	return tournament ?? null;
 }
 
-export async function createCourt(
-	input: { tournamentId: string; name: string; displayOrder: number; now: string }
-): Promise<string> {
+export async function createCourt(input: {
+	tournamentId: string;
+	name: string;
+	displayOrder: number;
+	now: string;
+}): Promise<string> {
 	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(courts).values({
@@ -94,9 +95,7 @@ export async function listCourts(tournamentId: string): Promise<Court[]> {
 	return courtRows;
 }
 
-export async function listMatchesForTournament(
-	tournamentId: string
-): Promise<LiveMatchSummary[]> {
+export async function listMatchesForTournament(tournamentId: string): Promise<LiveMatchSummary[]> {
 	const db = getRequestDb();
 	const matchRows = await db
 		.select()

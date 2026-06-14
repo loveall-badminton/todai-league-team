@@ -1,7 +1,10 @@
 export const statusBadgeColor = (
 	status: string | null | undefined
 ): 'zinc' | 'amber' | 'blue' | 'violet' | 'green' | 'emerald' | 'orange' | 'red' | 'sky' => {
-	const map: Record<string, 'zinc' | 'amber' | 'blue' | 'violet' | 'green' | 'emerald' | 'orange' | 'red' | 'sky'> = {
+	const map: Record<
+		string,
+		'zinc' | 'amber' | 'blue' | 'violet' | 'green' | 'emerald' | 'orange' | 'red' | 'sky'
+	> = {
 		scheduled: 'zinc',
 		lineup_pending: 'amber',
 		lineup_submitted: 'blue',

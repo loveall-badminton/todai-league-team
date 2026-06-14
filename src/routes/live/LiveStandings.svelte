@@ -29,7 +29,7 @@
 					<div class="border-b border-zinc-100 px-4 py-3">
 						<div class="h-4 w-16 rounded-full bg-zinc-200"></div>
 					</div>
-					<div class="px-4 py-3 space-y-3">
+					<div class="space-y-3 px-4 py-3">
 						{#each [0, 1, 2, 3, 4] as j (j)}
 							<div class="flex gap-3">
 								<div class="h-3 w-4 rounded-full bg-zinc-100"></div>

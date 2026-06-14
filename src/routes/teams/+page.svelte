@@ -1,23 +1,15 @@
 <script lang="ts">
-	import { DragDropProvider } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
-	>[0];
-	type DragEndEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
-	>[0];
-	import Card from '$lib/components/Card.svelte';
-	import Badge from '$lib/components/Badge.svelte';
-	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import SortableTeamItem from './SortableTeamItem.svelte';
+	import { DragDropProvider } from '@dnd-kit/svelte';
+	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import type { PageProps } from './$types';
+	import SortableTeamItem from './SortableTeamItem.svelte';
 	import { create, reorder } from './teams.remote';
+	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -115,11 +107,7 @@
 	{#if teams.length === 0}
 		<div class="p-10 text-center">
 			<p class="text-sm text-zinc-400">チームはまだ登録されていません</p>
-			<AppButton
-				type="button"
-				variant="ghost"
-				onclick={() => (showForm = true)}
-			>
+			<AppButton type="button" variant="ghost" onclick={() => (showForm = true)}>
 				最初のチームを追加する
 			</AppButton>
 		</div>

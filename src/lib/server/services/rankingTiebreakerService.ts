@@ -106,10 +106,7 @@ export async function createRankingTiebreaker(params: {
 	return { rankingTiebreakerId, matchId };
 }
 
-export async function syncRankingTiebreakerResult(
-	matchId: string,
-	now = new Date().toISOString()
-) {
+export async function syncRankingTiebreakerResult(matchId: string, now = new Date().toISOString()) {
 	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rankingTiebreakerId || !match.winnerSide) return;

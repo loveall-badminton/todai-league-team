@@ -120,120 +120,120 @@ export type GroupCode = 'A' | 'B';
 export type VenueCode = 'first_gym' | 'second_gym';
 
 export type TiePhase =
- | 'group_a'
- | 'group_b'
- | 'semifinal'
- | 'final'
- | 'third_place'
- | 'fifth_place'
- | 'ranking_tiebreaker';
+	| 'group_a'
+	| 'group_b'
+	| 'semifinal'
+	| 'final'
+	| 'third_place'
+	| 'fifth_place'
+	| 'ranking_tiebreaker';
 
 export type RubberCode = 'WD1' | 'XD1' | 'MD3' | 'MD2' | 'MD1';
 
 export type DoublesDiscipline = 'WD' | 'XD' | 'MD';
 
 export const RUBBER_DEFINITIONS = [
- {
-  code: 'WD1',
-  discipline: 'WD',
-  displayOrder: 1,
-  label: '女子ダブルス'
- },
- {
-  code: 'XD1',
-  discipline: 'XD',
-  displayOrder: 2,
-  label: 'ミックスダブルス'
- },
- {
-  code: 'MD3',
-  discipline: 'MD',
-  displayOrder: 3,
-  label: '男子ダブルス3'
- },
- {
-  code: 'MD2',
-  discipline: 'MD',
-  displayOrder: 4,
-  label: '男子ダブルス2'
- },
- {
-  code: 'MD1',
-  discipline: 'MD',
-  displayOrder: 5,
-  label: '男子ダブルス1'
- }
+	{
+		code: 'WD1',
+		discipline: 'WD',
+		displayOrder: 1,
+		label: '女子ダブルス'
+	},
+	{
+		code: 'XD1',
+		discipline: 'XD',
+		displayOrder: 2,
+		label: 'ミックスダブルス'
+	},
+	{
+		code: 'MD3',
+		discipline: 'MD',
+		displayOrder: 3,
+		label: '男子ダブルス3'
+	},
+	{
+		code: 'MD2',
+		discipline: 'MD',
+		displayOrder: 4,
+		label: '男子ダブルス2'
+	},
+	{
+		code: 'MD1',
+		discipline: 'MD',
+		displayOrder: 5,
+		label: '男子ダブルス1'
+	}
 ] as const;
 
 export const FINAL_TIE_DEFINITIONS = [
- {
-  tieCode: 'x-1',
-  phase: 'semifinal',
-  roundLabel: '準決勝1',
-  teamASource: 'A1',
-  teamBSource: 'B2'
- },
- {
-  tieCode: 'x-2',
-  phase: 'semifinal',
-  roundLabel: '準決勝2',
-  teamASource: 'A2',
-  teamBSource: 'B1'
- },
- {
-  tieCode: 'x-3',
-  phase: 'fifth_place',
-  roundLabel: '5位決定戦',
-  teamASource: 'A3',
-  teamBSource: 'B3'
- },
- {
-  tieCode: 'x-4',
-  phase: 'third_place',
-  roundLabel: '3位決定戦',
-  teamASource: 'x-1_loser',
-  teamBSource: 'x-2_loser'
- },
- {
-  tieCode: 'x-5',
-  phase: 'final',
-  roundLabel: '決勝',
-  teamASource: 'x-1_winner',
-  teamBSource: 'x-2_winner'
- }
+	{
+		tieCode: 'x-1',
+		phase: 'semifinal',
+		roundLabel: '準決勝1',
+		teamASource: 'A1',
+		teamBSource: 'B2'
+	},
+	{
+		tieCode: 'x-2',
+		phase: 'semifinal',
+		roundLabel: '準決勝2',
+		teamASource: 'A2',
+		teamBSource: 'B1'
+	},
+	{
+		tieCode: 'x-3',
+		phase: 'fifth_place',
+		roundLabel: '5位決定戦',
+		teamASource: 'A3',
+		teamBSource: 'B3'
+	},
+	{
+		tieCode: 'x-4',
+		phase: 'third_place',
+		roundLabel: '3位決定戦',
+		teamASource: 'x-1_loser',
+		teamBSource: 'x-2_loser'
+	},
+	{
+		tieCode: 'x-5',
+		phase: 'final',
+		roundLabel: '決勝',
+		teamASource: 'x-1_winner',
+		teamBSource: 'x-2_winner'
+	}
 ] as const;
 
 export const COURT_BLOCKS = [
- {
-  code: 'first_1_3',
-  venue: 'first_gym',
-  label: '第一体育館 1-3コート',
-  courtNumbers: [1, 2, 3]
- },
- {
-  code: 'first_4_6',
-  venue: 'first_gym',
-  label: '第一体育館 4-6コート',
-  courtNumbers: [4, 5, 6]
- },
- {
-  code: 'second_1_5',
-  venue: 'second_gym',
-  label: '第二体育館 1,5コート',
-  courtNumbers: [1, 5]
- },
- {
-  code: 'second_2_4',
-  venue: 'second_gym',
-  label: '第二体育館 2-4コート',
-  courtNumbers: [2, 3, 4]
- },
- {
-  code: 'second_6_8',
-  venue: 'second_gym',
-  label: '第二体育館 6-8コート',
-  courtNumbers: [6, 7, 8]
- }
+	{
+		code: 'first_1_3',
+		venue: 'first_gym',
+		label: '第一体育館 1-3コート',
+		courtNumbers: [1, 2, 3]
+	},
+	{
+		code: 'first_4_6',
+		venue: 'first_gym',
+		label: '第一体育館 4-6コート',
+		courtNumbers: [4, 5, 6]
+	},
+	{
+		code: 'second_1_5',
+		venue: 'second_gym',
+		label: '第二体育館 1,5コート',
+		courtNumbers: [1, 5]
+	},
+	{
+		code: 'second_2_4',
+		venue: 'second_gym',
+		label: '第二体育館 2-4コート',
+		courtNumbers: [2, 3, 4]
+	},
+	{
+		code: 'second_6_8',
+		venue: 'second_gym',
+		label: '第二体育館 6-8コート',
+		courtNumbers: [6, 7, 8]
+	}
 ] as const;
 ```
 
@@ -262,30 +262,30 @@ TIEBREAKER_21_SINGLE_GAME:
 
 ```ts
 GROUP_15 = {
- maxGames: 3,
- gamesToWin: 2,
- pointsToWin: 15,
- winBy: 2,
- maxPoints: 21,
- midGameIntervalPoint: 8
+	maxGames: 3,
+	gamesToWin: 2,
+	pointsToWin: 15,
+	winBy: 2,
+	maxPoints: 21,
+	midGameIntervalPoint: 8
 };
 
 KNOCKOUT_21 = {
- maxGames: 3,
- gamesToWin: 2,
- pointsToWin: 21,
- winBy: 2,
- maxPoints: 30,
- midGameIntervalPoint: 11
+	maxGames: 3,
+	gamesToWin: 2,
+	pointsToWin: 21,
+	winBy: 2,
+	maxPoints: 30,
+	midGameIntervalPoint: 11
 };
 
 TIEBREAKER_21_SINGLE_GAME = {
- maxGames: 1,
- gamesToWin: 1,
- pointsToWin: 21,
- winBy: 2,
- maxPoints: 30,
- midGameIntervalPoint: 11
+	maxGames: 1,
+	gamesToWin: 1,
+	pointsToWin: 21,
+	winBy: 2,
+	maxPoints: 30,
+	midGameIntervalPoint: 11
 };
 ```
 
@@ -319,30 +319,30 @@ score_events
 
 ```ts
 export const appSettings = sqliteTable('app_settings', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- eventName: text('event_name').notNull().default('東大リーグ団体戦'),
+	eventName: text('event_name').notNull().default('東大リーグ団体戦'),
 
- groupStageScoringRuleId: text('group_stage_scoring_rule_id').references(() => scoringRules.id),
+	groupStageScoringRuleId: text('group_stage_scoring_rule_id').references(() => scoringRules.id),
 
- knockoutScoringRuleId: text('knockout_scoring_rule_id').references(() => scoringRules.id),
+	knockoutScoringRuleId: text('knockout_scoring_rule_id').references(() => scoringRules.id),
 
- tiebreakerScoringRuleId: text('tiebreaker_scoring_rule_id').references(() => scoringRules.id),
+	tiebreakerScoringRuleId: text('tiebreaker_scoring_rule_id').references(() => scoringRules.id),
 
- lineupRevealPolicy: text('lineup_reveal_policy', {
-  enum: ['on_tie_start', 'manual']
- })
-  .notNull()
-  .default('on_tie_start'),
+	lineupRevealPolicy: text('lineup_reveal_policy', {
+		enum: ['on_tie_start', 'manual']
+	})
+		.notNull()
+		.default('on_tie_start'),
 
- defaultLineupDueMinutesBefore: integer('default_lineup_due_minutes_before').notNull().default(10),
+	defaultLineupDueMinutesBefore: integer('default_lineup_due_minutes_before').notNull().default(10),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -355,24 +355,24 @@ export const appSettings = sqliteTable('app_settings', {
 
 ```ts
 export const scoringRules = sqliteTable('scoring_rules', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- code: text('code').notNull().unique(),
- name: text('name').notNull(),
+	code: text('code').notNull().unique(),
+	name: text('name').notNull(),
 
- maxGames: integer('max_games').notNull(),
- gamesToWin: integer('games_to_win').notNull(),
- pointsToWin: integer('points_to_win').notNull(),
- winBy: integer('win_by').notNull(),
- maxPoints: integer('max_points').notNull(),
- midGameIntervalPoint: integer('mid_game_interval_point').notNull(),
+	maxGames: integer('max_games').notNull(),
+	gamesToWin: integer('games_to_win').notNull(),
+	pointsToWin: integer('points_to_win').notNull(),
+	winBy: integer('win_by').notNull(),
+	maxPoints: integer('max_points').notNull(),
+	midGameIntervalPoint: integer('mid_game_interval_point').notNull(),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -380,29 +380,29 @@ export const scoringRules = sqliteTable('scoring_rules', {
 
 ```ts
 export const teams = sqliteTable('teams', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- name: text('name').notNull(),
- shortName: text('short_name'),
+	name: text('name').notNull(),
+	shortName: text('short_name'),
 
- groupCode: text('group_code', {
-  enum: ['A', 'B']
- }),
+	groupCode: text('group_code', {
+		enum: ['A', 'B']
+	}),
 
- displayOrder: integer('display_order').notNull().default(0),
+	displayOrder: integer('display_order').notNull().default(0),
 
- status: text('status', {
-  enum: ['active', 'withdrawn']
- })
-  .notNull()
-  .default('active'),
+	status: text('status', {
+		enum: ['active', 'withdrawn']
+	})
+		.notNull()
+		.default('active'),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -410,34 +410,34 @@ export const teams = sqliteTable('teams', {
 
 ```ts
 export const teamPlayers = sqliteTable('team_players', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- teamId: text('team_id')
-  .notNull()
-  .references(() => teams.id, { onDelete: 'cascade' }),
+	teamId: text('team_id')
+		.notNull()
+		.references(() => teams.id, { onDelete: 'cascade' }),
 
- name: text('name').notNull(),
+	name: text('name').notNull(),
 
- gender: text('gender', {
-  enum: ['male', 'female', 'unknown']
- })
-  .notNull()
-  .default('unknown'),
+	gender: text('gender', {
+		enum: ['male', 'female', 'unknown']
+	})
+		.notNull()
+		.default('unknown'),
 
- displayOrder: integer('display_order').notNull().default(0),
+	displayOrder: integer('display_order').notNull().default(0),
 
- status: text('status', {
-  enum: ['active', 'inactive']
- })
-  .notNull()
-  .default('active'),
+	status: text('status', {
+		enum: ['active', 'inactive']
+	})
+		.notNull()
+		.default('active'),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -447,85 +447,85 @@ export const teamPlayers = sqliteTable('team_players', {
 
 ```ts
 export const ties = sqliteTable('ties', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- tieCode: text('tie_code').notNull().unique(),
+	tieCode: text('tie_code').notNull().unique(),
 
- phase: text('phase', {
-  enum: [
-   'group_a',
-   'group_b',
-   'semifinal',
-   'final',
-   'third_place',
-   'fifth_place',
-   'ranking_tiebreaker'
-  ]
- }).notNull(),
+	phase: text('phase', {
+		enum: [
+			'group_a',
+			'group_b',
+			'semifinal',
+			'final',
+			'third_place',
+			'fifth_place',
+			'ranking_tiebreaker'
+		]
+	}).notNull(),
 
- groupCode: text('group_code', {
-  enum: ['A', 'B']
- }),
+	groupCode: text('group_code', {
+		enum: ['A', 'B']
+	}),
 
- roundLabel: text('round_label'),
+	roundLabel: text('round_label'),
 
- teamAId: text('team_a_id').references(() => teams.id, { onDelete: 'set null' }),
- teamBId: text('team_b_id').references(() => teams.id, { onDelete: 'set null' }),
+	teamAId: text('team_a_id').references(() => teams.id, { onDelete: 'set null' }),
+	teamBId: text('team_b_id').references(() => teams.id, { onDelete: 'set null' }),
 
- status: text('status', {
-  enum: [
-   'scheduled',
-   'lineup_pending',
-   'lineup_submitted',
-   'ready',
-   'playing',
-   'finished',
-   'confirmed',
-   'cancelled'
-  ]
- })
-  .notNull()
-  .default('scheduled'),
+	status: text('status', {
+		enum: [
+			'scheduled',
+			'lineup_pending',
+			'lineup_submitted',
+			'ready',
+			'playing',
+			'finished',
+			'confirmed',
+			'cancelled'
+		]
+	})
+		.notNull()
+		.default('scheduled'),
 
- teamScoreA: integer('team_score_a').notNull().default(0),
- teamScoreB: integer('team_score_b').notNull().default(0),
+	teamScoreA: integer('team_score_a').notNull().default(0),
+	teamScoreB: integer('team_score_b').notNull().default(0),
 
- winnerTeamId: text('winner_team_id').references(() => teams.id, {
-  onDelete: 'set null'
- }),
+	winnerTeamId: text('winner_team_id').references(() => teams.id, {
+		onDelete: 'set null'
+	}),
 
- displayOrder: integer('display_order').notNull().default(0),
+	displayOrder: integer('display_order').notNull().default(0),
 
- scheduledStartAt: text('scheduled_start_at'),
- actualStartAt: text('actual_start_at'),
- actualEndAt: text('actual_end_at'),
+	scheduledStartAt: text('scheduled_start_at'),
+	actualStartAt: text('actual_start_at'),
+	actualEndAt: text('actual_end_at'),
 
- venue: text('venue', {
-  enum: ['first_gym', 'second_gym']
- }),
+	venue: text('venue', {
+		enum: ['first_gym', 'second_gym']
+	}),
 
- courtBlockCode: text('court_block_code'),
+	courtBlockCode: text('court_block_code'),
 
- lineupDueAt: text('lineup_due_at'),
+	lineupDueAt: text('lineup_due_at'),
 
- lineupDuePolicy: text('lineup_due_policy', {
-  enum: ['first_match_before_opening', 'ten_minutes_before', 'manual']
- })
-  .notNull()
-  .default('ten_minutes_before'),
+	lineupDuePolicy: text('lineup_due_policy', {
+		enum: ['first_match_before_opening', 'ten_minutes_before', 'manual']
+	})
+		.notNull()
+		.default('ten_minutes_before'),
 
- lineupsRevealedAt: text('lineups_revealed_at'),
+	lineupsRevealedAt: text('lineups_revealed_at'),
 
- operationNote: text('operation_note'),
+	operationNote: text('operation_note'),
 
- scheduleChanged: integer('schedule_changed', { mode: 'boolean' }).notNull().default(false),
+	scheduleChanged: integer('schedule_changed', { mode: 'boolean' }).notNull().default(false),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -544,55 +544,55 @@ export const ties = sqliteTable('ties', {
 
 ```ts
 export const rubbers = sqliteTable('rubbers', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- tieId: text('tie_id')
-  .notNull()
-  .references(() => ties.id, { onDelete: 'cascade' }),
+	tieId: text('tie_id')
+		.notNull()
+		.references(() => ties.id, { onDelete: 'cascade' }),
 
- code: text('code', {
-  enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
- }).notNull(),
+	code: text('code', {
+		enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
+	}).notNull(),
 
- discipline: text('discipline', {
-  enum: ['WD', 'XD', 'MD']
- }).notNull(),
+	discipline: text('discipline', {
+		enum: ['WD', 'XD', 'MD']
+	}).notNull(),
 
- displayOrder: integer('display_order').notNull(),
+	displayOrder: integer('display_order').notNull(),
 
- scoringRuleId: text('scoring_rule_id')
-  .notNull()
-  .references(() => scoringRules.id),
+	scoringRuleId: text('scoring_rule_id')
+		.notNull()
+		.references(() => scoringRules.id),
 
- matchId: text('match_id').references(() => matches.id, {
-  onDelete: 'set null'
- }),
+	matchId: text('match_id').references(() => matches.id, {
+		onDelete: 'set null'
+	}),
 
- status: text('status', {
-  enum: [
-   'not_ready',
-   'ready',
-   'scheduled',
-   'playing',
-   'finished',
-   'confirmed',
-   'skipped',
-   'cancelled'
-  ]
- })
-  .notNull()
-  .default('not_ready'),
+	status: text('status', {
+		enum: [
+			'not_ready',
+			'ready',
+			'scheduled',
+			'playing',
+			'finished',
+			'confirmed',
+			'skipped',
+			'cancelled'
+		]
+	})
+		.notNull()
+		.default('not_ready'),
 
- winnerSide: text('winner_side', {
-  enum: ['A', 'B']
- }),
+	winnerSide: text('winner_side', {
+		enum: ['A', 'B']
+	}),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -606,43 +606,43 @@ export const rubbers = sqliteTable('rubbers', {
 
 ```ts
 export const lineupSubmissions = sqliteTable(
- 'lineup_submissions',
- {
-  id: text('id').primaryKey(),
+	'lineup_submissions',
+	{
+		id: text('id').primaryKey(),
 
-  tieId: text('tie_id')
-   .notNull()
-   .references(() => ties.id, { onDelete: 'cascade' }),
+		tieId: text('tie_id')
+			.notNull()
+			.references(() => ties.id, { onDelete: 'cascade' }),
 
-  teamId: text('team_id')
-   .notNull()
-   .references(() => teams.id, { onDelete: 'cascade' }),
+		teamId: text('team_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
 
-  side: text('side', {
-   enum: ['A', 'B']
-  }).notNull(),
+		side: text('side', {
+			enum: ['A', 'B']
+		}).notNull(),
 
-  status: text('status', {
-   enum: ['draft', 'submitted', 'locked', 'revealed']
-  })
-   .notNull()
-   .default('draft'),
+		status: text('status', {
+			enum: ['draft', 'submitted', 'locked', 'revealed']
+		})
+			.notNull()
+			.default('draft'),
 
-  submittedAt: text('submitted_at'),
-  lockedAt: text('locked_at'),
-  revealedAt: text('revealed_at'),
+		submittedAt: text('submitted_at'),
+		lockedAt: text('locked_at'),
+		revealedAt: text('revealed_at'),
 
-  createdAt: text('created_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text('updated_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`)
- },
- (table) => ({
-  tieTeamUnique: uniqueIndex('lineup_submissions_tie_team_unique').on(table.tieId, table.teamId),
-  tieSideUnique: uniqueIndex('lineup_submissions_tie_side_unique').on(table.tieId, table.side)
- })
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		tieTeamUnique: uniqueIndex('lineup_submissions_tie_team_unique').on(table.tieId, table.teamId),
+		tieSideUnique: uniqueIndex('lineup_submissions_tie_side_unique').on(table.tieId, table.side)
+	})
 );
 ```
 
@@ -650,39 +650,39 @@ export const lineupSubmissions = sqliteTable(
 
 ```ts
 export const lineupItems = sqliteTable(
- 'lineup_items',
- {
-  id: text('id').primaryKey(),
+	'lineup_items',
+	{
+		id: text('id').primaryKey(),
 
-  submissionId: text('submission_id')
-   .notNull()
-   .references(() => lineupSubmissions.id, { onDelete: 'cascade' }),
+		submissionId: text('submission_id')
+			.notNull()
+			.references(() => lineupSubmissions.id, { onDelete: 'cascade' }),
 
-  rubberCode: text('rubber_code', {
-   enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
-  }).notNull(),
+		rubberCode: text('rubber_code', {
+			enum: ['WD1', 'XD1', 'MD3', 'MD2', 'MD1']
+		}).notNull(),
 
-  player1Id: text('player1_id')
-   .notNull()
-   .references(() => teamPlayers.id, { onDelete: 'cascade' }),
+		player1Id: text('player1_id')
+			.notNull()
+			.references(() => teamPlayers.id, { onDelete: 'cascade' }),
 
-  player2Id: text('player2_id')
-   .notNull()
-   .references(() => teamPlayers.id, { onDelete: 'cascade' }),
+		player2Id: text('player2_id')
+			.notNull()
+			.references(() => teamPlayers.id, { onDelete: 'cascade' }),
 
-  createdAt: text('created_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text('updated_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`)
- },
- (table) => ({
-  submissionRubberUnique: uniqueIndex('lineup_items_submission_rubber_unique').on(
-   table.submissionId,
-   table.rubberCode
-  )
- })
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		submissionRubberUnique: uniqueIndex('lineup_items_submission_rubber_unique').on(
+			table.submissionId,
+			table.rubberCode
+		)
+	})
 );
 ```
 
@@ -698,34 +698,34 @@ export const lineupItems = sqliteTable(
 
 ```ts
 export const officiatingAssignments = sqliteTable('officiating_assignments', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- tieId: text('tie_id')
-  .notNull()
-  .references(() => ties.id, { onDelete: 'cascade' }),
+	tieId: text('tie_id')
+		.notNull()
+		.references(() => ties.id, { onDelete: 'cascade' }),
 
- assignedTeamId: text('assigned_team_id').references(() => teams.id, { onDelete: 'set null' }),
+	assignedTeamId: text('assigned_team_id').references(() => teams.id, { onDelete: 'set null' }),
 
- role: text('role', {
-  enum: ['umpire_team', 'chief_umpire', 'line_judge']
- })
-  .notNull()
-  .default('umpire_team'),
+	role: text('role', {
+		enum: ['umpire_team', 'chief_umpire', 'line_judge']
+	})
+		.notNull()
+		.default('umpire_team'),
 
- status: text('status', {
-  enum: ['scheduled', 'confirmed', 'changed', 'cancelled']
- })
-  .notNull()
-  .default('scheduled'),
+	status: text('status', {
+		enum: ['scheduled', 'confirmed', 'changed', 'cancelled']
+	})
+		.notNull()
+		.default('scheduled'),
 
- note: text('note'),
+	note: text('note'),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -741,39 +741,39 @@ export const officiatingAssignments = sqliteTable('officiating_assignments', {
 
 ```ts
 export const groupStandingOverrides = sqliteTable(
- 'group_standing_overrides',
- {
-  id: text('id').primaryKey(),
+	'group_standing_overrides',
+	{
+		id: text('id').primaryKey(),
 
-  groupCode: text('group_code', {
-   enum: ['A', 'B']
-  }).notNull(),
+		groupCode: text('group_code', {
+			enum: ['A', 'B']
+		}).notNull(),
 
-  teamId: text('team_id')
-   .notNull()
-   .references(() => teams.id, { onDelete: 'cascade' }),
+		teamId: text('team_id')
+			.notNull()
+			.references(() => teams.id, { onDelete: 'cascade' }),
 
-  manualRank: integer('manual_rank').notNull(),
+		manualRank: integer('manual_rank').notNull(),
 
-  reason: text('reason'),
+		reason: text('reason'),
 
-  createdAt: text('created_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text('updated_at')
-   .notNull()
-   .default(sql`CURRENT_TIMESTAMP`)
- },
- (table) => ({
-  groupTeamUnique: uniqueIndex('group_standing_overrides_group_team_unique').on(
-   table.groupCode,
-   table.teamId
-  ),
-  groupRankUnique: uniqueIndex('group_standing_overrides_group_rank_unique').on(
-   table.groupCode,
-   table.manualRank
-  )
- })
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => ({
+		groupTeamUnique: uniqueIndex('group_standing_overrides_group_team_unique').on(
+			table.groupCode,
+			table.teamId
+		),
+		groupRankUnique: uniqueIndex('group_standing_overrides_group_rank_unique').on(
+			table.groupCode,
+			table.manualRank
+		)
+	})
 );
 ```
 
@@ -783,42 +783,42 @@ export const groupStandingOverrides = sqliteTable(
 
 ```ts
 export const rankingTiebreakers = sqliteTable('ranking_tiebreakers', {
- id: text('id').primaryKey(),
+	id: text('id').primaryKey(),
 
- groupCode: text('group_code', {
-  enum: ['A', 'B']
- }).notNull(),
+	groupCode: text('group_code', {
+		enum: ['A', 'B']
+	}).notNull(),
 
- reason: text('reason').notNull(),
+	reason: text('reason').notNull(),
 
- teamAId: text('team_a_id')
-  .notNull()
-  .references(() => teams.id, { onDelete: 'cascade' }),
+	teamAId: text('team_a_id')
+		.notNull()
+		.references(() => teams.id, { onDelete: 'cascade' }),
 
- teamBId: text('team_b_id')
-  .notNull()
-  .references(() => teams.id, { onDelete: 'cascade' }),
+	teamBId: text('team_b_id')
+		.notNull()
+		.references(() => teams.id, { onDelete: 'cascade' }),
 
- matchId: text('match_id').references(() => matches.id, {
-  onDelete: 'set null'
- }),
+	matchId: text('match_id').references(() => matches.id, {
+		onDelete: 'set null'
+	}),
 
- winnerTeamId: text('winner_team_id').references(() => teams.id, {
-  onDelete: 'set null'
- }),
+	winnerTeamId: text('winner_team_id').references(() => teams.id, {
+		onDelete: 'set null'
+	}),
 
- status: text('status', {
-  enum: ['scheduled', 'playing', 'finished', 'confirmed', 'cancelled']
- })
-  .notNull()
-  .default('scheduled'),
+	status: text('status', {
+		enum: ['scheduled', 'playing', 'finished', 'confirmed', 'cancelled']
+	})
+		.notNull()
+		.default('scheduled'),
 
- createdAt: text('created_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`),
- updatedAt: text('updated_at')
-  .notNull()
-  .default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
 });
 ```
 
@@ -1042,26 +1042,26 @@ calculateGroupStandings(groupCode: 'A' | 'B'): Promise<GroupStanding[]>
 
 ```ts
 interface GroupStanding {
- teamId: string;
- teamName: string;
- rank: number | null;
+	teamId: string;
+	teamName: string;
+	rank: number | null;
 
- teamMatchesWon: number;
- teamMatchesLost: number;
+	teamMatchesWon: number;
+	teamMatchesLost: number;
 
- rubbersWon: number;
- rubbersLost: number;
+	rubbersWon: number;
+	rubbersLost: number;
 
- gamesWon: number;
- gamesLost: number;
+	gamesWon: number;
+	gamesLost: number;
 
- headToHeadSummary?: string | null;
+	headToHeadSummary?: string | null;
 
- tiedTeamsRubbersWon?: number | null;
- tiedTeamsGamesWon?: number | null;
+	tiedTeamsRubbersWon?: number | null;
+	tiedTeamsGamesWon?: number | null;
 
- requiresTiebreaker: boolean;
- manualRank?: number | null;
+	requiresTiebreaker: boolean;
+	manualRank?: number | null;
 }
 ```
 

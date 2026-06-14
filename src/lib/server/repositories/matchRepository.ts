@@ -74,9 +74,7 @@ export async function getMatchPlayers(matchId: string): Promise<MatchPlayer[]> {
 	}));
 }
 
-export async function createMatchWithPlayers(
-	input: CreateMatchWithPlayersInput
-): Promise<string> {
+export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput): Promise<string> {
 	const db = getRequestDb();
 	const matchId = crypto.randomUUID();
 	const sideAId = crypto.randomUUID();

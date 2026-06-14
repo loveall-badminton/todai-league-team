@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import type { GroupStanding } from '$lib/server/services/standingService';
 	import { resolve } from '$app/paths';
 	import Badge from '$lib/components/Badge.svelte';
+	import type { GroupStanding } from '$lib/server/services/standingService';
 	import { cn } from '$lib/utils/cn';
+	import type { Snippet } from 'svelte';
 
 	type TieRecord = {
 		id: string;
@@ -68,10 +68,7 @@
 		<tbody>
 			{#if standings.length === 0}
 				<tr>
-					<td
-						colspan={4 + teams.length}
-						class="px-4 py-8 text-center text-sm text-zinc-500"
-					>
+					<td colspan={4 + teams.length} class="px-4 py-8 text-center text-sm text-zinc-500">
 						チームが登録されると順位表が表示されます。
 					</td>
 				</tr>

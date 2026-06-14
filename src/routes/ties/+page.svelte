@@ -4,13 +4,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
-	>[0];
-	type DragEndEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
-	>[0];
+	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
 	import { GripVertical, X } from '@lucide/svelte';
 	import AppSwitch from '$lib/components/AppSwitch.svelte';
@@ -303,7 +297,9 @@
 			{#snippet children(draggable)}
 				{@const tie = allTies.find((t) => t.id === String(draggable.id))}
 				{#if tie}
-					<div class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl opacity-95">
+					<div
+						class="overflow-hidden rounded-xl border border-zinc-200 bg-white opacity-95 shadow-xl"
+					>
 						<div class="flex items-stretch">
 							<div
 								class="flex shrink-0 cursor-grabbing items-center border-r border-zinc-100 px-3 text-zinc-400"

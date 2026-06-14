@@ -39,13 +39,19 @@ export async function applyMatchAction(params: {
 	const input = await prepareUndoInput(matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
 	const eventId = crypto.randomUUID();
-	const eventInsert = buildScoreEventInsert({ eventId, matchId, input, beforeState, afterState, actorName, now });
+	const eventInsert = buildScoreEventInsert({
+		eventId,
+		matchId,
+		input,
+		beforeState,
+		afterState,
+		actorName,
+		now
+	});
 	const matchUpdate = buildMatchUpdate(afterState);
 	const snapshotUpsert = buildSnapshotUpsert(afterState);
 	const serviceStateUpsert = buildServiceStateUpsert(afterState);
-	const rubberUpdate = match?.rubberId
-		? buildRubberUpdate(match.rubberId, afterState, now)
-		: null;
+	const rubberUpdate = match?.rubberId ? buildRubberUpdate(match.rubberId, afterState, now) : null;
 
 	if (input.type === 'undo' && input.targetSeqNo) {
 		const targetEvent = await getScoreEventBySeqNo(matchId, input.targetSeqNo);

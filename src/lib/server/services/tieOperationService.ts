@@ -152,10 +152,7 @@ export async function createMatchFromRubber(
 	return matchId;
 }
 
-export async function syncRubberResultFromMatch(
-	matchId: string,
-	now = new Date().toISOString()
-) {
+export async function syncRubberResultFromMatch(matchId: string, now = new Date().toISOString()) {
 	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) return;

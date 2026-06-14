@@ -11,7 +11,7 @@
 		<div class="h-3 w-28 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each [0, 1, 2] as i (i)}
-				<div class="animate-pulse rounded-2xl border border-zinc-100 bg-white p-4 space-y-2">
+				<div class="animate-pulse space-y-2 rounded-2xl border border-zinc-100 bg-white p-4">
 					<div class="h-2.5 w-16 rounded-full bg-zinc-200"></div>
 					<div class="flex items-baseline justify-between gap-2">
 						<div class="h-4 w-32 rounded-full bg-zinc-200"></div>

@@ -3,13 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
-	>[0];
-	type DragEndEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
-	>[0];
+	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
 	import Card from '$lib/components/Card.svelte';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Badge from '$lib/components/Badge.svelte';
@@ -139,7 +133,7 @@
 	<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-zinc-400">手動順位</th>
 {/snippet}
 
-{#snippet standingsExtraCell(row: typeof data.standings[number])}
+{#snippet standingsExtraCell(row: (typeof data.standings)[number])}
 	{@const rankForm = setManualRank.for(row.teamId)}
 	<td class="px-4 py-2.5">
 		{#if row.requiresTiebreaker}
@@ -195,12 +189,7 @@
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 			<div class="space-y-2">
 				{#each allTies as tie, index (tie.id)}
-					<SortableTieItem
-						{tie}
-						{index}
-						teams={data.allTeams}
-						tieForm={updateTie.for(tie.id)}
-					/>
+					<SortableTieItem {tie} {index} teams={data.allTeams} tieForm={updateTie.for(tie.id)} />
 				{/each}
 			</div>
 			<DragOverlay dropAnimation={null}>
@@ -208,7 +197,7 @@
 					{@const tie = allTies.find((t) => t.id === String(draggable.id))}
 					{#if tie}
 						<div
-							class="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl opacity-95"
+							class="overflow-hidden rounded-xl border border-zinc-200 bg-white opacity-95 shadow-xl"
 						>
 							<div class="flex items-stretch">
 								<div

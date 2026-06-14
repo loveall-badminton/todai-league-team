@@ -92,9 +92,7 @@ export async function getScoreEventByIdempotencyKey(
 	return event ?? null;
 }
 
-export async function getLastUndoableScoreEvent(
-	matchId: string
-): Promise<ScoreEvent | null> {
+export async function getLastUndoableScoreEvent(matchId: string): Promise<ScoreEvent | null> {
 	const db = getRequestDb();
 	const rows = await db
 		.select()
@@ -116,10 +114,7 @@ export async function getLastUndoableScoreEvent(
 	);
 }
 
-export async function hasUndoLink(
-	matchId: string,
-	targetSeqNo: number
-): Promise<boolean> {
+export async function hasUndoLink(matchId: string, targetSeqNo: number): Promise<boolean> {
 	const db = getRequestDb();
 	const link = await db.query.scoreEventUndoLinks.findFirst({
 		where: and(
@@ -130,15 +125,13 @@ export async function hasUndoLink(
 	return Boolean(link);
 }
 
-export async function insertUndoLink(
-	params: {
-		matchId: string;
-		undoEventId: string;
-		targetEventId: string;
-		targetSeqNo: number;
-		createdAt: string;
-	}
-): Promise<void> {
+export async function insertUndoLink(params: {
+	matchId: string;
+	undoEventId: string;
+	targetEventId: string;
+	targetSeqNo: number;
+	createdAt: string;
+}): Promise<void> {
 	const db = getRequestDb();
 	await db.insert(scoreEventUndoLinks).values({
 		id: crypto.randomUUID(),

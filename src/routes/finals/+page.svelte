@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { Trophy } from '@lucide/svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { toast } from 'svelte-sonner';
-	import { generateSemifinals, generateFinals, getFinalsData } from './finals.remote';
+	import { generateFinals, generateSemifinals, getFinalsData } from './finals.remote';
 
 	const finalsData = getFinalsData();
 
@@ -97,7 +97,7 @@
 {#if finalsData.current === null}
 	<div class="grid gap-2 sm:grid-cols-2">
 		{#each [0, 1, 2, 3, 4] as i (i)}
-			<div class="animate-pulse rounded-xl border border-zinc-100 bg-white p-4 space-y-2">
+			<div class="animate-pulse space-y-2 rounded-xl border border-zinc-100 bg-white p-4">
 				<div class="h-2.5 w-24 rounded-full bg-zinc-200"></div>
 				<div class="flex items-center justify-between gap-2">
 					<div class="h-4 w-36 rounded-full bg-zinc-200"></div>

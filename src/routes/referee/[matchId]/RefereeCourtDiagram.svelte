@@ -42,25 +42,16 @@
 	<div
 		class="flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center
 		{hasBorderBottom ? 'border-b border-zinc-100' : ''}
-		{isServer
-			? accent === 'pink'
-				? 'bg-pink-50'
-				: 'bg-cyan-50'
-			: isReceiver
-				? 'bg-zinc-50'
-				: ''}"
+		{isServer ? (accent === 'pink' ? 'bg-pink-50' : 'bg-cyan-50') : isReceiver ? 'bg-zinc-50' : ''}"
 	>
 		{#if isServer}
-			<span
-				class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
+			<span class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
 				>サーバー</span
 			>
 		{:else if isReceiver}
 			<span
-				class={cn(
-					'text-xs text-zinc-400',
-					accent === 'pink' ? 'text-pink-500' : 'text-cyan-500'
-				)}>レシーバー</span
+				class={cn('text-xs text-zinc-400', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
+				>レシーバー</span
 			>
 		{:else}
 			<span class="text-xs text-zinc-300">—</span>

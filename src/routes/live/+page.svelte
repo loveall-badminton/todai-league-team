@@ -5,7 +5,13 @@
 	import LiveStandings from './LiveStandings.svelte';
 	import LiveFinalsBoard from './LiveFinalsBoard.svelte';
 	import LiveSchedule from './LiveSchedule.svelte';
-	import { getActiveTies, getGroupStandings, getFinalsBoard, getSchedule, getScoreProgression } from './live.remote';
+	import {
+		getActiveTies,
+		getGroupStandings,
+		getFinalsBoard,
+		getSchedule,
+		getScoreProgression
+	} from './live.remote';
 
 	let realtimeEnabled = $state(true);
 
@@ -52,7 +58,8 @@
 						></span>
 					{/if}
 					<span
-						class="relative inline-flex size-2 rounded-full {(activeTies.current?.ties.length ?? 0) > 0
+						class="relative inline-flex size-2 rounded-full {(activeTies.current?.ties.length ??
+							0) > 0
 							? 'bg-emerald-500'
 							: 'bg-zinc-300'}"
 					></span>

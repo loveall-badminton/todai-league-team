@@ -12,7 +12,6 @@
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
 	import { ArrowLeftRight, GripVertical } from '@lucide/svelte';
-	import type { ComponentProps } from 'svelte';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
@@ -23,12 +22,7 @@
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
 	import { confirm, rallyWon, resume, start, startGame, suspend, undo } from './referee.remote';
 
-	type DragOverEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
-	>[0];
-	type DragEndEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
-	>[0];
+	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
 
 	let { data }: PageProps = $props();
 

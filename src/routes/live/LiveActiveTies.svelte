@@ -140,11 +140,13 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
 		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-xl outline-none max-h-[90dvh]"
+			class="fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-xl outline-none"
 		>
 			{#if selectedTie}
 				<!-- Fixed header -->
-				<div class="flex shrink-0 items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-zinc-100">
+				<div
+					class="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-6 pt-6 pb-4"
+				>
 					<div>
 						<Dialog.Title class="text-base font-semibold text-zinc-950">スコア推移</Dialog.Title>
 						<p class="mt-0.5 text-sm text-zinc-500">
@@ -158,7 +160,7 @@
 					</Dialog.Close>
 				</div>
 				<!-- Scrollable chart area -->
-				<div class="overflow-y-auto px-6 py-5 space-y-5">
+				<div class="space-y-5 overflow-y-auto px-6 py-5">
 					{#each selectedPlayingRubbers as rubber (rubber.id)}
 						{@const points = progressionPoints(rubber, byMatchId)}
 						<div>

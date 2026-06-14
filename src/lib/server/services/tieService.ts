@@ -12,24 +12,22 @@ import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
 type LineupDuePolicy = 'first_match_before_opening' | 'ten_minutes_before' | 'manual';
 
-export async function createTieWithRubbers(
-	params: {
-		tieCode: string;
-		phase: TiePhase;
-		groupCode?: GroupCode | null;
-		roundLabel?: string | null;
-		teamAId?: string | null;
-		teamBId?: string | null;
-		scheduledStartAt?: string | null;
-		venue?: VenueCode | null;
-		courtBlockCode?: string | null;
-		scoringRuleId: string;
-		displayOrder?: number;
-		lineupDueAt?: string | null;
-		lineupDuePolicy?: LineupDuePolicy;
-		now?: string;
-	}
-): Promise<string> {
+export async function createTieWithRubbers(params: {
+	tieCode: string;
+	phase: TiePhase;
+	groupCode?: GroupCode | null;
+	roundLabel?: string | null;
+	teamAId?: string | null;
+	teamBId?: string | null;
+	scheduledStartAt?: string | null;
+	venue?: VenueCode | null;
+	courtBlockCode?: string | null;
+	scoringRuleId: string;
+	displayOrder?: number;
+	lineupDueAt?: string | null;
+	lineupDuePolicy?: LineupDuePolicy;
+	now?: string;
+}): Promise<string> {
 	const db = getRequestDb();
 	const tieCode = params.tieCode.trim();
 	if (!tieCode) throw new Error('tieCode is required');
@@ -84,9 +82,11 @@ export async function createTieWithRubbers(
 	return tieId;
 }
 
-export async function ensureRubbersForTie(
-	params: { tieId: string; scoringRuleId: string; now?: string }
-) {
+export async function ensureRubbersForTie(params: {
+	tieId: string;
+	scoringRuleId: string;
+	now?: string;
+}) {
 	const db = getRequestDb();
 	const existing = await db
 		.select()
@@ -115,14 +115,12 @@ export async function ensureRubbersForTie(
 	);
 }
 
-export async function generateGroupRoundRobinTies(
-	params: {
-		groupCode: GroupCode;
-		scoringRuleId: string;
-		tieCodePrefix: GroupCode;
-		now?: string;
-	}
-): Promise<number> {
+export async function generateGroupRoundRobinTies(params: {
+	groupCode: GroupCode;
+	scoringRuleId: string;
+	tieCodePrefix: GroupCode;
+	now?: string;
+}): Promise<number> {
 	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
 	const groupTeams = await db

@@ -288,7 +288,13 @@ export async function getActiveTieBoard() {
 		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
 
 	if (!tieRows.length)
-		return { ties: [] as (typeof tieRows[number] & { teamAName: string | null; teamBName: string | null })[], rubbersByTieId: {} as Record<string, PublicRubberSummary[]> };
+		return {
+			ties: [] as ((typeof tieRows)[number] & {
+				teamAName: string | null;
+				teamBName: string | null;
+			})[],
+			rubbersByTieId: {} as Record<string, PublicRubberSummary[]>
+		};
 
 	const teamIds = [
 		...new Set(tieRows.flatMap((t) => [t.teamAId, t.teamBId]).filter((id): id is string => !!id))

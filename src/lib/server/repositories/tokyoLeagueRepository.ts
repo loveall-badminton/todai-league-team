@@ -47,17 +47,15 @@ export async function listScoringRules(): Promise<ScoringRule[]> {
 	return db.select().from(scoringRules).orderBy(asc(scoringRules.code));
 }
 
-export async function updateLeagueSettings(
-	input: {
-		eventName: string;
-		groupStageScoringRuleId: string | null;
-		knockoutScoringRuleId: string | null;
-		tiebreakerScoringRuleId: string | null;
-		lineupRevealPolicy: 'on_tie_start' | 'manual';
-		defaultLineupDueMinutesBefore: number;
-		now: string;
-	}
-) {
+export async function updateLeagueSettings(input: {
+	eventName: string;
+	groupStageScoringRuleId: string | null;
+	knockoutScoringRuleId: string | null;
+	tiebreakerScoringRuleId: string | null;
+	lineupRevealPolicy: 'on_tie_start' | 'manual';
+	defaultLineupDueMinutesBefore: number;
+	now: string;
+}) {
 	const db = getRequestDb();
 	await ensureDefaultSettings(input.now);
 	await db
@@ -74,19 +72,17 @@ export async function updateLeagueSettings(
 		.where(eq(appSettings.id, 'default'));
 }
 
-export async function updateScoringRule(
-	input: {
-		id: string;
-		name: string;
-		maxGames: number;
-		gamesToWin: number;
-		pointsToWin: number;
-		winBy: number;
-		maxPoints: number;
-		midGameIntervalPoint: number;
-		now: string;
-	}
-) {
+export async function updateScoringRule(input: {
+	id: string;
+	name: string;
+	maxGames: number;
+	gamesToWin: number;
+	pointsToWin: number;
+	winBy: number;
+	maxPoints: number;
+	midGameIntervalPoint: number;
+	now: string;
+}) {
 	const db = getRequestDb();
 	await ensureDefaultSettings(input.now);
 	await db
@@ -135,15 +131,13 @@ export async function getTeamWithPlayers(teamId: string) {
 	return { team, players };
 }
 
-export async function createTeam(
-	input: {
-		name: string;
-		shortName?: string | null;
-		groupCode?: GroupCode | null;
-		displayOrder?: number;
-		now: string;
-	}
-) {
+export async function createTeam(input: {
+	name: string;
+	shortName?: string | null;
+	groupCode?: GroupCode | null;
+	displayOrder?: number;
+	now: string;
+}) {
 	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(teams).values({
@@ -158,17 +152,15 @@ export async function createTeam(
 	return id;
 }
 
-export async function updateTeam(
-	input: {
-		id: string;
-		name: string;
-		shortName?: string | null;
-		groupCode?: GroupCode | null;
-		displayOrder?: number;
-		status?: 'active' | 'withdrawn';
-		now: string;
-	}
-) {
+export async function updateTeam(input: {
+	id: string;
+	name: string;
+	shortName?: string | null;
+	groupCode?: GroupCode | null;
+	displayOrder?: number;
+	status?: 'active' | 'withdrawn';
+	now: string;
+}) {
 	const db = getRequestDb();
 	await db
 		.update(teams)
@@ -183,15 +175,13 @@ export async function updateTeam(
 		.where(eq(teams.id, input.id));
 }
 
-export async function createTeamPlayer(
-	input: {
-		teamId: string;
-		name: string;
-		gender?: 'male' | 'female' | 'unknown';
-		displayOrder?: number;
-		now: string;
-	}
-) {
+export async function createTeamPlayer(input: {
+	teamId: string;
+	name: string;
+	gender?: 'male' | 'female' | 'unknown';
+	displayOrder?: number;
+	now: string;
+}) {
 	const db = getRequestDb();
 	const id = crypto.randomUUID();
 	await db.insert(teamPlayers).values({
@@ -206,15 +196,13 @@ export async function createTeamPlayer(
 	return id;
 }
 
-export async function bulkCreateTeamPlayers(
-	input: {
-		teamId: string;
-		names: string[];
-		gender?: 'male' | 'female' | 'unknown';
-		displayOrderStart: number;
-		now: string;
-	}
-): Promise<number> {
+export async function bulkCreateTeamPlayers(input: {
+	teamId: string;
+	names: string[];
+	gender?: 'male' | 'female' | 'unknown';
+	displayOrderStart: number;
+	now: string;
+}): Promise<number> {
 	const db = getRequestDb();
 	if (input.names.length === 0) return 0;
 
@@ -232,16 +220,14 @@ export async function bulkCreateTeamPlayers(
 	return rows.length;
 }
 
-export async function updateTeamPlayer(
-	input: {
-		id: string;
-		name: string;
-		gender: 'male' | 'female' | 'unknown';
-		displayOrder?: number;
-		status: 'active' | 'inactive';
-		now: string;
-	}
-) {
+export async function updateTeamPlayer(input: {
+	id: string;
+	name: string;
+	gender: 'male' | 'female' | 'unknown';
+	displayOrder?: number;
+	status: 'active' | 'inactive';
+	now: string;
+}) {
 	const db = getRequestDb();
 	await db
 		.update(teamPlayers)
@@ -424,19 +410,17 @@ function summarizeTieSummaries(
 	return summaries;
 }
 
-export async function updateTieSchedule(
-	input: {
-		id: string;
-		tieCode: string;
-		scheduledStartAt?: string | null;
-		venue?: 'first_gym' | 'second_gym' | null;
-		courtBlockCode?: string | null;
-		lineupDueAt?: string | null;
-		operationNote?: string | null;
-		scheduleChanged?: boolean;
-		now: string;
-	}
-) {
+export async function updateTieSchedule(input: {
+	id: string;
+	tieCode: string;
+	scheduledStartAt?: string | null;
+	venue?: 'first_gym' | 'second_gym' | null;
+	courtBlockCode?: string | null;
+	lineupDueAt?: string | null;
+	operationNote?: string | null;
+	scheduleChanged?: boolean;
+	now: string;
+}) {
 	const db = getRequestDb();
 	await db
 		.update(ties)
@@ -453,14 +437,12 @@ export async function updateTieSchedule(
 		.where(eq(ties.id, input.id));
 }
 
-export async function assignOfficiatingTeam(
-	input: {
-		tieId: string;
-		assignedTeamId: string | null;
-		note?: string | null;
-		now: string;
-	}
-) {
+export async function assignOfficiatingTeam(input: {
+	tieId: string;
+	assignedTeamId: string | null;
+	note?: string | null;
+	now: string;
+}) {
 	const db = getRequestDb();
 	const existing = await db.query.officiatingAssignments.findFirst({
 		where: and(
@@ -501,15 +483,13 @@ export async function assignOfficiatingTeam(
 		.where(eq(officiatingAssignments.id, existing.id));
 }
 
-export async function setGroupStandingOverride(
-	input: {
-		groupCode: GroupCode;
-		teamId: string;
-		manualRank: number;
-		reason?: string | null;
-		now: string;
-	}
-) {
+export async function setGroupStandingOverride(input: {
+	groupCode: GroupCode;
+	teamId: string;
+	manualRank: number;
+	reason?: string | null;
+	now: string;
+}) {
 	const db = getRequestDb();
 	const existing = await db.query.groupStandingOverrides.findFirst({
 		where: and(
@@ -536,9 +516,7 @@ export async function setGroupStandingOverride(
 		.where(eq(groupStandingOverrides.id, existing.id));
 }
 
-export async function listRankingTiebreakers(
-	groupCode?: GroupCode
-): Promise<RankingTiebreaker[]> {
+export async function listRankingTiebreakers(groupCode?: GroupCode): Promise<RankingTiebreaker[]> {
 	const db = getRequestDb();
 	return groupCode
 		? db
@@ -548,7 +526,6 @@ export async function listRankingTiebreakers(
 				.orderBy(asc(rankingTiebreakers.createdAt))
 		: db.select().from(rankingTiebreakers).orderBy(asc(rankingTiebreakers.createdAt));
 }
-
 
 export async function getTeam(teamId: string): Promise<Team | null> {
 	const db = getRequestDb();

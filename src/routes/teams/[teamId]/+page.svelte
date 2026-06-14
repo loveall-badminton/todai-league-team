@@ -3,13 +3,6 @@
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import type { ComponentProps } from 'svelte';
-	type DragOverEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragOver']>
-	>[0];
-	type DragEndEvent = Parameters<
-		NonNullable<ComponentProps<typeof DragDropProvider>['onDragEnd']>
-	>[0];
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
@@ -31,6 +24,7 @@
 		deletePlayer,
 		deleteTeam
 	} from './team.remote';
+	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },

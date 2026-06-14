@@ -37,9 +37,7 @@ export type StandingOverrideRecord = {
 	manualRank: number;
 };
 
-export async function calculateGroupStandings(
-	groupCode: GroupCode
-): Promise<GroupStanding[]> {
+export async function calculateGroupStandings(groupCode: GroupCode): Promise<GroupStanding[]> {
 	const db = getRequestDb();
 	const groupTeams = await db
 		.select()
