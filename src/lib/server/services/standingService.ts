@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { groupStandingOverrides, matches, rubbers, teams, ties } from '$lib/server/db/schema';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 
 export interface GroupStanding {
 	teamId: string;
@@ -159,47 +159,24 @@ export function calculateGroupStandingsFromRecords(params: {
 	);
 
 	let rank = 1;
+	let prevKey: string | null = null;
 	for (const row of sorted) {
-		row.rank = row.manualRank ?? rank;
-		rank += 1;
-	}
-	const roundRobinComplete = isRoundRobinComplete(params.teams, params.ties);
-	for (const group of groupByRecord(sorted, (row) => standingTieKey(row)).values()) {
-		if (roundRobinComplete && group.length > 1 && group.every((row) => row.manualRank === null)) {
-			for (const row of group) {
-				row.requiresTiebreaker = true;
-				row.rank = null;
-			}
+		if (row.manualRank) {
+			row.rank = row.manualRank;
+			rank = Math.max(rank, row.manualRank + 1);
+			prevKey = null;
+			continue;
 		}
+		const key = standingTieKey(row);
+		if (prevKey !== null && key !== prevKey) {
+			rank += 1;
+		}
+		prevKey = key;
+		row.rank = rank;
 	}
-
 	return sorted.sort(
 		(a, b) => (a.rank ?? 999) - (b.rank ?? 999) || a.teamName.localeCompare(b.teamName)
 	);
-}
-
-function isRoundRobinComplete(
-	teams: StandingTeamRecord[],
-	groupTies: StandingTieRecord[]
-): boolean {
-	if (teams.length < 2) return false;
-	for (let i = 0; i < teams.length; i++) {
-		for (let j = i + 1; j < teams.length; j++) {
-			const firstId = teams[i].id;
-			const secondId = teams[j].id;
-			const tie = groupTies.find(
-				(row) =>
-					row.teamAId &&
-					row.teamBId &&
-					new Set([row.teamAId, row.teamBId]).has(firstId) &&
-					new Set([row.teamAId, row.teamBId]).has(secondId)
-			);
-			if (!tie?.winnerTeamId || !new Set([firstId, secondId]).has(tie.winnerTeamId)) {
-				return false;
-			}
-		}
-	}
-	return true;
 }
 
 function applyRubberStats(params: {
@@ -240,8 +217,10 @@ function statsAgainst(
 	let gamesWon = 0;
 	for (const tie of targetTies) {
 		const isSideA = tie.teamAId === teamId;
+		const isSideB = tie.teamBId === teamId;
+		if (!isSideA && !isSideB) continue;
 		for (const rubber of rubberRows.filter((row) => row.tieId === tie.id)) {
-			if ((isSideA && rubber.winnerSide === 'A') || (!isSideA && rubber.winnerSide === 'B')) {
+			if ((isSideA && rubber.winnerSide === 'A') || (isSideB && rubber.winnerSide === 'B')) {
 				rubbersWon += 1;
 			}
 			const match = matchRows.find((row) => row.id === rubber.matchId);

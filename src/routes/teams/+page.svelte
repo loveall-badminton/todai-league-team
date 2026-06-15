@@ -1,14 +1,16 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { DragDropProvider } from '@dnd-kit/svelte';
+	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import SortableTeamItem from './SortableTeamItem.svelte';
 	import { create, reorder } from './teams.remote';
-	import { createSortableHandlers } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -22,8 +24,6 @@
 
 	let showForm = $state(false);
 	let importing = $state(false);
-	let importResult = $state<{ addedCount: number; notFoundTeams: string[] } | null>(null);
-	let importError = $state<string | null>(null);
 
 	let fileInput: HTMLInputElement;
 
@@ -32,8 +32,6 @@
 		if (!file) return;
 
 		importing = true;
-		importResult = null;
-		importError = null;
 
 		const formData = new FormData();
 		formData.append('file', file);
@@ -42,12 +40,19 @@
 			const res = await fetch('/teams/import', { method: 'POST', body: formData });
 			if (!res.ok) {
 				const text = await res.text();
-				importError = text || 'インポートに失敗しました';
+				toast.error(text || 'インポートに失敗しました');
 			} else {
-				importResult = await res.json();
+				const result: { addedCount: number; createdTeams: string[] } = await res.json();
+				let msg = `${result.addedCount}名の選手を追加しました`;
+				if (result.createdTeams.length > 0) {
+					msg += `（新規作成チーム: ${result.createdTeams.join('、')}）`;
+				}
+
+				invalidate('/teams');
+				toast.success(msg);
 			}
 		} catch {
-			importError = 'インポートに失敗しました';
+			toast.error('インポートに失敗しました');
 		} finally {
 			importing = false;
 			fileInput.value = '';
@@ -86,23 +91,6 @@
 {/snippet}
 
 <PageHeader title="チーム" actions={headerActions} />
-
-{#if importResult}
-	<div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-		{importResult.addedCount} 名の選手を追加しました。
-		{#if importResult.notFoundTeams.length > 0}
-			<span class="ml-1 text-amber-700"
-				>見つからなかったチーム: {importResult.notFoundTeams.join('、')}</span
-			>
-		{/if}
-	</div>
-{/if}
-
-{#if importError}
-	<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-		{importError}
-	</div>
-{/if}
 
 <!-- Creation form (inline) -->
 {#if showForm}

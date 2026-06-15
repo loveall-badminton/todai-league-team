@@ -1,5 +1,6 @@
 import { requireAdmin } from '$lib/server/auth/access';
 import {
+	createTeam,
 	createTeamPlayer,
 	getTeamWithPlayers,
 	listTeams
@@ -84,7 +85,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const now = new Date().toISOString();
 	let addedCount = 0;
-	const notFoundTeams: string[] = [];
+	const createdTeams: string[] = [];
 
 	const byTeam = new Map<string, Entry[]>();
 	for (const entry of entries) {
@@ -93,13 +94,16 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	for (const [teamName, teamEntries] of byTeam) {
-		const team = teamsByName.get(teamName);
-		if (!team) {
-			notFoundTeams.push(teamName);
-			continue;
+		const foundTeam = teamsByName.get(teamName);
+		let teamId: string;
+		if (foundTeam) {
+			teamId = foundTeam.id;
+		} else {
+			teamId = await createTeam({ name: teamName, displayOrder: allTeams.length, now });
+			createdTeams.push(teamName);
 		}
 
-		const existing = await getTeamWithPlayers(team.id);
+		const existing = await getTeamWithPlayers(teamId);
 		const existingNames = new Set(existing?.players.map((p) => p.name) ?? []);
 		const newPlayers = teamEntries.filter((e) => !existingNames.has(e.playerName));
 		const startOrder = existing?.players.length ?? 0;
@@ -107,7 +111,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		for (let i = 0; i < newPlayers.length; i++) {
 			const p = newPlayers[i];
 			await createTeamPlayer({
-				teamId: team.id,
+				teamId,
 				name: p.playerName,
 				gender: p.gender,
 				displayOrder: startOrder + i,
@@ -117,5 +121,5 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 	}
 
-	return json({ addedCount, notFoundTeams });
+	return json({ addedCount, createdTeams });
 };
