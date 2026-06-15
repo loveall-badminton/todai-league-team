@@ -41,11 +41,6 @@
 	const teamName = (teamId: string | null) =>
 		data.allTeams.find((t) => t.id === teamId)?.name ?? '不明';
 
-	let tiebreakerTeamAId = $state('');
-	let tiebreakerPlayerAId = $state('');
-	let tiebreakerTeamBId = $state('');
-	let tiebreakerPlayerBId = $state('');
-
 	let groupTeamItems = $derived([
 		{ value: '', label: '選択' },
 		...data.groupTeams.map((t) => ({ value: t.id, label: t.name }))
@@ -130,15 +125,18 @@
 	</td>
 	<td class="px-4 py-2.5">
 		<form {...rankForm} class="flex items-center gap-2">
-			<input type="hidden" name="teamId" value={row.teamId} />
+			<input {...rankForm.fields.teamId.as('hidden', row.teamId)} />
 			<AppInput
-				name="manualRank"
 				type="number"
+				{...rankForm.fields.manualRank.as('text', String(row.manualRank ?? row.rank ?? ''))}
 				min="1"
-				value={row.manualRank ?? row.rank ?? ''}
 				class="w-14 px-2 py-1.5 tabular-nums"
 			/>
-			<AppInput name="reason" placeholder="理由" class="w-24 px-2 py-1.5" />
+			<AppInput
+				{...rankForm.fields.reason.as('text')}
+				placeholder="理由"
+				class="w-24 px-2 py-1.5"
+			/>
 			<button
 				class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
 			>
@@ -217,33 +215,43 @@
 		<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側チーム</span>
-				<AppSelect name="teamAId" bind:value={tiebreakerTeamAId} items={groupTeamItems} required />
+				<AppSelect
+					{...createTiebreaker.fields.teamAId.as('select')}
+					items={groupTeamItems}
+					required
+				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側選手</span>
 				<AppSelect
-					name="playerAId"
-					bind:value={tiebreakerPlayerAId}
+					{...createTiebreaker.fields.playerAId.as('select')}
 					items={allPlayerItems}
 					required
 				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">B側チーム</span>
-				<AppSelect name="teamBId" bind:value={tiebreakerTeamBId} items={groupTeamItems} required />
+				<AppSelect
+					{...createTiebreaker.fields.teamBId.as('select')}
+					items={groupTeamItems}
+					required
+				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">B側選手</span>
 				<AppSelect
-					name="playerBId"
-					bind:value={tiebreakerPlayerBId}
+					{...createTiebreaker.fields.playerBId.as('select')}
 					items={allPlayerItems}
 					required
 				/>
 			</div>
 			<div class="grid gap-1 lg:col-span-2">
 				<span class="text-xs font-medium text-zinc-500">理由</span>
-				<AppInput name="reason" placeholder="順位未確定のため" required />
+				<AppInput
+					{...createTiebreaker.fields.reason.as('text')}
+					placeholder="順位未確定のため"
+					required
+				/>
 			</div>
 			<div class="lg:col-span-6">
 				<AppButton type="submit">再試合作成</AppButton>

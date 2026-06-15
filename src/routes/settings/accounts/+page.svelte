@@ -12,6 +12,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Pencil, ShieldCheck, UserRound, UsersRound, X } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import { createAccount, deleteAccount, resetPassword, updateAccount } from './accounts.remote';
@@ -26,6 +27,21 @@
 	let teamItems = $derived(data.teams.map((team) => ({ value: team.id, label: team.name })));
 
 	let newAccountType = $state('participant');
+
+	onMount(() => {
+		createAccount.fields.set({
+			accountType: 'participant',
+			accountId: '',
+			name: '',
+			password: '',
+			teamId: data.teams[0]?.id ?? ''
+		});
+	});
+
+	function setNewAccountType(value: string) {
+		newAccountType = value;
+		createAccount.fields.accountType.set(value as 'participant' | 'team' | 'admin');
+	}
 
 	function accountTypeValue(account: PageProps['data']['accounts'][number]) {
 		if (account.profile?.accountType) return account.profile.accountType;
@@ -81,12 +97,17 @@
 		<div class="grid gap-4 sm:grid-cols-2">
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">種別</span>
-				<AppSelect name="accountType" bind:value={newAccountType} items={accountTypeItems} />
+				<AppSelect
+					name={createAccount.fields.accountType.as('select').name}
+					value={newAccountType}
+					items={accountTypeItems}
+					onValueChange={setNewAccountType}
+				/>
 			</label>
 			{#if newAccountType === 'team'}
 				<label class="grid gap-1">
 					<span class="text-sm font-medium text-zinc-700">チーム</span>
-					<AppSelect name="teamId" value={data.teams[0]?.id ?? ''} items={teamItems} required />
+					<AppSelect {...createAccount.fields.teamId.as('select')} items={teamItems} required />
 				</label>
 			{/if}
 		</div>
@@ -94,15 +115,19 @@
 		<div class="grid gap-4 sm:grid-cols-3">
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">ID</span>
-				<AppInput name="accountId" type="text" autocomplete="username" required />
+				<AppInput {...createAccount.fields.accountId.as('text')} autocomplete="username" required />
 			</label>
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">表示名</span>
-				<AppInput name="name" required />
+				<AppInput {...createAccount.fields.name.as('text')} required />
 			</label>
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">パスワード</span>
-				<AppInput name="password" type="password" autocomplete="new-password" required />
+				<AppInput
+					{...createAccount.fields.password.as('password')}
+					autocomplete="new-password"
+					required
+				/>
 			</label>
 		</div>
 
@@ -239,21 +264,29 @@
 						<h3 class="text-xs font-semibold tracking-wide text-zinc-400">アカウント情報</h3>
 						<FormToast result={updateAccountForm.result} />
 						<form {...updateAccountForm} class="space-y-3">
-							<input type="hidden" name="userId" value={editAccount.id} />
+							<input {...updateAccountForm.fields.userId.as('hidden', editAccount.id)} />
 							<label class="grid gap-1">
 								<span class="text-xs font-medium text-zinc-600">表示名</span>
-								<AppInput name="name" value={editAccount.name} required />
+								<AppInput
+									{...updateAccountForm.fields.name.as('text', editAccount.name)}
+									required
+								/>
 							</label>
 							<div class="grid gap-3 sm:grid-cols-2">
 								<label class="grid gap-1">
 									<span class="text-xs font-medium text-zinc-600">種別</span>
-									<AppSelect name="accountType" value={accountType} items={accountTypeItems} />
+									<AppSelect
+										{...updateAccountForm.fields.accountType.as('select', accountType)}
+										items={accountTypeItems}
+									/>
 								</label>
 								<label class="grid gap-1">
 									<span class="text-xs font-medium text-zinc-600">チーム</span>
 									<AppSelect
-										name="teamId"
-										value={editAccount.profile?.teamId ?? data.teams[0]?.id ?? ''}
+										{...updateAccountForm.fields.teamId.as(
+											'select',
+											editAccount.profile?.teamId ?? data.teams[0]?.id ?? ''
+										)}
 										items={teamItems}
 									/>
 								</label>
@@ -271,7 +304,7 @@
 						<h3 class="text-xs font-semibold tracking-wide text-zinc-400">パスワード変更</h3>
 						<FormToast result={resetPasswordForm.result} />
 						<form {...resetPasswordForm} class="space-y-3">
-							<input type="hidden" name="userId" value={editAccount.id} />
+							<input {...resetPasswordForm.fields.userId.as('hidden', editAccount.id)} />
 							<label class="grid gap-1">
 								<span class="text-xs font-medium text-zinc-600">新しいパスワード</span>
 								<AppInput

@@ -6,6 +6,7 @@
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
 	import { GripVertical, X } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import AppSwitch from '$lib/components/AppSwitch.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -34,20 +35,33 @@
 		{ value: 'ranking_tiebreaker', label: '順位決定再試合' }
 	];
 
-	let newGroupCode = $state('');
-	let newPhase = $state('semifinal');
-	let newTeamAId = $state('');
-	let newTeamBId = $state('');
-	let newScoringRuleId = $derived(data.scoringRules[0]?.id ?? '');
 	let dialogOpen = $state(false);
+
+	onMount(() => {
+		create.fields.set({
+			tieCode: '',
+			scoringRuleId: data.scoringRules[0]?.id ?? '',
+			groupCode: '',
+			phase: 'semifinal',
+			scheduledStartAt: '',
+			teamAId: '',
+			teamBId: '',
+			roundLabel: '',
+			venue: '',
+			courtBlockCode: '',
+			lineupDueAt: '',
+			lineupDuePolicy: ''
+		});
+	});
 
 	let allTies = $derived([...data.ties]);
 	let hasActive = $derived(data.ties.some((t) => t.status === 'playing'));
 	let realtimeEnabled = $state(true);
 
-	$effect(() => {
-		if (!hasActive || !realtimeEnabled) return;
-		const id = setInterval(() => invalidateAll(), 12000);
+	onMount(() => {
+		const id = setInterval(() => {
+			if (hasActive && realtimeEnabled) void invalidateAll();
+		}, 12000);
 		return () => clearInterval(id);
 	});
 
@@ -135,15 +149,14 @@
 						<span class="text-xs font-medium text-zinc-600"
 							>コード <span class="text-red-500">*</span></span
 						>
-						<AppInput name="tieCode" placeholder="A-1" required />
+						<AppInput {...create.fields.tieCode.as('text')} placeholder="A-1" required />
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600"
 							>得点ルール <span class="text-red-500">*</span></span
 						>
 						<AppSelect
-							name="scoringRuleId"
-							bind:value={newScoringRuleId}
+							{...create.fields.scoringRuleId.as('select')}
 							required
 							items={data.scoringRules.map((r) => ({ value: r.id, label: r.name ?? r.code }))}
 						/>
@@ -154,19 +167,18 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600">リーグ</span>
 						<AppSelect
-							name="groupCode"
-							bind:value={newGroupCode}
+							{...create.fields.groupCode.as('select')}
 							items={groupCodeItems}
 							placeholder="決勝トーナメント"
 						/>
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600">フェーズ</span>
-						<AppSelect name="phase" bind:value={newPhase} items={phaseItems} />
+						<AppSelect {...create.fields.phase.as('select')} items={phaseItems} />
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600">予定時刻</span>
-						<AppInput name="scheduledStartAt" type="time" />
+						<AppInput {...create.fields.scheduledStartAt.as('time')} />
 					</div>
 				</div>
 
@@ -174,8 +186,7 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600">A側チーム</span>
 						<AppSelect
-							name="teamAId"
-							bind:value={newTeamAId}
+							{...create.fields.teamAId.as('select')}
 							items={[
 								{ value: '', label: '未定' },
 								...data.teams.map((t) => ({ value: t.id, label: t.name }))
@@ -186,8 +197,7 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-zinc-600">B側チーム</span>
 						<AppSelect
-							name="teamBId"
-							bind:value={newTeamBId}
+							{...create.fields.teamBId.as('select')}
 							items={[
 								{ value: '', label: '未定' },
 								...data.teams.map((t) => ({ value: t.id, label: t.name }))

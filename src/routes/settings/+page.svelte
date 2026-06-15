@@ -6,19 +6,26 @@
 	import Card from '$lib/components/Card.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { toast } from 'svelte-sonner';
+	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 	import { updateScoringRule, updateSettings } from './settings.remote';
 
 	let { data }: PageProps = $props();
 
-	$effect(() => {
-		if (updateSettings.result?.message) toast.success(updateSettings.result.message);
-	});
-
 	let scoringRuleItems = $derived(
 		data.scoringRules.map((r) => ({ value: r.id, label: r.name ?? r.code }))
 	);
+
+	onMount(() => {
+		updateSettings.fields.set({
+			eventName: data.settings.eventName,
+			groupStageScoringRuleId: data.settings.groupStageScoringRuleId ?? '',
+			knockoutScoringRuleId: data.settings.knockoutScoringRuleId ?? '',
+			tiebreakerScoringRuleId: data.settings.tiebreakerScoringRuleId ?? '',
+			lineupRevealPolicy: data.settings.lineupRevealPolicy ?? 'on_tie_start',
+			defaultLineupDueMinutesBefore: String(data.settings.defaultLineupDueMinutesBefore)
+		});
+	});
 
 	const lineupRevealItems = [
 		{ value: 'on_tie_start', label: '試合開始時に公開' },
@@ -36,33 +43,31 @@
 <Card class="p-5">
 	<h2 class="mb-4 font-semibold text-zinc-900">運営設定</h2>
 	<form {...updateSettings} class="space-y-4">
+		<FormToast result={updateSettings.result} />
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">大会名</span>
-			<AppInput name="eventName" value={data.settings.eventName} required />
+			<AppInput {...updateSettings.fields.eventName.as('text')} required />
 		</div>
 
 		<div class="grid gap-4 sm:grid-cols-3">
 			<div class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">予選ルール</span>
 				<AppSelect
-					name="groupStageScoringRuleId"
-					value={data.settings.groupStageScoringRuleId ?? ''}
+					{...updateSettings.fields.groupStageScoringRuleId.as('select')}
 					items={scoringRuleItems}
 				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">決勝トーナメントルール</span>
 				<AppSelect
-					name="knockoutScoringRuleId"
-					value={data.settings.knockoutScoringRuleId ?? ''}
+					{...updateSettings.fields.knockoutScoringRuleId.as('select')}
 					items={scoringRuleItems}
 				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">順位決定再試合</span>
 				<AppSelect
-					name="tiebreakerScoringRuleId"
-					value={data.settings.tiebreakerScoringRuleId ?? ''}
+					{...updateSettings.fields.tiebreakerScoringRuleId.as('select')}
 					items={scoringRuleItems}
 				/>
 			</div>
@@ -72,8 +77,7 @@
 			<div class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">オーダー公開</span>
 				<AppSelect
-					name="lineupRevealPolicy"
-					value={data.settings.lineupRevealPolicy ?? 'on_tie_start'}
+					{...updateSettings.fields.lineupRevealPolicy.as('select')}
 					items={lineupRevealItems}
 				/>
 			</div>
@@ -81,8 +85,10 @@
 				<span class="text-sm font-medium text-zinc-700">提出期限 (開始前の分数)</span>
 				<AppInput
 					type="number"
-					name="defaultLineupDueMinutesBefore"
-					value={data.settings.defaultLineupDueMinutesBefore}
+					{...updateSettings.fields.defaultLineupDueMinutesBefore.as(
+						'text',
+						String(data.settings.defaultLineupDueMinutesBefore)
+					)}
 					min="0"
 				/>
 			</div>
@@ -112,14 +118,13 @@
 		{@const ruleForm = updateScoringRule.for(rule.id)}
 		<Card class="p-5"
 			><form {...ruleForm}>
-				<input type="hidden" name="id" value={rule.id} />
+				<input {...ruleForm.fields.id.as('hidden', rule.id)} />
 
 				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 					<div class="space-y-1">
 						<p class="font-mono text-xs text-zinc-500">{rule.code}</p>
 						<AppInput
-							name="name"
-							value={rule.name}
+							{...ruleForm.fields.name.as('text', rule.name)}
 							required
 							class="w-auto rounded-xl border border-zinc-200 bg-white px-3 py-1.5 font-semibold focus:ring-2 focus:ring-zinc-950"
 						/>
@@ -130,30 +135,52 @@
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">最大ゲーム</span>
-						<AppInput type="number" name="maxGames" value={rule.maxGames} min="1" />
+						<AppInput
+							type="number"
+							{...ruleForm.fields.maxGames.as('text', String(rule.maxGames))}
+							min="1"
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">必要ゲーム</span>
-						<AppInput type="number" name="gamesToWin" value={rule.gamesToWin} min="1" />
+						<AppInput
+							type="number"
+							{...ruleForm.fields.gamesToWin.as('text', String(rule.gamesToWin))}
+							min="1"
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">勝利点</span>
-						<AppInput type="number" name="pointsToWin" value={rule.pointsToWin} min="1" />
+						<AppInput
+							type="number"
+							{...ruleForm.fields.pointsToWin.as('text', String(rule.pointsToWin))}
+							min="1"
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">デュース差</span>
-						<AppInput type="number" name="winBy" value={rule.winBy} min="1" />
+						<AppInput
+							type="number"
+							{...ruleForm.fields.winBy.as('text', String(rule.winBy))}
+							min="1"
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">上限点</span>
-						<AppInput type="number" name="maxPoints" value={rule.maxPoints} min="1" />
+						<AppInput
+							type="number"
+							{...ruleForm.fields.maxPoints.as('text', String(rule.maxPoints))}
+							min="1"
+						/>
 					</div>
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-zinc-600">インターバル</span>
 						<AppInput
 							type="number"
-							name="midGameIntervalPoint"
-							value={rule.midGameIntervalPoint}
+							{...ruleForm.fields.midGameIntervalPoint.as(
+								'text',
+								String(rule.midGameIntervalPoint)
+							)}
 							min="1"
 						/>
 					</div>

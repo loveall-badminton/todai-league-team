@@ -1,20 +1,28 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { invalidateAll } from '$app/navigation';
 	import Card from '$lib/components/Card.svelte';
-	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
+	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import { toast } from 'svelte-sonner';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
-	import { saveDraft, submit } from './lineup.remote';
+	import { lineup } from './lineup.remote';
 	import {
 		lineupStatusBadgeClass,
 		filteredPlayers as _filteredPlayers,
 		slotLabel,
 		savedPlayerValue
 	} from './lineupHelpers';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import { toast } from 'svelte-sonner';
+	import { onMount } from 'svelte';
+	import {
+		clearLocalLineupDraft,
+		lineupDraftItemsFromFormData,
+		loadLocalLineupDraft,
+		saveLocalLineupDraft,
+		type LocalLineupDraftItem
+	} from '../lineupDraftStorage';
 
 	let { data }: PageProps = $props();
 
@@ -25,46 +33,103 @@
 	let isLocked = $derived(status === 'locked' || status === 'revealed');
 	let isSubmitted = $derived(status === 'submitted');
 
-	const savedValue = (code: string, order: 1 | 2) =>
-		savedPlayerValue(code, order, data.items as Item[]);
+	const savedValue = (code: string, order: 1 | 2) => savedPlayerValue(code, order, data.items);
 
 	const playerName = (id: string) => data.players.find((p: Player) => p.id === id)?.name ?? id;
 
 	const statusBadgeClass = lineupStatusBadgeClass;
+	let draftItems = $state(initialDraftItems());
+
+	const lineupForm = lineup.enhance(async (form) => {
+		try {
+			if (await form.submit()) {
+				clearLocalLineupDraft(data.tie.id, data.team.id);
+				toastResult(form.result);
+			} else {
+				toastIssues(form);
+			}
+		} catch (error) {
+			toastError(error);
+		}
+	});
 
 	function filteredPlayers(discipline: string, order: 1 | 2): Player[] {
-		return _filteredPlayers(discipline, order, data.players as Player[]);
+		return _filteredPlayers(discipline, order, data.players);
 	}
 
-	let lineupAction = $state<'draft' | 'submit'>('draft');
-
-	async function handleLineup(e: SubmitEvent) {
-		e.preventDefault();
-		const fd = new FormData(e.currentTarget as HTMLFormElement);
-		const formData: Record<string, string> = {};
-		for (const [key, val] of fd.entries()) {
-			formData[key] = String(val);
-		}
-		try {
-			let result: { message: string; warnings?: string[] } | undefined;
-			if (lineupAction === 'draft') {
-				result = await saveDraft(formData);
-			} else {
-				result = await submit(formData);
-			}
-			if (result?.message) {
-				const warnings = result.warnings ?? [];
-				if (warnings.length > 0) {
-					toast.warning(result.message, { description: warnings.join('\n') });
-				} else {
-					toast.success(result.message);
-				}
-			}
-			await invalidateAll();
-		} catch (err) {
-			toast.error(err instanceof Error ? err.message : '失敗');
-		}
+	function initialDraftItems(): LocalLineupDraftItem[] {
+		return RUBBER_DEFINITIONS.map((rubber) => ({
+			rubberCode: rubber.code,
+			player1Id: savedValue(rubber.code, 1),
+			player2Id: savedValue(rubber.code, 2)
+		}));
 	}
+
+	function draftValue(code: RubberCode, order: 1 | 2) {
+		const item = draftItems.find((draftItem) => draftItem.rubberCode === code);
+		return order === 1 ? (item?.player1Id ?? '') : (item?.player2Id ?? '');
+	}
+
+	function saveLocalDraft(event: MouseEvent) {
+		const formElement = (event.currentTarget as HTMLButtonElement | null)?.form;
+		if (!formElement) return;
+
+		const items = lineupDraftItemsFromFormData(new FormData(formElement));
+		saveLocalLineupDraft(data.tie.id, data.team.id, items);
+		draftItems = items;
+		toast.success('下書きをこの端末に保存しました');
+	}
+
+	function toastResult(result: { message?: string; warnings?: string[] } | undefined) {
+		if (!result?.message) {
+			toast.success('オーダーを提出しました');
+			return;
+		}
+
+		if (result.warnings?.length) {
+			toast.warning(result.message, { description: result.warnings.join('\n') });
+			return;
+		}
+
+		toast.success(result.message);
+	}
+
+	function toastIssues(form: { fields: { allIssues: () => { message: string }[] | undefined } }) {
+		const issues = (form.fields.allIssues() ?? []).map((issue) => issue.message);
+		if (issues.length === 0) {
+			toast.error('送信内容に問題があります');
+			return;
+		}
+
+		toast.error(issues[0], { description: issues.slice(1).join('\n') || undefined });
+	}
+
+	function toastError(error: unknown) {
+		const message = errorMessage(error);
+		const [title, ...details] = message.split('\n');
+		toast.error(title || 'エラーが発生しました', { description: details.join('\n') || undefined });
+	}
+
+	function errorMessage(error: unknown) {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'object' && error && 'body' in error) {
+			const body = (error as { body?: { message?: unknown } }).body;
+			if (typeof body?.message === 'string') return body.message;
+		}
+		if (typeof error === 'object' && error && 'message' in error) {
+			const message = (error as { message?: unknown }).message;
+			if (typeof message === 'string') return message;
+		}
+		return 'エラーが発生しました';
+	}
+
+	onMount(() => {
+		const localDraft = loadLocalLineupDraft(data.tie.id, data.team.id);
+		if (!localDraft) return;
+
+		draftItems = localDraft;
+		toast.info('この端末に保存した下書きを復元しました');
+	});
 </script>
 
 <svelte:head>
@@ -132,27 +197,37 @@
 		</div>
 	{:else}
 		<Card class="overflow-hidden">
-			<form onsubmit={handleLineup} class="divide-y divide-zinc-100">
-				{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
+			<form {...lineupForm} class="divide-y divide-zinc-100">
+				{#each RUBBER_DEFINITIONS as rubber, index (rubber.code)}
+					{@const itemField = lineup.fields.items[index]}
 					<div class="px-5 py-4">
+						<input {...itemField.rubberCode.as('hidden', rubber.code)} />
 						<p class="mb-2.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
 						<div class="grid grid-cols-2 gap-2">
 							{#each [1, 2] as order (order)}
-								{@const slotPlayers = filteredPlayers(rubber.discipline, order as 1 | 2)}
+								{@const typedOrder = order as 1 | 2}
+								{@const slotPlayers = filteredPlayers(rubber.discipline, typedOrder)}
 								{@const playerItems = [
 									{ value: '', label: '未入力' },
 									...slotPlayers.map((p) => ({ value: p.id, label: p.name }))
 								]}
 								<div>
 									<span class="mb-1 block text-xs text-zinc-400">
-										{slotLabel(rubber.discipline, order as 1 | 2)}
+										{slotLabel(rubber.discipline, typedOrder)}
 									</span>
-									<AppSelect
-										name="{rubber.code}_{order}"
-										value={savedValue(rubber.code, order as 1 | 2)}
-										items={playerItems}
-										placeholder="未入力"
-									/>
+									{#if typedOrder === 1}
+										<AppSelect
+											{...itemField.player1Id.as('select', draftValue(rubber.code, 1))}
+											items={playerItems}
+											placeholder="未入力"
+										/>
+									{:else}
+										<AppSelect
+											{...itemField.player2Id.as('select', draftValue(rubber.code, 2))}
+											items={playerItems}
+											placeholder="未入力"
+										/>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -160,21 +235,17 @@
 				{/each}
 
 				<div class="flex justify-end gap-2 px-5 py-4">
-					<button
-						type="submit"
-						formnovalidate
-						onclick={() => (lineupAction = 'draft')}
-						class="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+					<AppButton
+						type="button"
+						disabled={lineup.pending > 0}
+						onclick={saveLocalDraft}
+						variant="secondary"
 					>
 						下書き保存
-					</button>
-					<button
-						type="submit"
-						onclick={() => (lineupAction = 'submit')}
-						class="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-					>
-						提出する
-					</button>
+					</AppButton>
+					<AppButton type="submit" disabled={lineup.pending > 0}>
+						{lineup.pending > 0 ? '送信中…' : '提出する'}
+					</AppButton>
 				</div>
 			</form>
 		</Card>

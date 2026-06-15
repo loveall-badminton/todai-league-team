@@ -2,12 +2,14 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
+	import { onMount } from 'svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppTextarea from '$lib/components/AppTextarea.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import FormToast from '$lib/components/FormToast.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -42,23 +44,22 @@
 
 	let { data }: PageProps = $props();
 
-	let teamGroupCode = $derived(data.team.groupCode ?? '');
-	let teamStatus = $derived(data.team.status);
-
-	let newPlayerGender = $state('unknown');
 	let players = $derived([...data.players]);
+
+	onMount(() => {
+		updateTeam.fields.set({
+			name: data.team.name,
+			shortName: data.team.shortName ?? '',
+			groupCode: data.team.groupCode ?? '',
+			status: data.team.status
+		});
+		createPlayer.fields.set({ name: '', gender: 'unknown' });
+	});
 
 	// Add player tab state
 	let addTab = $state<'single' | 'bulk'>('single');
 	let bulkNamesText = $state('');
 	let bulkLoading = $state(false);
-
-	$effect(() => {
-		if (updateTeam.result?.message) toast.success(updateTeam.result.message);
-	});
-	$effect(() => {
-		if (createPlayer.result?.message) toast.success(createPlayer.result.message);
-	});
 
 	async function handleBulkCreate() {
 		if (!bulkNamesText.trim()) return;
@@ -129,25 +130,25 @@
 		/>
 	</div>
 	<form {...updateTeam} class="space-y-4">
+		<FormToast result={updateTeam.result} />
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<div class="lg:col-span-1">
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
-					<AppInput name="name" value={data.team.name} required class="mt-1" />
+					<AppInput {...updateTeam.fields.name.as('text')} required class="mt-1" />
 				</label>
 			</div>
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-					<AppInput name="shortName" value={data.team.shortName ?? ''} class="mt-1" />
+					<AppInput {...updateTeam.fields.shortName.as('text')} class="mt-1" />
 				</label>
 			</div>
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
 					<AppSelect
-						name="groupCode"
-						bind:value={teamGroupCode}
+						{...updateTeam.fields.groupCode.as('select')}
 						items={groupCodeItems}
 						placeholder="未割当"
 						class="mt-1"
@@ -159,7 +160,7 @@
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">状態</span>
-					<AppSelect name="status" bind:value={teamStatus} items={statusItems} class="mt-1" />
+					<AppSelect {...updateTeam.fields.status.as('select')} items={statusItems} class="mt-1" />
 				</label>
 			</div>
 			<div class="flex items-end">
@@ -194,18 +195,23 @@
 
 		{#if addTab === 'single'}
 			<form {...createPlayer} class="flex flex-wrap items-end gap-3">
+				<FormToast result={createPlayer.result} />
 				<div class="min-w-36 flex-1">
 					<label class="block">
 						<span class="text-xs font-medium text-zinc-500">氏名 *</span>
-						<AppInput name="name" required placeholder="例: 山田太郎" class="mt-1" />
+						<AppInput
+							{...createPlayer.fields.name.as('text')}
+							required
+							placeholder="例: 山田太郎"
+							class="mt-1"
+						/>
 					</label>
 				</div>
 				<div class="w-28">
 					<label class="block">
 						<span class="text-xs font-medium text-zinc-500">性別</span>
 						<AppSelect
-							name="gender"
-							bind:value={newPlayerGender}
+							{...createPlayer.fields.gender.as('select')}
 							items={genderItems}
 							class="mt-1"
 						/>

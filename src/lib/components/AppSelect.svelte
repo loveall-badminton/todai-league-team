@@ -11,7 +11,9 @@
 		disabled = false,
 		items,
 		class: className = '',
-		onValueChange
+		onValueChange,
+		'aria-invalid': ariaInvalid = undefined,
+		...restProps
 	}: {
 		name: string;
 		value?: string;
@@ -21,6 +23,7 @@
 		items: { value: string; label: string }[];
 		class?: string;
 		onValueChange?: (value: string) => void;
+		'aria-invalid'?: boolean | 'false' | 'true';
 	} = $props();
 
 	let selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
@@ -32,10 +35,12 @@
 	bind:value
 	{required}
 	{disabled}
+	{...restProps}
 	items={items.map((i) => ({ value: i.value, label: i.label, disabled: false }))}
 	onValueChange={(v) => onValueChange?.(v ?? '')}
 >
 	<Select.Trigger
+		aria-invalid={ariaInvalid}
 		class={cn(
 			'flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50',
 			className

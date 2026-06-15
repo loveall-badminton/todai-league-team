@@ -20,15 +20,19 @@
 	import RefereeEventLog from './RefereeEventLog.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
 	import { confirm, rallyWon, resume, start, startGame, suspend, undo } from './referee.remote';
+	import { loadJsonFromLocalStorage, saveJsonToLocalStorage } from '$lib/utils/localStorage';
 	import {
 		undoLabel as buildUndoLabel,
 		findLastUndoableEvent,
 		playerOptions
 	} from './refereeUtils';
-
 	import type { DragEndEvent, DragOverEvent } from '$lib/utils/dndEvents';
+	import * as v from 'valibot';
 
 	let { data }: PageProps = $props();
+
+	const courtSideSchema = v.picklist(['left', 'right']);
+	const manualChangeCountSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
 	let currentGame = $derived(
 		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
@@ -72,6 +76,7 @@
 	// ── Change-of-ends tracking ────────────────────────────────────────────────
 	// Persisted to localStorage by matchId. true = side A starts on the left.
 	let courtSideKey = $derived(`referee_side_${data.state.matchId}`);
+	let manualChangeCountKey = $derived(`referee_changecount_${data.state.matchId}`);
 	let sideAStartsLeft = $state(true);
 	let courtSideOrder = $state<('A' | 'B')[]>(['A', 'B']);
 	let courtSideSnapshot: ('A' | 'B')[] = [];
@@ -82,18 +87,18 @@
 	let manualChangeCount = $state(0);
 
 	onMount(() => {
-		const stored = localStorage.getItem(courtSideKey);
+		const stored = loadJsonFromLocalStorage(courtSideKey, courtSideSchema);
 		if (stored === 'right') setSideAStartsLeft(false);
 		else if (stored === 'left') setSideAStartsLeft(true);
 
-		const storedCount = localStorage.getItem(`referee_changecount_${data.state.matchId}`);
-		if (storedCount) manualChangeCount = parseInt(storedCount, 10) || 0;
+		manualChangeCount =
+			loadJsonFromLocalStorage(manualChangeCountKey, manualChangeCountSchema) ?? 0;
 	});
 
 	function setSideAStartsLeft(val: boolean) {
 		sideAStartsLeft = val;
 		courtSideOrder = val ? ['A', 'B'] : ['B', 'A'];
-		localStorage.setItem(courtSideKey, val ? 'left' : 'right');
+		saveJsonToLocalStorage(courtSideKey, courtSideSchema, val ? 'left' : 'right');
 	}
 
 	function onCourtSideDragStart() {
@@ -119,7 +124,7 @@
 
 	function doChangeEnds() {
 		manualChangeCount += 1;
-		localStorage.setItem(`referee_changecount_${data.state.matchId}`, String(manualChangeCount));
+		saveJsonToLocalStorage(manualChangeCountKey, manualChangeCountSchema, manualChangeCount);
 	}
 
 	function sideDisplayName(side: 'A' | 'B') {

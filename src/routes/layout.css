@@ -9,6 +9,9 @@
 		'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-body {
+body,
+input,
+textarea,
+select {
 	font-family: var(--font-sans);
 }

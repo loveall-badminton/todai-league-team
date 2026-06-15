@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidate } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -17,8 +17,6 @@
 		{ value: 'A', label: 'Aリーグ' },
 		{ value: 'B', label: 'Bリーグ' }
 	];
-
-	let newGroupCode = $state('');
 
 	let { data }: PageProps = $props();
 
@@ -48,7 +46,7 @@
 					msg += `（新規作成チーム: ${result.createdTeams.join('、')}）`;
 				}
 
-				invalidate('/teams');
+				await invalidateAll();
 				toast.success(msg);
 			}
 		} catch {
@@ -101,21 +99,25 @@
 				<div class="lg:col-span-2">
 					<label class="block">
 						<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
-						<AppInput name="name" required placeholder="例: 東京大学" class="mt-1" />
+						<AppInput
+							{...create.fields.name.as('text')}
+							required
+							placeholder="例: 東京大学"
+							class="mt-1"
+						/>
 					</label>
 				</div>
 				<div>
 					<label class="block">
 						<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-						<AppInput name="shortName" placeholder="例: 東大" class="mt-1" />
+						<AppInput {...create.fields.shortName.as('text')} placeholder="例: 東大" class="mt-1" />
 					</label>
 				</div>
 				<div>
 					<label class="block">
 						<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
 						<AppSelect
-							name="groupCode"
-							bind:value={newGroupCode}
+							{...create.fields.groupCode.as('select')}
 							items={groupCodeItems}
 							placeholder="未割当"
 							class="mt-1"
