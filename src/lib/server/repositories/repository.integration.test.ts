@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { ScoreEventInput } from '$lib/domain/types';
 import { createTestDb, type TestDb } from '$lib/server/testDb';
-import { matchServiceStates, matchSnapshots, matches } from '$lib/server/db/schema';
+import {
+	matchServiceStates,
+	matchSnapshots,
+	matches,
+	teams as leagueTeams,
+	ties as leagueTies
+} from '$lib/server/db/schema';
 
 const mockState = vi.hoisted(() => ({
 	db: null as TestDb['db'] | null
@@ -41,6 +47,12 @@ import {
 	insertScoreEvent,
 	insertUndoLink
 } from './scoreEventRepository';
+import {
+	assignOfficiatingTeams,
+	getOfficiatingAssignment,
+	listOfficiatingTieIds,
+	listTies
+} from './tokyoLeagueRepository';
 
 let testDb: TestDb;
 const now = '2026-06-15T01:00:00.000Z';
@@ -245,5 +257,60 @@ describe('scoreEventRepository integration queries', () => {
 		expect(eventByIdempotency).toMatchObject({ id: 'event-1' });
 		expect(lastUndoable).toMatchObject({ id: 'event-1' });
 		expect(undoLinked).toBe(true);
+	});
+});
+
+describe('tokyoLeagueRepository officiating assignments', () => {
+	test('assigns multiple umpire teams and replaces the assignment set', async () => {
+		await testDb.db.insert(leagueTeams).values([
+			{ id: 'team-a', name: 'Alpha', groupCode: 'A', createdAt: now, updatedAt: now },
+			{ id: 'team-b', name: 'Beta', groupCode: 'A', createdAt: now, updatedAt: now },
+			{ id: 'team-c', name: 'Gamma', groupCode: 'A', createdAt: now, updatedAt: now }
+		]);
+		await testDb.db.insert(leagueTies).values({
+			id: 'tie-1',
+			tieCode: 'A-1',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			createdAt: now,
+			updatedAt: now
+		});
+
+		await assignOfficiatingTeams({
+			tieId: 'tie-1',
+			assignedTeamIds: ['team-b', 'team-c'],
+			note: '2チーム体制',
+			now
+		});
+
+		const assignment = await getOfficiatingAssignment('tie-1');
+		const tie = (await listTies('group_a'))[0];
+		expect(assignment).toMatchObject({
+			assignedTeamId: 'team-b',
+			assignedTeamIds: ['team-b', 'team-c'],
+			note: '2チーム体制'
+		});
+		expect(tie).toMatchObject({
+			officiatingTeamId: 'team-b',
+			officiatingTeamIds: ['team-b', 'team-c'],
+			officiatingTeamNames: ['Beta', 'Gamma']
+		});
+		expect(await listOfficiatingTieIds('team-c')).toEqual(['tie-1']);
+
+		await assignOfficiatingTeams({
+			tieId: 'tie-1',
+			assignedTeamIds: ['team-c'],
+			note: null,
+			now: '2026-06-15T02:00:00.000Z'
+		});
+
+		expect(await getOfficiatingAssignment('tie-1')).toMatchObject({
+			assignedTeamId: 'team-c',
+			assignedTeamIds: ['team-c'],
+			note: null
+		});
+		expect(await listOfficiatingTieIds('team-b')).toEqual([]);
 	});
 });

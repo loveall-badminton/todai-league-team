@@ -9,6 +9,8 @@ export type OfficiatingAssignmentForDecision = {
 export type TieForOfficiatingCheck = {
 	officiatingTeamId?: string | null;
 	officiatingTeamName?: string | null;
+	officiatingTeamIds?: string[] | null;
+	officiatingTeamNames?: string[] | null;
 };
 
 export function nextOfficiatingAssignmentStatus(params: {
@@ -29,5 +31,9 @@ export function nextOfficiatingAssignmentStatus(params: {
 export function listUnassignedOfficiatingTies<TTie extends TieForOfficiatingCheck>(
 	ties: TTie[]
 ): TTie[] {
-	return ties.filter((tie) => !tie.officiatingTeamId && !tie.officiatingTeamName);
+	return ties.filter((tie) => {
+		if (tie.officiatingTeamIds && tie.officiatingTeamIds.length > 0) return false;
+		if (tie.officiatingTeamNames && tie.officiatingTeamNames.length > 0) return false;
+		return !tie.officiatingTeamId && !tie.officiatingTeamName;
+	});
 }

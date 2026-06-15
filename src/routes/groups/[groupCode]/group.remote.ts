@@ -1,7 +1,7 @@
 import { command, form, getRequestEvent } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
 import {
-	assignOfficiatingTeam,
+	assignOfficiatingTeams,
 	reorderTies,
 	setGroupStandingOverride,
 	updateTieSchedule
@@ -24,6 +24,10 @@ const emptyToNull = (s: string | undefined | null): string | null => {
 	const text = (s ?? '').trim();
 	return text === '' ? null : text;
 };
+
+const uniqueNonEmpty = (values: string[] | undefined): string[] => [
+	...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))
+];
 
 const venueOrNull = (s: string | undefined | null): 'first_gym' | 'second_gym' | null => {
 	if (s === 'first_gym' || s === 'second_gym') return s;
@@ -57,7 +61,7 @@ export const updateTie = form(
 		lineupDueAt: v.optional(v.string()),
 		operationNote: v.optional(v.string()),
 		scheduleChanged: v.optional(v.string()),
-		assignedTeamId: v.optional(v.string()),
+		assignedTeamIds: v.optional(v.array(v.string())),
 		officiatingNote: v.optional(v.string())
 	}),
 	async ({
@@ -69,7 +73,7 @@ export const updateTie = form(
 		lineupDueAt,
 		operationNote,
 		scheduleChanged,
-		assignedTeamId,
+		assignedTeamIds,
 		officiatingNote
 	}) => {
 		requireAdmin();
@@ -87,9 +91,9 @@ export const updateTie = form(
 			now
 		});
 
-		await assignOfficiatingTeam({
+		await assignOfficiatingTeams({
 			tieId: id,
-			assignedTeamId: emptyToNull(assignedTeamId),
+			assignedTeamIds: uniqueNonEmpty(assignedTeamIds),
 			note: emptyToNull(officiatingNote),
 			now
 		});

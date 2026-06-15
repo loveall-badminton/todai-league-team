@@ -11,7 +11,6 @@ import {
 	teams,
 	ties
 } from '$lib/server/db/schema';
-import { nextOfficiatingAssignmentStatus } from '$lib/server/services/officiatingService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
 import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
 
@@ -30,6 +29,8 @@ export interface TieSummary extends Tie {
 	teamBName: string | null;
 	officiatingTeamId: string | null;
 	officiatingTeamName: string | null;
+	officiatingTeamIds: string[];
+	officiatingTeamNames: string[];
 	officiatingNote: string | null;
 	rubberCount: number;
 }
@@ -314,9 +315,20 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 			const assignments = await db
 				.select()
 				.from(officiatingAssignments)
-				.where(eq(officiatingAssignments.tieId, tie.id))
+				.where(
+					and(
+						eq(officiatingAssignments.tieId, tie.id),
+						eq(officiatingAssignments.role, 'umpire_team')
+					)
+				)
 				.orderBy(asc(officiatingAssignments.createdAt));
 			const assignment = assignments[0] ?? null;
+			const assignedTeamIds = assignments
+				.map((row) => row.assignedTeamId)
+				.filter((id): id is string => !!id);
+			const assignedTeamNames = assignedTeamIds
+				.map((id) => teamRows.find((team) => team.id === id)?.name)
+				.filter((name): name is string => !!name);
 			const summary = summaryByTieId.get(tie.id) ?? {
 				rubberCount: 0,
 				teamScoreA: tie.teamScoreA,
@@ -331,9 +343,10 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 				winnerTeamId: summary.winnerTeamId,
 				teamAName: teamRows.find((team) => team.id === tie.teamAId)?.name ?? null,
 				teamBName: teamRows.find((team) => team.id === tie.teamBId)?.name ?? null,
-				officiatingTeamId: assignment?.assignedTeamId ?? null,
-				officiatingTeamName:
-					teamRows.find((team) => team.id === assignment?.assignedTeamId)?.name ?? null,
+				officiatingTeamId: assignedTeamIds[0] ?? null,
+				officiatingTeamName: assignedTeamNames[0] ?? null,
+				officiatingTeamIds: assignedTeamIds,
+				officiatingTeamNames: assignedTeamNames,
 				officiatingNote: assignment?.note ?? null,
 				rubberCount: summary.rubberCount
 			};
@@ -434,50 +447,70 @@ export async function updateTieSchedule(input: {
 		.where(eq(ties.id, input.id));
 }
 
+export async function assignOfficiatingTeams(input: {
+	tieId: string;
+	assignedTeamIds: string[];
+	note?: string | null;
+	now: string;
+}) {
+	const db = getRequestDb();
+	const existing = await db.query.officiatingAssignments.findMany({
+		where: and(
+			eq(officiatingAssignments.tieId, input.tieId),
+			eq(officiatingAssignments.role, 'umpire_team')
+		)
+	});
+	const assignedTeamIds = [...new Set(input.assignedTeamIds.filter(Boolean))];
+	const existingTeamIds = existing
+		.map((assignment) => assignment.assignedTeamId)
+		.filter((id): id is string => !!id);
+	const changed =
+		existingTeamIds.length !== assignedTeamIds.length ||
+		existingTeamIds.some((id) => !assignedTeamIds.includes(id)) ||
+		assignedTeamIds.some((id) => !existingTeamIds.includes(id)) ||
+		existing.some((assignment) => (assignment.note ?? null) !== (input.note ?? null));
+	const status: 'scheduled' | 'changed' =
+		changed && existing.some((assignment) => assignment.status === 'confirmed')
+			? 'changed'
+			: 'scheduled';
+
+	await db
+		.delete(officiatingAssignments)
+		.where(
+			and(
+				eq(officiatingAssignments.tieId, input.tieId),
+				eq(officiatingAssignments.role, 'umpire_team')
+			)
+		);
+
+	if (assignedTeamIds.length === 0) return;
+
+	await db.insert(officiatingAssignments).values(
+		assignedTeamIds.map((assignedTeamId) => ({
+			id: crypto.randomUUID(),
+			tieId: input.tieId,
+			assignedTeamId,
+			role: 'umpire_team' as const,
+			status,
+			note: input.note ?? null,
+			createdAt: input.now,
+			updatedAt: input.now
+		}))
+	);
+}
+
 export async function assignOfficiatingTeam(input: {
 	tieId: string;
 	assignedTeamId: string | null;
 	note?: string | null;
 	now: string;
 }) {
-	const db = getRequestDb();
-	const existing = await db.query.officiatingAssignments.findFirst({
-		where: and(
-			eq(officiatingAssignments.tieId, input.tieId),
-			eq(officiatingAssignments.role, 'umpire_team')
-		)
+	await assignOfficiatingTeams({
+		tieId: input.tieId,
+		assignedTeamIds: input.assignedTeamId ? [input.assignedTeamId] : [],
+		note: input.note,
+		now: input.now
 	});
-	if (!existing) {
-		await db.insert(officiatingAssignments).values({
-			id: crypto.randomUUID(),
-			tieId: input.tieId,
-			assignedTeamId: input.assignedTeamId,
-			role: 'umpire_team',
-			status: nextOfficiatingAssignmentStatus({
-				existing: null,
-				assignedTeamId: input.assignedTeamId,
-				note: input.note ?? null
-			}),
-			note: input.note ?? null,
-			createdAt: input.now,
-			updatedAt: input.now
-		});
-		return;
-	}
-
-	await db
-		.update(officiatingAssignments)
-		.set({
-			assignedTeamId: input.assignedTeamId,
-			note: input.note ?? null,
-			status: nextOfficiatingAssignmentStatus({
-				existing,
-				assignedTeamId: input.assignedTeamId,
-				note: input.note ?? null
-			}),
-			updatedAt: input.now
-		})
-		.where(eq(officiatingAssignments.id, existing.id));
 }
 
 export async function setGroupStandingOverride(input: {
@@ -580,7 +613,7 @@ export async function listOfficiatingTieIds(teamId: string): Promise<string[]> {
 				eq(officiatingAssignments.role, 'umpire_team')
 			)
 		);
-	return rows.map((row) => row.tieId);
+	return [...new Set(rows.map((row) => row.tieId))];
 }
 
 export async function listTiesByIds(ids: string[]): Promise<Tie[]> {
@@ -593,16 +626,26 @@ export async function listTiesByIds(ids: string[]): Promise<Tie[]> {
 		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
 }
 
-export async function getOfficiatingAssignment(
-	tieId: string
-): Promise<{ assignedTeamId: string | null; note: string | null } | null> {
+export async function getOfficiatingAssignment(tieId: string): Promise<{
+	assignedTeamId: string | null;
+	assignedTeamIds: string[];
+	note: string | null;
+} | null> {
 	const db = getRequestDb();
-	const assignment = await db.query.officiatingAssignments.findFirst({
+	const assignments = await db.query.officiatingAssignments.findMany({
 		where: and(
 			eq(officiatingAssignments.tieId, tieId),
 			eq(officiatingAssignments.role, 'umpire_team')
-		)
+		),
+		orderBy: [asc(officiatingAssignments.createdAt)]
 	});
-	if (!assignment) return null;
-	return { assignedTeamId: assignment.assignedTeamId, note: assignment.note };
+	if (assignments.length === 0) return null;
+	const assignedTeamIds = assignments
+		.map((assignment) => assignment.assignedTeamId)
+		.filter((id): id is string => !!id);
+	return {
+		assignedTeamId: assignedTeamIds[0] ?? null,
+		assignedTeamIds,
+		note: assignments[0]?.note ?? null
+	};
 }

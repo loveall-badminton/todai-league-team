@@ -61,7 +61,8 @@ describe('listUnassignedOfficiatingTies', () => {
 		const ties = [
 			{ id: 'a', officiatingTeamId: 'team-a', officiatingTeamName: 'Alpha' },
 			{ id: 'b', officiatingTeamId: null, officiatingTeamName: null },
-			{ id: 'c', officiatingTeamId: null, officiatingTeamName: '' }
+			{ id: 'c', officiatingTeamId: null, officiatingTeamName: '' },
+			{ id: 'd', officiatingTeamIds: ['team-a'], officiatingTeamNames: ['Alpha'] }
 		];
 
 		expect(listUnassignedOfficiatingTies(ties).map((tie) => tie.id)).toEqual(['b', 'c']);

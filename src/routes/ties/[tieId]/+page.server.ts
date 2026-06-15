@@ -38,6 +38,7 @@ export const load: PageServerLoad = async (event) => {
 		tie: {
 			...tieResult.tie,
 			officiatingTeamId: officiating?.assignedTeamId ?? null,
+			officiatingTeamIds: officiating?.assignedTeamIds ?? [],
 			officiatingNote: officiating?.note ?? null
 		},
 		teams,

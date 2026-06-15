@@ -43,6 +43,7 @@ vi.mock('$app/server', () => ({
 import {
 	canAccessTeamLineup,
 	getAssignedOfficiatingTeamId,
+	getAssignedOfficiatingTeamIds,
 	getAuthProfile,
 	invalidateAuthProfile,
 	isAdminUser,
@@ -381,6 +382,27 @@ describe('referee match access', () => {
 		expect(await getAssignedOfficiatingTeamId('match-1')).toBe('team-b');
 	});
 
+	test('getAssignedOfficiatingTeamIds returns every assigned umpire team', async () => {
+		await seedAssignedMatch();
+		await testDb.db.insert(teams).values({
+			id: 'team-c',
+			name: 'Team C',
+			groupCode: 'A',
+			createdAt: now,
+			updatedAt: now
+		});
+		await testDb.db.insert(officiatingAssignments).values({
+			id: 'assignment-2',
+			tieId: 'tie-1',
+			assignedTeamId: 'team-c',
+			role: 'umpire_team',
+			createdAt: now,
+			updatedAt: now
+		});
+
+		expect(await getAssignedOfficiatingTeamIds('match-1')).toEqual(['team-b', 'team-c']);
+	});
+
 	test('requireRefereeMatchAccess allows admins and assigned team accounts', async () => {
 		mockState.event.locals.user = { id: 'admin', role: 'admin' };
 		await expect(requireRefereeMatchAccess('missing-match')).resolves.toEqual({
@@ -394,6 +416,37 @@ describe('referee match access', () => {
 			userId: 'team-user',
 			accountType: 'team',
 			teamId: 'team-b',
+			displayName: null
+		};
+
+		await expect(requireRefereeMatchAccess('match-1')).resolves.toEqual({
+			id: 'team-user',
+			role: 'team'
+		});
+	});
+
+	test('requireRefereeMatchAccess allows any assigned umpire team account', async () => {
+		await seedAssignedMatch();
+		await testDb.db.insert(teams).values({
+			id: 'team-c',
+			name: 'Team C',
+			groupCode: 'A',
+			createdAt: now,
+			updatedAt: now
+		});
+		await testDb.db.insert(officiatingAssignments).values({
+			id: 'assignment-2',
+			tieId: 'tie-1',
+			assignedTeamId: 'team-c',
+			role: 'umpire_team',
+			createdAt: now,
+			updatedAt: now
+		});
+		mockState.event.locals.user = { id: 'team-user', role: 'team' };
+		mockState.event.locals.authProfile = {
+			userId: 'team-user',
+			accountType: 'team',
+			teamId: 'team-c',
 			displayName: null
 		};
 

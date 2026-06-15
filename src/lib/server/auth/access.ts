@@ -94,9 +94,9 @@ export function requireTeamLineupAccess(teamId: string) {
 	return user;
 }
 
-export async function getAssignedOfficiatingTeamId(matchId: string): Promise<string | null> {
+export async function getAssignedOfficiatingTeamIds(matchId: string): Promise<string[]> {
 	const db = getRequestDb();
-	const [row] = await db
+	const rows = await db
 		.select({
 			assignedTeamId: officiatingAssignments.assignedTeamId
 		})
@@ -109,10 +109,13 @@ export async function getAssignedOfficiatingTeamId(matchId: string): Promise<str
 				eq(officiatingAssignments.role, 'umpire_team')
 			)
 		)
-		.where(eq(matches.id, matchId))
-		.limit(1);
+		.where(eq(matches.id, matchId));
 
-	return row?.assignedTeamId ?? null;
+	return [...new Set(rows.map((row) => row.assignedTeamId).filter((id): id is string => !!id))];
+}
+
+export async function getAssignedOfficiatingTeamId(matchId: string): Promise<string | null> {
+	return (await getAssignedOfficiatingTeamIds(matchId))[0] ?? null;
 }
 
 export async function requireRefereeMatchAccess(matchId: string) {
@@ -120,10 +123,12 @@ export async function requireRefereeMatchAccess(matchId: string) {
 	const user = requireUser();
 	if (isAdminUser(user)) return user;
 
-	const assignedTeamId = await getAssignedOfficiatingTeamId(matchId);
+	const assignedTeamIds = await getAssignedOfficiatingTeamIds(matchId);
 	if (
-		!assignedTeamId ||
-		!canAccessTeamLineup({ user, profile: event.locals.authProfile, teamId: assignedTeamId })
+		assignedTeamIds.length === 0 ||
+		!assignedTeamIds.some((teamId) =>
+			canAccessTeamLineup({ user, profile: event.locals.authProfile, teamId })
+		)
 	) {
 		error(403, 'この試合の審判権限がありません');
 	}

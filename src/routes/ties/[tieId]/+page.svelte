@@ -308,7 +308,9 @@
 				<div>
 					<dt class="text-xs text-zinc-500">審判担当</dt>
 					<dd class="mt-0.5">
-						{data.tie.officiatingTeamId ? teamName(data.tie.officiatingTeamId) : '未割当'}
+						{data.tie.officiatingTeamIds.length > 0
+							? data.tie.officiatingTeamIds.map(teamName).join('、')
+							: '未割当'}
 					</dd>
 				</div>
 			{/if}

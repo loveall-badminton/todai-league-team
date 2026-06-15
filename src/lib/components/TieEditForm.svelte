@@ -1,7 +1,7 @@
 <script lang="ts">
 	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppCheckbox from '$lib/components/AppCheckbox.svelte';
+	import AppMultipleSelect from '$lib/components/AppMultipleSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
 
 	type Team = { id: string; name: string };
@@ -16,6 +16,7 @@
 		officiatingNote?: string | null;
 		scheduleChanged: boolean;
 		officiatingTeamId?: string | null;
+		officiatingTeamIds?: string[] | null;
 	};
 
 	let {
@@ -26,12 +27,10 @@
 		teams?: Team[];
 	} = $props();
 
-	let assignedTeamId = $derived(tie.officiatingTeamId ?? '');
-
-	let teamItems = $derived([
-		{ value: '', label: '未割当' },
-		...teams.map((t) => ({ value: t.id, label: t.name }))
-	]);
+	let assignedTeamIds = $derived(
+		tie.officiatingTeamIds ?? (tie.officiatingTeamId ? [tie.officiatingTeamId] : [])
+	);
+	let teamItems = $derived(teams.map((team) => ({ value: team.id, label: team.name })));
 </script>
 
 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -50,7 +49,12 @@
 	{#if teams.length > 0}
 		<div class="grid gap-1">
 			<span class="text-xs font-medium text-zinc-500">審判担当</span>
-			<AppSelect name="assignedTeamId" bind:value={assignedTeamId} items={teamItems} />
+			<AppMultipleSelect
+				name="assignedTeamIds"
+				value={assignedTeamIds}
+				items={teamItems}
+				placeholder="未割当"
+			/>
 		</div>
 	{/if}
 </div>
