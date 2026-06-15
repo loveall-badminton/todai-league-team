@@ -47,6 +47,9 @@
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">大会名</span>
 			<AppInput {...updateSettings.fields.eventName.as('text')} required />
+			{#each updateSettings.fields.eventName.issues() ?? [] as issue (issue.message)}
+				<span class="text-xs text-red-600">{issue.message}</span>
+			{/each}
 		</div>
 
 		<div class="grid gap-4 sm:grid-cols-3">
@@ -55,6 +58,7 @@
 				<AppSelect
 					{...updateSettings.fields.groupStageScoringRuleId.as('select')}
 					items={scoringRuleItems}
+					onValueChange={(v) => updateSettings.fields.groupStageScoringRuleId.set(v)}
 				/>
 			</div>
 			<div class="grid gap-1">
@@ -62,6 +66,7 @@
 				<AppSelect
 					{...updateSettings.fields.knockoutScoringRuleId.as('select')}
 					items={scoringRuleItems}
+					onValueChange={(v) => updateSettings.fields.knockoutScoringRuleId.set(v)}
 				/>
 			</div>
 			<div class="grid gap-1">
@@ -69,6 +74,7 @@
 				<AppSelect
 					{...updateSettings.fields.tiebreakerScoringRuleId.as('select')}
 					items={scoringRuleItems}
+					onValueChange={(v) => updateSettings.fields.tiebreakerScoringRuleId.set(v)}
 				/>
 			</div>
 		</div>
@@ -79,16 +85,15 @@
 				<AppSelect
 					{...updateSettings.fields.lineupRevealPolicy.as('select')}
 					items={lineupRevealItems}
+					onValueChange={(v) =>
+						updateSettings.fields.lineupRevealPolicy.set(v as 'on_tie_start' | 'manual')}
 				/>
 			</div>
 			<div class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">提出期限 (開始前の分数)</span>
 				<AppInput
 					type="number"
-					{...updateSettings.fields.defaultLineupDueMinutesBefore.as(
-						'text',
-						String(data.settings.defaultLineupDueMinutesBefore)
-					)}
+					{...updateSettings.fields.defaultLineupDueMinutesBefore.as('text')}
 					min="0"
 				/>
 			</div>

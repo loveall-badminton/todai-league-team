@@ -81,7 +81,7 @@ export const updatePlayer = form(
 	}
 );
 
-export const bulkCreatePlayers = command(
+export const bulkCreatePlayers = form(
 	v.object({
 		namesText: v.pipe(v.string(), v.minLength(1, '選手名を入力してください')),
 		gender: genderSchema
@@ -110,7 +110,7 @@ export const bulkCreatePlayers = command(
 			now: new Date().toISOString()
 		});
 
-		return { addedCount };
+		return { message: `${addedCount}名の選手を追加しました`, addedCount };
 	}
 );
 

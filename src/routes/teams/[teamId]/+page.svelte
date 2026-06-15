@@ -54,30 +54,22 @@
 			status: data.team.status
 		});
 		createPlayer.fields.set({ name: '', gender: 'unknown' });
+		bulkCreatePlayers.fields.set({ namesText: '', gender: 'unknown' });
 	});
 
 	// Add player tab state
 	let addTab = $state<'single' | 'bulk'>('single');
-	let bulkNamesText = $state('');
-	let bulkLoading = $state(false);
-
-	async function handleBulkCreate() {
-		if (!bulkNamesText.trim()) return;
-		bulkLoading = true;
+	const bulkCreatePlayersForm = bulkCreatePlayers.enhance(async (form) => {
 		try {
-			const result = await bulkCreatePlayers({
-				namesText: bulkNamesText,
-				gender: 'unknown'
-			});
-			toast.success(`${result.addedCount}名の選手を追加しました`);
-			bulkNamesText = '';
-			await invalidateAll();
+			if (await form.submit()) {
+				toast.success(form.result?.message ?? '選手を一括登録しました');
+				bulkCreatePlayers.fields.set({ namesText: '', gender: 'unknown' });
+				await invalidateAll();
+			}
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : '一括登録に失敗しました');
-		} finally {
-			bulkLoading = false;
 		}
-	}
+	});
 
 	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
 		() => players,
@@ -135,23 +127,24 @@
 			<div class="lg:col-span-1">
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
-					<AppInput {...updateTeam.fields.name.as('text')} required class="mt-1" />
+					<AppInput {...updateTeam.fields.name.as('text', data.team.name)} required class="mt-1" />
 				</label>
 			</div>
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-					<AppInput {...updateTeam.fields.shortName.as('text')} class="mt-1" />
+					<AppInput {...updateTeam.fields.shortName.as('text', data.team.shortName ?? '')} class="mt-1" />
 				</label>
 			</div>
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
 					<AppSelect
-						{...updateTeam.fields.groupCode.as('select')}
+						{...updateTeam.fields.groupCode.as('select', data.team.groupCode ?? '')}
 						items={groupCodeItems}
 						placeholder="未割当"
 						class="mt-1"
+						onValueChange={(v) => updateTeam.fields.groupCode.set(v as '' | 'A' | 'B')}
 					/>
 				</label>
 			</div>
@@ -160,7 +153,12 @@
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">状態</span>
-					<AppSelect {...updateTeam.fields.status.as('select')} items={statusItems} class="mt-1" />
+					<AppSelect
+						{...updateTeam.fields.status.as('select', data.team.status)}
+						items={statusItems}
+						class="mt-1"
+						onValueChange={(v) => updateTeam.fields.status.set(v as 'active' | 'withdrawn')}
+					/>
 				</label>
 			</div>
 			<div class="flex items-end">
@@ -211,20 +209,23 @@
 					<label class="block">
 						<span class="text-xs font-medium text-zinc-500">性別</span>
 						<AppSelect
-							{...createPlayer.fields.gender.as('select')}
+							{...createPlayer.fields.gender.as('select', 'unknown')}
 							items={genderItems}
 							class="mt-1"
+							onValueChange={(v) =>
+								createPlayer.fields.gender.set(v as 'unknown' | 'male' | 'female')}
 						/>
 					</label>
 				</div>
 				<AppButton type="submit">追加</AppButton>
 			</form>
 		{:else if addTab === 'bulk'}
-			<div class="space-y-3">
+			<form {...bulkCreatePlayersForm} class="space-y-3">
+				<FormToast result={bulkCreatePlayers.result} />
 				<label class="block">
 					<span class="text-xs font-medium text-zinc-500">選手名（1行に1人）</span>
 					<AppTextarea
-						bind:value={bulkNamesText}
+						{...bulkCreatePlayers.fields.namesText.as('text')}
 						rows={8}
 						placeholder="山田太郎
 鈴木花子
@@ -232,14 +233,11 @@
 						class="mt-1 font-mono text-sm"
 					/>
 				</label>
-				{#if bulkNamesText.trim()}
-					{@const lineCount = bulkNamesText.split('\n').filter((l) => l.trim()).length}
-					<p class="text-xs text-zinc-400">{lineCount}名を追加します</p>
-				{/if}
-				<AppButton onclick={handleBulkCreate} disabled={bulkLoading || !bulkNamesText.trim()}>
-					{bulkLoading ? '登録中…' : '一括登録'}
+				<input {...bulkCreatePlayers.fields.gender.as('hidden', 'unknown')} />
+				<AppButton type="submit" disabled={bulkCreatePlayers.pending > 0}>
+					{bulkCreatePlayers.pending > 0 ? '登録中…' : '一括登録'}
 				</AppButton>
-			</div>
+			</form>
 		{/if}
 	</div>
 

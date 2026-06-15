@@ -27,6 +27,7 @@
 	} = $props();
 
 	let selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
+	const invalid = $derived(ariaInvalid === true || ariaInvalid === 'true');
 </script>
 
 <Select.Root
@@ -42,7 +43,8 @@
 	<Select.Trigger
 		aria-invalid={ariaInvalid}
 		class={cn(
-			'flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50',
+			'flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:ring-2 disabled:opacity-50',
+			invalid ? 'border-red-400 focus:ring-red-500' : 'border-zinc-200 focus:ring-zinc-950',
 			className
 		)}
 	>

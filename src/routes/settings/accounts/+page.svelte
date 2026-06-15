@@ -26,8 +26,6 @@
 	];
 	let teamItems = $derived(data.teams.map((team) => ({ value: team.id, label: team.name })));
 
-	let newAccountType = $state('participant');
-
 	onMount(() => {
 		createAccount.fields.set({
 			accountType: 'participant',
@@ -37,11 +35,6 @@
 			teamId: data.teams[0]?.id ?? ''
 		});
 	});
-
-	function setNewAccountType(value: string) {
-		newAccountType = value;
-		createAccount.fields.accountType.set(value as 'participant' | 'team' | 'admin');
-	}
 
 	function accountTypeValue(account: PageProps['data']['accounts'][number]) {
 		if (account.profile?.accountType) return account.profile.accountType;
@@ -98,13 +91,13 @@
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">種別</span>
 				<AppSelect
-					name={createAccount.fields.accountType.as('select').name}
-					value={newAccountType}
+					{...createAccount.fields.accountType.as('select')}
 					items={accountTypeItems}
-					onValueChange={setNewAccountType}
+					onValueChange={(v) =>
+						createAccount.fields.accountType.set(v as 'participant' | 'team' | 'admin')}
 				/>
 			</label>
-			{#if newAccountType === 'team'}
+			{#if createAccount.fields.accountType.value() === 'team'}
 				<label class="grid gap-1">
 					<span class="text-sm font-medium text-zinc-700">チーム</span>
 					<AppSelect {...createAccount.fields.teamId.as('select')} items={teamItems} required />
