@@ -14,9 +14,7 @@ import {
 import { getPublicRubbers } from '$lib/server/services/liveBoardService';
 import {
 	confirmTie as confirmTieService,
-	createMatchFromRubber,
-	startTie as startTieService,
-	syncRubberResultFromMatch
+	startTie as startTieService
 } from '$lib/server/services/tieOperationService';
 import { error, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
@@ -96,21 +94,6 @@ export const startTie = command(async () => {
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
-});
-
-export const createMatch = command(v.object({ rubberId: v.string() }), async ({ rubberId }) => {
-	requireAdmin();
-	try {
-		const matchId = await createMatchFromRubber(rubberId);
-		redirect(303, `/referee/${matchId}`);
-	} catch (caught) {
-		error(400, errMsg(caught));
-	}
-});
-
-export const syncResult = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
-	requireAdmin();
-	await syncRubberResultFromMatch(matchId);
 });
 
 export const confirmTie = command(async () => {

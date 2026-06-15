@@ -13,8 +13,6 @@ export type TiePhase =
 
 export type RubberCode = 'WD1' | 'XD1' | 'MD3' | 'MD2' | 'MD1';
 
-export type DoublesDiscipline = 'WD' | 'XD' | 'MD';
-
 export const RUBBER_DEFINITIONS = [
 	{
 		code: 'WD1',

@@ -7,6 +7,20 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
+		coverage: {
+			exclude: [
+				'.svelte-kit/**',
+				'src/lib/vitest-examples/**',
+				'src/lib/server/db/schema.ts',
+				'src/lib/server/db/*.schema.ts'
+			],
+			thresholds: {
+				statements: 90,
+				branches: 80,
+				functions: 90,
+				lines: 90
+			}
+		},
 		projects: [
 			{
 				extends: './vite.config.ts',

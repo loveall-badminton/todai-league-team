@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { PageProps } from './$types';
-	import InlineMessage from '$lib/components/InlineMessage.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
+	import InlineMessage from '$lib/components/InlineMessage.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
+	import Footer from '../../footer.svelte';
+	import type { PageProps } from './$types';
 	import { createAdmin } from './bootstrap.remote';
 
 	let { data }: PageProps = $props();
@@ -51,5 +52,6 @@
 				<AppButton type="submit" class="w-full" size="lg">作成</AppButton>
 			</form>
 		{/if}
+		<Footer class="mt-4 pb-0" />
 	</section>
 </div>

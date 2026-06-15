@@ -25,6 +25,11 @@ describe('inferLineupDueAt', () => {
 		expect(result).toBe('2025-06-01T09:50:00.000Z');
 	});
 
+	test('subtracts across date boundaries', () => {
+		const result = inferLineupDueAt('2025-06-01T00:05:00.000Z', 10, 'ten_minutes_before');
+		expect(result).toBe('2025-05-31T23:55:00.000Z');
+	});
+
 	test('subtracts 0 minutes when defaultMinutesBefore is 0', () => {
 		const result = inferLineupDueAt('2025-06-01T10:00:00.000Z', 0, 'ten_minutes_before');
 		expect(result).toBe('2025-06-01T10:00:00.000Z');
@@ -64,6 +69,17 @@ describe('generateRoundRobinPairs', () => {
 		expect(pairs).toHaveLength(6);
 	});
 
+	test('preserves deterministic round-robin pair order', () => {
+		expect(generateRoundRobinPairs(['A', 'B', 'C', 'D'])).toEqual([
+			['A', 'B'],
+			['A', 'C'],
+			['A', 'D'],
+			['B', 'C'],
+			['B', 'D'],
+			['C', 'D']
+		]);
+	});
+
 	test('does not generate reversed duplicates (A-B only, not also B-A)', () => {
 		const pairs = generateRoundRobinPairs(['A', 'B', 'C']);
 		const hasAB = pairs.some(([a, b]) => a === 'A' && b === 'B');
@@ -84,5 +100,7 @@ describe('generateRoundRobinPairs', () => {
 		const pairs = generateRoundRobinPairs(teams);
 		expect(pairs).toHaveLength(3);
 		expect(pairs[0]).toEqual([{ id: '1' }, { id: '2' }]);
+		expect(pairs[0][0]).toBe(teams[0]);
+		expect(pairs[0][1]).toBe(teams[1]);
 	});
 });

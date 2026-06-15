@@ -7,6 +7,12 @@
 	import { Trophy } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { generateFinals, generateSemifinals, getFinalsData } from './finals.remote';
+	import {
+		canGenerateSemifinals,
+		canGenerateFinals,
+		getSemifinalsHint,
+		getFinalsHint
+	} from './finalsHelpers';
 
 	const finalsData = getFinalsData();
 
@@ -17,34 +23,23 @@
 			.filter((tie) => !!tie)
 	);
 
-	let semifinalsCanGenerate = $derived(finalsData.current?.groupStandingsReady ?? false);
-	let semifinalsHint = $derived.by(() => {
-		if (!finalsData.current) return null;
-		const { groupAAllDone, groupBAllDone, noTiebreakerA, noTiebreakerB } = finalsData.current;
-		if (!groupAAllDone || !groupBAllDone) {
-			const incomplete = [!groupAAllDone && 'Aリーグ', !groupBAllDone && 'Bリーグ']
-				.filter(Boolean)
-				.join('・');
-			return `${incomplete}の試合が全て完了してから生成できます`;
-		}
-		if (!noTiebreakerA || !noTiebreakerB) return '同点チームの順位を確定してから生成できます';
-		return null;
-	});
+	let semifinalsCanGenerate = $derived(
+		finalsData.current ? canGenerateSemifinals(finalsData.current) : false
+	);
+	let semifinalsHint = $derived(finalsData.current ? getSemifinalsHint(finalsData.current) : null);
 
-	let finalsCanGenerate = $derived.by(() => {
-		const semi1 = orderedTies.find((t) => t.tieCode === 'x-1');
-		const semi2 = orderedTies.find((t) => t.tieCode === 'x-2');
-		const done = (t: typeof semi1) => t?.status === 'finished' || t?.status === 'confirmed';
-		return !!semi1 && !!semi2 && done(semi1) && done(semi2);
-	});
-	let finalsHint = $derived.by(() => {
-		const semi1 = orderedTies.find((t) => t.tieCode === 'x-1');
-		const semi2 = orderedTies.find((t) => t.tieCode === 'x-2');
-		if (!semi1 || !semi2) return '先に準決勝・5位決定戦を生成してください';
-		const done = (t: typeof semi1) => t?.status === 'finished' || t?.status === 'confirmed';
-		if (!done(semi1) || !done(semi2)) return '準決勝1・準決勝2の結果確定後に生成できます';
-		return null;
-	});
+	let finalsCanGenerate = $derived(
+		canGenerateFinals(
+			orderedTies.find((t) => t.tieCode === 'x-1'),
+			orderedTies.find((t) => t.tieCode === 'x-2')
+		)
+	);
+	let finalsHint = $derived(
+		getFinalsHint(
+			orderedTies.find((t) => t.tieCode === 'x-1'),
+			orderedTies.find((t) => t.tieCode === 'x-2')
+		)
+	);
 </script>
 
 <svelte:head>

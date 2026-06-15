@@ -1,41 +1,12 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
-	import type { GameState, MatchPlayer } from '$lib/domain/types';
 	import { cn } from '$lib/utils/cn';
-
-	interface EventRow {
-		seqNo: number;
-		eventType: string;
-		side: string | null;
-		gameNo: number | null;
-		scoreAAfter: number | null;
-		scoreBAfter: number | null;
-		serverPlayerIdBefore: string | null;
-		serverPlayerIdAfter: string | null;
-		receiverPlayerIdBefore: string | null;
-		receiverPlayerIdAfter: string | null;
-		targetSeqNo: number | null;
-	}
-
-	interface ScoreEntry {
-		scoreA: number;
-		scoreB: number;
-		isServiceOver: boolean;
-	}
-
-	interface ServiceRun {
-		serverPlayerId: string;
-		side: 'A' | 'B';
-		scores: ScoreEntry[];
-	}
-
-	interface GameSheet {
-		gameNo: number;
-		serviceRuns: ServiceRun[];
-		finalScoreA: number;
-		finalScoreB: number;
-		winnerSide: 'A' | 'B' | null;
-	}
+	import {
+		buildScoresheetByGame,
+		type EventRow,
+		type GameState,
+		type MatchPlayer
+	} from './scoresheetHelpers';
 
 	let {
 		events,
@@ -51,151 +22,7 @@
 		players: MatchPlayer[];
 	} = $props();
 
-	let scoresheetByGame = $derived.by((): GameSheet[] => {
-		const allEvents = [...events].sort((a, b) => a.seqNo - b.seqNo);
-
-		// Exclude events that have been undone
-		const undoneSeqNos = new Set(
-			allEvents
-				.filter((e) => e.eventType === 'undo_applied' && e.targetSeqNo != null)
-				.map((e) => e.targetSeqNo!)
-		);
-		const activeEvents = allEvents.filter(
-			(e) => e.eventType !== 'undo_applied' && !undoneSeqNos.has(e.seqNo)
-		);
-
-		const result: GameSheet[] = [];
-		let currentGameNo = 1;
-		let runs: ServiceRun[] = [];
-		let currentRun: ServiceRun | null = null;
-		let lastScoreA = 0;
-		let lastScoreB = 0;
-
-		for (const ev of activeEvents) {
-			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo > currentGameNo) {
-				if (currentRun) runs.push(currentRun);
-				{
-					const gs = games.find((g) => g.gameNo === currentGameNo);
-					result.push({
-						gameNo: currentGameNo,
-						serviceRuns: runs,
-						finalScoreA: gs?.score.A ?? lastScoreA,
-						finalScoreB: gs?.score.B ?? lastScoreB,
-						winnerSide: gs?.winnerSide ?? null
-					});
-				}
-				currentGameNo = ev.gameNo;
-				runs = [];
-				currentRun = null;
-				lastScoreA = 0;
-				lastScoreB = 0;
-			}
-
-			if (ev.eventType === 'match_started') {
-				const serverId = ev.serverPlayerIdAfter;
-				const receiverId = ev.receiverPlayerIdAfter;
-				const serverSide = players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
-				const receiverSide = players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
-
-				currentRun = {
-					serverPlayerId: serverId ?? '',
-					side: serverSide,
-					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: false }]
-				};
-
-				runs.push({
-					serverPlayerId: receiverId ?? '',
-					side: receiverSide,
-					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
-				});
-			}
-
-			if (ev.eventType === 'game_started' && ev.gameNo && ev.gameNo === currentGameNo) {
-				const serverId = ev.serverPlayerIdAfter;
-				const receiverId = ev.receiverPlayerIdAfter;
-				const serverSide = players.find((p) => p.id === serverId)?.side ?? ('A' as 'A' | 'B');
-				const receiverSide = players.find((p) => p.id === receiverId)?.side ?? ('B' as 'A' | 'B');
-
-				runs.push({
-					serverPlayerId: receiverId ?? '',
-					side: receiverSide,
-					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
-				});
-
-				currentRun = {
-					serverPlayerId: serverId ?? '',
-					side: serverSide,
-					scores: [{ scoreA: 0, scoreB: 0, isServiceOver: false }]
-				};
-			}
-
-			if (ev.eventType === 'rally_won' && ev.scoreAAfter !== null && ev.scoreBAfter !== null) {
-				let scoreA = ev.scoreAAfter;
-				let scoreB = ev.scoreBAfter;
-				const serverBefore = ev.serverPlayerIdBefore;
-				const serverAfter = ev.serverPlayerIdAfter;
-				// When game/match ends, service is cleared (serverAfter = null).
-				// Historical events may have scoreAAfter=0 due to a recording bug; use the
-				// game state's actual final score instead.
-				if (serverAfter === null) {
-					const gs = games.find((g) => g.gameNo === currentGameNo);
-					if (gs && gs.winnerSide) {
-						scoreA = gs.score.A;
-						scoreB = gs.score.B;
-					}
-				}
-				// Use ev.side vs the server's side to detect if the receiver won the game-ending point.
-				const serverBeforeSide = players.find((p) => p.id === serverBefore)?.side;
-				const serviceChanged =
-					serverAfter !== null
-						? serverBefore !== serverAfter
-						: ev.side !== null && serverBeforeSide !== undefined && ev.side !== serverBeforeSide;
-
-				if (serviceChanged && currentRun) {
-					if (currentRun.scores.length > 0) {
-						currentRun.scores[currentRun.scores.length - 1].isServiceOver = true;
-					}
-					runs.push(currentRun);
-					// Use serverAfter normally; fall back to receiverPlayerIdBefore for game-ending rallies
-					const newServerId = serverAfter ?? ev.receiverPlayerIdBefore ?? '';
-					const newServerSide =
-						players.find((p) => p.id === newServerId)?.side ?? ('A' as 'A' | 'B');
-					currentRun = {
-						serverPlayerId: newServerId,
-						side: newServerSide,
-						scores: [{ scoreA, scoreB, isServiceOver: false }]
-					};
-				} else if (currentRun) {
-					currentRun.scores.push({ scoreA, scoreB, isServiceOver: false });
-				} else {
-					const sid = serverAfter ?? '';
-					const ss = players.find((p) => p.id === sid)?.side ?? ('A' as 'A' | 'B');
-					currentRun = {
-						serverPlayerId: sid,
-						side: ss,
-						scores: [{ scoreA, scoreB, isServiceOver: false }]
-					};
-				}
-
-				lastScoreA = scoreA;
-				lastScoreB = scoreB;
-			}
-		}
-
-		if (currentRun) runs.push(currentRun);
-		if (runs.length > 0) {
-			const gs = games.find((g) => g.gameNo === currentGameNo);
-			result.push({
-				gameNo: currentGameNo,
-				serviceRuns: runs,
-				finalScoreA: gs?.score.A ?? lastScoreA,
-				finalScoreB: gs?.score.B ?? lastScoreB,
-				winnerSide: gs?.winnerSide ?? null
-			});
-		}
-
-		return result;
-	});
+	let scoresheetByGame = $derived(buildScoresheetByGame(events, games, players));
 </script>
 
 <Card class="overflow-hidden">

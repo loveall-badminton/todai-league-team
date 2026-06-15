@@ -12,6 +12,7 @@ import type {
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
 import { applyMatchAction } from '$lib/server/services/matchActionService';
+import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 
@@ -256,6 +257,17 @@ export const retire = command(v.object({ side: sideSchema }), async ({ side }) =
 		side,
 		reason: 'injury'
 	}));
+});
+
+export const cutoff = command(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	await requireRefereeMatchAccess(matchId);
+	try {
+		await cancelMatchRubber(matchId);
+	} catch (err) {
+		error(400, err instanceof Error ? err.message : '操作に失敗しました');
+	}
 });
 
 export const confirm = command(async () => {

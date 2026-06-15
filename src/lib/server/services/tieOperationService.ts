@@ -196,6 +196,31 @@ export async function recalculateTieResult(tieId: string, now = new Date().toISO
 		.where(eq(ties.id, tieId));
 }
 
+export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
+	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+	if (!match?.rubberId) throw new Error('この試合は種目と紐づいていません');
+	await db
+		.update(matches)
+		.set({ status: 'cancelled', updatedAt: now })
+		.where(eq(matches.id, matchId));
+	await cancelRubber(match.rubberId, now);
+}
+
+export async function cancelRubber(rubberId: string, now = new Date().toISOString()) {
+	const db = getRequestDb();
+	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
+	if (!rubber) throw new Error('種目が見つかりません');
+	if (terminalRubberStatuses.has(rubber.status)) {
+		throw new Error('すでに終了している種目は打ち切りできません');
+	}
+	await db
+		.update(rubbers)
+		.set({ status: 'cancelled', updatedAt: now })
+		.where(eq(rubbers.id, rubber.id));
+	await recalculateTieResult(rubber.tieId, now);
+}
+
 export async function confirmTie(tieId: string, now = new Date().toISOString()) {
 	const db = getRequestDb();
 	await recalculateTieResult(tieId, now);

@@ -60,6 +60,25 @@ describe('buildSemifinalsAndFifthPlaceAssignments', () => {
 
 		expect(assignments[0]).toMatchObject({ tieCode: 'x-1', teamAId: null, teamBId: 'b2' });
 	});
+
+	test('leaves a side empty when a source rank is missing', () => {
+		const assignments = buildSemifinalsAndFifthPlaceAssignments(
+			[
+				{ rank: 1, teamId: 'a1' },
+				{ rank: 2, teamId: 'a2' }
+			],
+			[
+				{ rank: 1, teamId: 'b1' },
+				{ rank: 2, teamId: 'b2' }
+			]
+		);
+
+		expect(assignments[2]).toMatchObject({
+			tieCode: 'x-3',
+			teamAId: null,
+			teamBId: null
+		});
+	});
 });
 
 describe('buildFinalAndThirdPlaceAssignments', () => {
@@ -118,5 +137,47 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 				}
 			)
 		).toThrow('準決勝1・準決勝2の結果確定後に生成できます');
+	});
+
+	test('rejects generation when a finished semifinal has no winner', () => {
+		expect(() =>
+			buildFinalAndThirdPlaceAssignments(
+				{
+					tieCode: 'x-1',
+					status: 'finished',
+					teamAId: 'a1',
+					teamBId: 'b2',
+					winnerTeamId: null
+				},
+				{
+					tieCode: 'x-2',
+					status: 'finished',
+					teamAId: 'a2',
+					teamBId: 'b1',
+					winnerTeamId: 'b1'
+				}
+			)
+		).toThrow('準決勝の勝敗が未確定です');
+	});
+
+	test('rejects generation when a semifinal side is unassigned', () => {
+		expect(() =>
+			buildFinalAndThirdPlaceAssignments(
+				{
+					tieCode: 'x-1',
+					status: 'confirmed',
+					teamAId: 'a1',
+					teamBId: null,
+					winnerTeamId: 'a1'
+				},
+				{
+					tieCode: 'x-2',
+					status: 'confirmed',
+					teamAId: 'a2',
+					teamBId: 'b1',
+					winnerTeamId: 'b1'
+				}
+			)
+		).toThrow('準決勝の勝敗が未確定です');
 	});
 });

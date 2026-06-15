@@ -3,18 +3,10 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import type { GroupStanding } from '$lib/server/services/standingService';
 	import { cn } from '$lib/utils/cn';
+	import { getCellInfo, type StandingsTieRecord } from '$lib/utils/standings';
 	import type { Snippet } from 'svelte';
 
-	type TieRecord = {
-		id: string;
-		tieCode: string;
-		teamAId: string | null;
-		teamBId: string | null;
-		winnerTeamId: string | null;
-		teamScoreA: number;
-		teamScoreB: number;
-		status: string;
-	};
+	type TieRecord = StandingsTieRecord;
 
 	let {
 		standings,
@@ -33,18 +25,7 @@
 	} = $props();
 
 	function cellInfo(rowTeamId: string, colTeamId: string) {
-		const tie = ties.find(
-			(t) =>
-				(t.teamAId === rowTeamId && t.teamBId === colTeamId) ||
-				(t.teamAId === colTeamId && t.teamBId === rowTeamId)
-		);
-		if (!tie) return null;
-		const myScore = tie.teamAId === rowTeamId ? tie.teamScoreA : tie.teamScoreB;
-		const theirScore = tie.teamAId === rowTeamId ? tie.teamScoreB : tie.teamScoreA;
-		const won = tie.winnerTeamId === rowTeamId || (!!tie.winnerTeamId && myScore > theirScore);
-		const lost = !!tie.winnerTeamId && tie.winnerTeamId !== rowTeamId;
-		const done = tie.status === 'finished' || tie.status === 'confirmed' || !!tie.winnerTeamId;
-		return { tie, myScore, theirScore, won, lost, done };
+		return getCellInfo(rowTeamId, colTeamId, ties);
 	}
 </script>
 

@@ -6,7 +6,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { correction, letCalled, forfeit, retire } from './referee.remote';
+	import { correction, cutoff, letCalled, forfeit, retire } from './referee.remote';
 
 	let {
 		currentGame,
@@ -209,6 +209,18 @@
 					confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
 				/>
 			</div>
+		</CollapsibleSection>
+
+		<CollapsibleSection title="打ち切り">
+			<ConfirmDialog
+				onConfirm={() => onRun(() => cutoff())}
+				triggerLabel="打ち切りにする"
+				triggerClass="w-full rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+				title="種目を打ち切りますか？"
+				description="この種目を打ち切りにします。スコアは記録されますが、勝者なしで終了します。この操作は取り消せません。"
+				confirmLabel="打ち切りを確定する"
+				confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+			/>
 		</CollapsibleSection>
 	</div>
 </Card>

@@ -119,4 +119,39 @@ describe('calculateTieResult', () => {
 		expect(result.winnerTeamId).toBeNull();
 		expect(result.teamScoreA).toBe(3);
 	});
+
+	test('cancelled rubbers are terminal for allDone but do not add team score', () => {
+		const result = calculateTieResult({ teamAId: 'team-a', teamBId: 'team-b', status: 'playing' }, [
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'B', status: 'finished' },
+			{ winnerSide: null, status: 'cancelled' },
+			{ winnerSide: null, status: 'cancelled' },
+			{ winnerSide: null, status: 'cancelled' }
+		]);
+
+		expect(result).toMatchObject({
+			teamScoreA: 1,
+			teamScoreB: 1,
+			winnerTeamId: null,
+			status: 'finished',
+			allDone: true
+		});
+	});
+
+	test('does not finish when fewer than five terminal rubbers are present', () => {
+		const result = calculateTieResult({ teamAId: 'team-a', teamBId: 'team-b', status: 'playing' }, [
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'B', status: 'confirmed' },
+			{ winnerSide: 'B', status: 'skipped' }
+		]);
+
+		expect(result).toMatchObject({
+			teamScoreA: 2,
+			teamScoreB: 2,
+			winnerTeamId: null,
+			status: 'playing',
+			allDone: false
+		});
+	});
 });

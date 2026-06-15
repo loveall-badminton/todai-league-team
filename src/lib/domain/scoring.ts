@@ -22,14 +22,7 @@ import {
 export {
 	applyDoublesServiceAfterRally,
 	createInitialDoublesServiceState,
-	otherCourt,
-	otherSide,
-	playerOnCourt,
-	scoreOfSide,
-	serviceCourtForScore,
-	sideOfPlayer,
-	swapCourtsForSide,
-	validateDoublesPlayers
+	otherSide
 } from './service';
 
 export function createInitialMatchState(params: {

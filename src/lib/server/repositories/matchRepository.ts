@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { createInitialMatchState, getCurrentGame } from '$lib/domain/scoring';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
 import type { ScoringConfig } from '$lib/domain/types';
@@ -235,12 +235,4 @@ function buildMatchServiceStateUpsert(db: ReturnType<typeof getRequestDb>, state
 				updatedAt: state.updatedAt
 			}
 		});
-}
-
-export async function getMatchSideForPlayer(matchId: string, playerId: string) {
-	const db = getRequestDb();
-	const player = await db.query.matchSidePlayers.findFirst({
-		where: and(eq(matchSidePlayers.matchId, matchId), eq(matchSidePlayers.id, playerId))
-	});
-	return player?.side ?? null;
 }

@@ -7,7 +7,6 @@
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { matchStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import type { MatchPlayer } from '$lib/domain/types';
 	import { cn } from '$lib/utils/cn';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { isSortable } from '@dnd-kit/svelte/sortable';
@@ -21,8 +20,13 @@
 	import RefereeEventLog from './RefereeEventLog.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
 	import { confirm, rallyWon, resume, start, startGame, suspend, undo } from './referee.remote';
+	import {
+		undoLabel as buildUndoLabel,
+		findLastUndoableEvent,
+		playerOptions
+	} from './refereeUtils';
 
-	import type { DragOverEvent, DragEndEvent } from '$lib/utils/dndEvents';
+	import type { DragEndEvent, DragOverEvent } from '$lib/utils/dndEvents';
 
 	let { data }: PageProps = $props();
 
@@ -44,29 +48,10 @@
 		'match_started',
 		'game_started'
 	];
-	let undoneSeqNos = $derived(
-		new Set(
-			data.events
-				.filter((e) => e.eventType === 'undo_applied' && e.targetSeqNo != null)
-				.map((e) => e.targetSeqNo!)
-		)
-	);
-	let lastUndoableEvent = $derived(
-		[...data.events]
-			.reverse()
-			.find((e) => undoableEventTypes.includes(e.eventType) && !undoneSeqNos.has(e.seqNo)) ?? null
-	);
+	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
 
 	function undoLabel(e: (typeof data.events)[number]): string {
-		if (e.eventType === 'rally_won') {
-			const name = e.side === 'A' ? sideAName : e.side === 'B' ? sideBName : '?';
-			return `${name} 得点 (${e.scoreAAfter}–${e.scoreBAfter})`;
-		}
-		if (e.eventType === 'match_started' || e.eventType === 'game_started') return 'サービス設定';
-		if (e.eventType === 'match_suspended') return '中断';
-		if (e.eventType === 'match_resumed') return '再開';
-		if (e.eventType === 'correction_applied') return '訂正';
-		return e.eventType;
+		return buildUndoLabel(e, sideAName, sideBName);
 	}
 
 	let sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
@@ -76,10 +61,6 @@
 
 	function playerName(id: string | null | undefined): string {
 		return data.players.find((player) => player.id === id)?.name ?? '-';
-	}
-
-	function playerOptions(players: MatchPlayer[]) {
-		return players.map((player) => ({ value: player.id, label: player.name }));
 	}
 
 	let allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as d3 from 'd3';
+	import { buildScoreProgressionSeries } from '$lib/utils/scoreProgression';
 
 	let {
 		points,
@@ -12,22 +13,7 @@
 	} = $props();
 
 	// Only current (last) game's points, deduplicated and with a 0–0 origin prepended
-	let series = $derived(
-		(() => {
-			if (points.length === 0) return null;
-			const lastGame = points[points.length - 1].gameNo;
-			const raw = points.filter((p) => p.gameNo === lastGame);
-			// Drop consecutive entries where neither score changed
-			const deduped = raw.filter(
-				(p, i) => i === 0 || p.scoreA !== raw[i - 1].scoreA || p.scoreB !== raw[i - 1].scoreB
-			);
-			const withOrigin = [{ scoreA: 0, scoreB: 0 }, ...deduped];
-			return {
-				a: withOrigin.map((p, i) => ({ x: i, y: p.scoreA })),
-				b: withOrigin.map((p, i) => ({ x: i, y: p.scoreB }))
-			};
-		})()
-	);
+	let series = $derived(buildScoreProgressionSeries(points));
 
 	const margin = { top: 8, right: 12, bottom: 20, left: 28 };
 	let svgEl: SVGSVGElement | undefined = $state();

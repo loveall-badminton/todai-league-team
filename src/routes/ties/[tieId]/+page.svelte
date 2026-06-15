@@ -35,6 +35,11 @@
 		unrevealLineups,
 		updateTie
 	} from './tie.remote';
+	import {
+		rubberStatusTextClass,
+		submissionBadgeColor,
+		getCurrentWorkflowStep
+	} from './tiePageHelpers';
 
 	let { data }: PageProps = $props();
 
@@ -55,17 +60,7 @@
 		return null;
 	};
 
-	const rubberStatusBgClass = (s: string) =>
-		({
-			not_ready: 'text-zinc-400',
-			ready: 'text-violet-600',
-			scheduled: 'text-zinc-600',
-			playing: 'text-green-700 font-medium',
-			finished: 'text-orange-700',
-			confirmed: 'text-emerald-700 font-medium',
-			skipped: 'text-zinc-400',
-			cancelled: 'text-red-600'
-		})[s] ?? 'text-zinc-500';
+	const rubberStatusBgClass = rubberStatusTextClass;
 
 	const lineupBySide = (side: 'A' | 'B') => data.lineups.find((l) => l.submission.side === side);
 	const lineupPlayers = (rubberCode: string, side: 'A' | 'B') => {
@@ -93,16 +88,6 @@
 		};
 	}
 
-	const submissionBadgeColor = (status: string | null | undefined) => {
-		const map: Record<string, 'zinc' | 'blue' | 'violet' | 'emerald'> = {
-			draft: 'zinc',
-			submitted: 'blue',
-			locked: 'violet',
-			revealed: 'emerald'
-		};
-		return status ? (map[status] ?? 'zinc') : 'zinc';
-	};
-
 	let canStart = $derived(data.tie.status === 'lineup_submitted' || data.tie.status === 'ready');
 	let canConfirm = $derived(data.tie.status === 'finished');
 
@@ -116,21 +101,7 @@
 	);
 
 	// Workflow steps: 1=lineup_submit, 2=review, 3=start, 4=playing, 5=confirm
-	let currentStep = $derived(
-		data.tie.status === 'scheduled' || data.tie.status === 'lineup_pending'
-			? 1
-			: data.tie.status === 'lineup_submitted'
-				? 2
-				: data.tie.status === 'ready'
-					? 3
-					: data.tie.status === 'playing'
-						? 4
-						: data.tie.status === 'finished'
-							? 5
-							: data.tie.status === 'confirmed'
-								? 5
-								: 0
-	);
+	let currentStep = $derived(getCurrentWorkflowStep(data.tie.status));
 
 	const workflowSteps = [
 		{ label: 'オーダー提出', desc: '各チームが選手を登録' },

@@ -1,4 +1,3 @@
-import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
 import type { GroupCode, TiePhase } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import {
@@ -14,14 +13,12 @@ import {
 } from '$lib/server/db/schema';
 import { nextOfficiatingAssignmentStatus } from '$lib/server/services/officiatingService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
 
 export type Team = typeof teams.$inferSelect;
 export type TeamPlayer = typeof teamPlayers.$inferSelect;
 export type Tie = typeof ties.$inferSelect;
-export type Rubber = typeof rubbers.$inferSelect;
 export type ScoringRule = typeof scoringRules.$inferSelect;
-export type LeagueSettings = typeof appSettings.$inferSelect;
-export type OfficiatingAssignment = typeof officiatingAssignments.$inferSelect;
 export type RankingTiebreaker = typeof rankingTiebreakers.$inferSelect;
 
 export interface TeamSummary extends Team {
@@ -546,6 +543,21 @@ export async function listPlayersForTeam(teamId: string): Promise<TeamPlayer[]> 
 		.from(teamPlayers)
 		.where(eq(teamPlayers.teamId, teamId))
 		.orderBy(asc(teamPlayers.displayOrder), asc(teamPlayers.name));
+}
+
+export async function listAllTeamsWithPlayers(): Promise<{ team: Team; players: TeamPlayer[] }[]> {
+	const db = getRequestDb();
+	const allTeams = await db.select().from(teams).orderBy(asc(teams.displayOrder), asc(teams.name));
+	return Promise.all(
+		allTeams.map(async (team) => {
+			const players = await db
+				.select()
+				.from(teamPlayers)
+				.where(eq(teamPlayers.teamId, team.id))
+				.orderBy(asc(teamPlayers.displayOrder), asc(teamPlayers.name));
+			return { team, players };
+		})
+	);
 }
 
 export async function listTiesForTeam(teamId: string): Promise<Tie[]> {

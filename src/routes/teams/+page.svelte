@@ -21,6 +21,38 @@
 	let { data }: PageProps = $props();
 
 	let showForm = $state(false);
+	let importing = $state(false);
+	let importResult = $state<{ addedCount: number; notFoundTeams: string[] } | null>(null);
+	let importError = $state<string | null>(null);
+
+	let fileInput: HTMLInputElement;
+
+	async function handleImport(event: Event) {
+		const file = (event.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+
+		importing = true;
+		importResult = null;
+		importError = null;
+
+		const formData = new FormData();
+		formData.append('file', file);
+
+		try {
+			const res = await fetch('/teams/import', { method: 'POST', body: formData });
+			if (!res.ok) {
+				const text = await res.text();
+				importError = text || 'インポートに失敗しました';
+			} else {
+				importResult = await res.json();
+			}
+		} catch {
+			importError = 'インポートに失敗しました';
+		} finally {
+			importing = false;
+			fileInput.value = '';
+		}
+	}
 
 	let teams = $derived([...data.teams]);
 
@@ -38,12 +70,39 @@
 </svelte:head>
 
 {#snippet headerActions()}
+	<input bind:this={fileInput} type="file" accept=".csv" class="hidden" onchange={handleImport} />
+	<AppButton
+		type="button"
+		variant="secondary"
+		disabled={importing}
+		onclick={() => fileInput.click()}
+	>
+		{importing ? 'インポート中…' : 'インポート'}
+	</AppButton>
+	<AppButton variant="secondary" href="/teams/export">エクスポート</AppButton>
 	<AppButton type="button" onclick={() => (showForm = !showForm)}>
 		{showForm ? 'キャンセル' : '+ 追加'}
 	</AppButton>
 {/snippet}
 
 <PageHeader title="チーム" actions={headerActions} />
+
+{#if importResult}
+	<div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+		{importResult.addedCount} 名の選手を追加しました。
+		{#if importResult.notFoundTeams.length > 0}
+			<span class="ml-1 text-amber-700"
+				>見つからなかったチーム: {importResult.notFoundTeams.join('、')}</span
+			>
+		{/if}
+	</div>
+{/if}
+
+{#if importError}
+	<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+		{importError}
+	</div>
+{/if}
 
 <!-- Creation form (inline) -->
 {#if showForm}

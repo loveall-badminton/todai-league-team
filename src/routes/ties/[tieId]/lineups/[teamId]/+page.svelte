@@ -9,6 +9,12 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
 	import { saveDraft, submit } from './lineup.remote';
+	import {
+		lineupStatusBadgeClass,
+		filteredPlayers as _filteredPlayers,
+		slotLabel,
+		savedPlayerValue
+	} from './lineupHelpers';
 
 	let { data }: PageProps = $props();
 
@@ -19,36 +25,15 @@
 	let isLocked = $derived(status === 'locked' || status === 'revealed');
 	let isSubmitted = $derived(status === 'submitted');
 
-	const savedValue = (code: string, order: 1 | 2) => {
-		const item = data.items.find((i: Item) => i.rubberCode === code);
-		return order === 1 ? (item?.player1Id ?? '') : (item?.player2Id ?? '');
-	};
+	const savedValue = (code: string, order: 1 | 2) =>
+		savedPlayerValue(code, order, data.items as Item[]);
 
 	const playerName = (id: string) => data.players.find((p: Player) => p.id === id)?.name ?? id;
 
-	const statusBadgeClass = (s: string | null) => {
-		const map: Record<string, string> = {
-			draft: 'bg-zinc-100 text-zinc-600',
-			submitted: 'bg-blue-100 text-blue-700',
-			locked: 'bg-violet-100 text-violet-700',
-			revealed: 'bg-emerald-100 text-emerald-700'
-		};
-		return s ? (map[s] ?? 'bg-zinc-100 text-zinc-500') : 'bg-zinc-100 text-zinc-400';
-	};
+	const statusBadgeClass = lineupStatusBadgeClass;
 
 	function filteredPlayers(discipline: string, order: 1 | 2): Player[] {
-		return (data.players as Player[]).filter((p) => {
-			if (p.gender === 'unknown') return true;
-			if (discipline === 'WD') return p.gender === 'female';
-			if (discipline === 'MD') return p.gender === 'male';
-			if (discipline === 'XD') return order === 1 ? p.gender === 'female' : p.gender === 'male';
-			return true;
-		});
-	}
-
-	function slotLabel(discipline: string, order: 1 | 2): string {
-		if (discipline === 'XD') return order === 1 ? '女性' : '男性';
-		return `${order}人目`;
+		return _filteredPlayers(discipline, order, data.players as Player[]);
 	}
 
 	let lineupAction = $state<'draft' | 'submit'>('draft');

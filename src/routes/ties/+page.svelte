@@ -17,6 +17,7 @@
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import type { PageProps } from './$types';
 	import { create, reorder, updateTie } from './ties.remote';
+	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
 
 	let { data }: PageProps = $props();
 
@@ -50,36 +51,11 @@
 		return () => clearInterval(id);
 	});
 
-	type Filter =
-		| 'all'
-		| 'group_a'
-		| 'group_b'
-		| 'semifinal'
-		| 'final'
-		| 'third_place'
-		| 'fifth_place'
-		| 'lineup_pending'
-		| 'playing'
-		| 'finished'
-		| 'schedule_changed';
-
-	const VALID_FILTERS: Filter[] = [
-		'all',
-		'group_a',
-		'group_b',
-		'semifinal',
-		'final',
-		'third_place',
-		'fifth_place',
-		'lineup_pending',
-		'playing',
-		'finished',
-		'schedule_changed'
-	];
+	type Filter = TieFilter;
 
 	let filter = $derived.by<Filter>(() => {
 		const v = page.url.searchParams.get('filter');
-		return VALID_FILTERS.includes(v as Filter) ? (v as Filter) : 'all';
+		return VALID_TIE_FILTERS.includes(v as Filter) ? (v as Filter) : 'all';
 	});
 
 	function setFilter(value: string) {
@@ -103,21 +79,6 @@
 		{ id: 'finished', label: '結果確認待ち' },
 		{ id: 'schedule_changed', label: 'スケジュール変更' }
 	];
-
-	function tieMatchesFilter(tie: (typeof allTies)[0], f: Filter) {
-		if (f === 'all') return true;
-		if (f === 'group_a') return tie.phase === 'group_a';
-		if (f === 'group_b') return tie.phase === 'group_b';
-		if (f === 'semifinal') return tie.phase === 'semifinal';
-		if (f === 'final') return tie.phase === 'final';
-		if (f === 'third_place') return tie.phase === 'third_place';
-		if (f === 'fifth_place') return tie.phase === 'fifth_place';
-		if (f === 'lineup_pending') return tie.status === 'lineup_pending';
-		if (f === 'playing') return tie.status === 'playing';
-		if (f === 'finished') return tie.status === 'finished';
-		if (f === 'schedule_changed') return tie.scheduleChanged;
-		return true;
-	}
 
 	let filteredTies = $derived(allTies.filter((t) => tieMatchesFilter(t, filter)));
 

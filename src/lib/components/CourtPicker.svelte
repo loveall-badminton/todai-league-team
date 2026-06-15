@@ -63,5 +63,5 @@
 		<p class="text-xs text-zinc-400">体育館を選ぶとコートが表示されます</p>
 	{/if}
 
-	<input type="hidden" name="courtBlockCode" value={jsonValue} />
+	<input type="hidden" name="courtBlockCode" data-testid="court-block-input" value={jsonValue} />
 </div>

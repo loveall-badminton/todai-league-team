@@ -3,7 +3,7 @@ import { TOKYO_LEAGUE_SCORING_RULES } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { appSettings, scoringRules } from '$lib/server/db/schema';
 
-export async function ensureDefaultScoringRules(now = new Date().toISOString()) {
+async function ensureDefaultScoringRules(now = new Date().toISOString()) {
 	const db = getRequestDb();
 	for (const rule of TOKYO_LEAGUE_SCORING_RULES) {
 		const existing = await db.query.scoringRules.findFirst({

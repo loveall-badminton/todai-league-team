@@ -1,8 +1,8 @@
-import { asc, eq, sql } from 'drizzle-orm';
 import { getRequestEvent } from '$app/server';
+import { user } from '$lib/server/db/auth.schema';
 import { getRequestDb } from '$lib/server/db/request';
 import { authUserProfiles, teams } from '$lib/server/db/schema';
-import { user } from '$lib/server/db/auth.schema';
+import { asc, eq, sql } from 'drizzle-orm';
 import {
 	accountIdToInternalEmail,
 	displayAccountId,
@@ -22,12 +22,6 @@ export type ManagedAccount = {
 
 export function roleForAccountType(accountType: AccountType): 'admin' | 'user' {
 	return accountType === 'admin' ? 'admin' : 'user';
-}
-
-export function readAccountType(formData: FormData): AccountType {
-	const value = String(formData.get('accountType') ?? '').trim();
-	if (value === 'admin' || value === 'participant' || value === 'team') return value;
-	throw new Error('アカウント種別が不正です。');
 }
 
 async function listAuthUsers() {

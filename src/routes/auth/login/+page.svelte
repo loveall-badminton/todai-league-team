@@ -3,9 +3,9 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { toast } from 'svelte-sonner';
 	import Footer from '../../footer.svelte';
 	import type { PageProps } from './$types';
-	import { toast } from 'svelte-sonner';
 	import { signIn } from './login.remote';
 
 	let { data }: PageProps = $props();
@@ -49,12 +49,12 @@
 		{#if data.showBootstrap}
 			<a
 				href={resolve('/auth/bootstrap')}
-				class="mt-4 block text-center text-xs font-medium text-zinc-500"
+				class="my-4 block text-center text-xs font-medium text-zinc-500"
 			>
 				初回管理者作成
 			</a>
 		{/if}
 
-		<Footer />
+		<Footer class="pb-0" />
 	</section>
 </div>
