@@ -16,11 +16,17 @@
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
+	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
 	import type { PageProps } from './$types';
 	import { create, reorder, updateTie } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
+	import * as v from 'valibot';
 
 	let { data }: PageProps = $props();
+
+	const tiesSearchParamsSchema = v.object({
+		filter: v.optional(v.picklist(VALID_TIE_FILTERS), 'all')
+	});
 
 	const groupCodeItems = [
 		{ value: '', label: '決勝トーナメント' },
@@ -65,22 +71,25 @@
 		return () => clearInterval(id);
 	});
 
-	type Filter = TieFilter;
-
-	let filter = $derived.by<Filter>(() => {
-		const v = page.url.searchParams.get('filter');
-		return VALID_TIE_FILTERS.includes(v as Filter) ? (v as Filter) : 'all';
+	let filter = $derived.by<TieFilter>(() => {
+		return parseSearchParams(page.url.searchParams, tiesSearchParamsSchema, { filter: 'all' })
+			.filter;
 	});
 
 	function setFilter(value: string) {
-		const url = new URL(page.url);
-		if (value === 'all') url.searchParams.delete('filter');
-		else url.searchParams.set('filter', value);
+		const url = updateUrlSearchParams(
+			page.url,
+			tiesSearchParamsSchema,
+			{ filter: value },
+			{ omit: (key, searchValue) => key === 'filter' && searchValue === 'all' }
+		);
+		if (!url) return;
+
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto(resolve('/ties') + url.search, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
-	const filters: { id: Filter; label: string }[] = [
+	const filters: { id: TieFilter; label: string }[] = [
 		{ id: 'all', label: 'すべて' },
 		{ id: 'group_a', label: 'Aリーグ' },
 		{ id: 'group_b', label: 'Bリーグ' },
