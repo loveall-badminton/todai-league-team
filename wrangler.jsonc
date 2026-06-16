@@ -3,7 +3,14 @@
 	"name": "todai-league",
 	"compatibility_date": "2026-06-03",
 	"compatibility_flags": ["nodejs_als", "nodejs_compat"],
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	// カスタムエントリ（src/worker.ts）が PartyServer の routePartykitRequest で
+	// DO へのルーティングを横取りし、それ以外を SvelteKit ワーカーへフォールバックする。
+	// adapter が生成する SvelteKit ワーカーは alias 経由で読み込む（ビルドの書き出し先は
+	// wrangler.adapter.jsonc 側で指定）。
+	"main": "src/worker.ts",
+	"alias": {
+		"sveltekit-worker": "./.svelte-kit/cloudflare/_worker.js"
+	},
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
@@ -25,6 +32,29 @@
 			"database_name": "todai-league",
 			"database_id": "ca60f5c9-9b5d-4b15-ae15-cbd70c7fee3e",
 			"migrations_dir": "drizzle"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "LiveBoard",
+				"class_name": "LiveBoard"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["LiveRoom"]
+		},
+		{
+			"tag": "v2",
+			"renamed_classes": [
+				{
+					"from": "LiveRoom",
+					"to": "LiveBoard"
+				}
+			]
 		}
 	],
 	"vars": {

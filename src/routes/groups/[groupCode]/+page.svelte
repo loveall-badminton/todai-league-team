@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import Card from '$lib/components/Card.svelte';
@@ -83,7 +84,10 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<AppButton onclick={() => run(() => generateRoundRobin())}>総当たり生成</AppButton>
+	<div class="flex items-center gap-3">
+		<RealtimeSync topics={['standings', 'schedule']} onUpdate={() => void invalidateAll()} />
+		<AppButton onclick={() => run(() => generateRoundRobin())}>総当たり生成</AppButton>
+	</div>
 {/snippet}
 
 <PageHeader eyebrow="予選リーグ" title={`${data.groupCode}リーグ`} actions={headerActions} />

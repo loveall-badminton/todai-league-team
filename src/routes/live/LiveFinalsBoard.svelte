@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Card from '$lib/components/Card.svelte';
-	import type { getFinalsBoard } from './live.remote';
+	import type { LivePageData } from '$lib/server/services/livePageService';
 
-	let { query }: { query: ReturnType<typeof getFinalsBoard> } = $props();
+	type QueryValue<T> = { current: T | null | undefined };
+
+	let { query }: { query: QueryValue<LivePageData['finalsBoard']> } = $props();
 </script>
 
 {#if query.current == null}

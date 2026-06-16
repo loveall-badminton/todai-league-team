@@ -10,9 +10,14 @@ const config = {
 		}
 	},
 	kit: {
-		adapter: adapter(),
+		// ビルド書き出し先のみ wrangler.adapter.jsonc を使う。
+		// deploy / types / dev は本番の wrangler.jsonc（main = src/worker.ts）を使う。
+		adapter: adapter({ config: 'wrangler.adapter.jsonc' }),
 		experimental: {
 			remoteFunctions: true
+		},
+		version: {
+			pollInterval: 30_000
 		},
 		typescript: {
 			config: (config) => ({

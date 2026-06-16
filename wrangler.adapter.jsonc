@@ -1,0 +1,21 @@
+{
+	// adapter-cloudflare 専用のビルド設定。
+	//
+	// adapter は `main` で指定された場所に SvelteKit ワーカーを書き出す。本番の
+	// wrangler.jsonc では `main` をカスタムエントリ（src/worker.ts）にしているため、
+	// adapter にそのまま使わせると src/worker.ts を上書きしてしまう。それを避けるため、
+	// svelte.config.js から `adapter({ config: 'wrangler.adapter.jsonc' })` でこの
+	// 設定を渡し、生成物を `.svelte-kit/cloudflare/_worker.js` に書き出させる。
+	//
+	// ここはビルド書き出し先と静的アセットの解決にだけ使われる。D1 / Durable Object
+	// などのバインディングは wrangler.jsonc 側（deploy・types・dev）が単一の真実。
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "todai-league",
+	"compatibility_date": "2026-06-03",
+	"compatibility_flags": ["nodejs_als", "nodejs_compat"],
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	}
+}

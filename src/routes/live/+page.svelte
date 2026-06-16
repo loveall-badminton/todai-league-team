@@ -1,46 +1,24 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import AppSwitch from '$lib/components/AppSwitch.svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveActiveTies from './LiveActiveTies.svelte';
 	import LiveStandings from './LiveStandings.svelte';
 	import LiveFinalsBoard from './LiveFinalsBoard.svelte';
 	import LiveSchedule from './LiveSchedule.svelte';
-	import {
-		getActiveTies,
-		getGroupStandings,
-		getFinalsBoard,
-		getSchedule,
-		getScoreProgression
-	} from './live.remote';
+	import { ALL_LIVE_TOPICS, type LiveTopic } from '$lib/realtime/channels';
+	import { getLivePageData } from './live.remote';
 
-	let realtimeEnabled = $state(true);
+	const liveQuery = getLivePageData();
+	let liveData = $derived(await liveQuery);
+	let activeTies = $derived({ current: liveData.activeTies });
+	let standings = $derived({ current: liveData.standings });
+	let finalsBoard = $derived({ current: liveData.finalsBoard });
+	let schedule = $derived({ current: liveData.schedule });
+	let progression = $derived({ current: liveData.progression });
 
-	const activeTies = getActiveTies();
-	const standings = getGroupStandings();
-	const finalsBoard = getFinalsBoard();
-	const schedule = getSchedule();
-	const progression = getScoreProgression();
-
-	function refreshAll() {
-		activeTies.refresh();
-		standings.refresh();
-		finalsBoard.refresh();
-		schedule.refresh();
-		progression.refresh();
+	function refreshTopics(topics: LiveTopic[]) {
+		if (topics.length > 0) void liveQuery.refresh();
 	}
-
-	$effect(() => {
-		if (!realtimeEnabled) return;
-		const id = setInterval(refreshAll, 8000);
-		function onVisibilityChange() {
-			if (document.visibilityState === 'visible') refreshAll();
-		}
-		document.addEventListener('visibilitychange', onVisibilityChange);
-		return () => {
-			clearInterval(id);
-			document.removeEventListener('visibilitychange', onVisibilityChange);
-		};
-	});
 </script>
 
 <svelte:head>
@@ -69,7 +47,7 @@
 					: '進行中の試合なし'}
 			</span>
 		</div>
-		<AppSwitch bind:checked={realtimeEnabled} label="自動更新" />
+		<RealtimeSync topics={ALL_LIVE_TOPICS} onUpdate={refreshTopics} pollInterval={8000} />
 	</div>
 {/snippet}
 

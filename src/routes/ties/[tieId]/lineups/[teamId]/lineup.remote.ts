@@ -1,5 +1,6 @@
 import { form, getRequestEvent } from '$app/server';
 import { requireTeamLineupAccess } from '$lib/server/auth/access';
+import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { saveLineupDraft, submitLineup } from '$lib/server/services/lineupService';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
@@ -35,6 +36,7 @@ export const lineup = form(lineupSchema, async ({ items }) => {
 		});
 
 		const submitValidation = await submitLineup({ tieId: params.tieId!, teamId: params.teamId! });
+		notifyLiveBoard(['schedule']);
 		return { message: 'オーダーを提出しました', warnings: submitValidation.warnings };
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '失敗');

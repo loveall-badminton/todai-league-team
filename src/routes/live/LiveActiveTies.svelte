@@ -5,17 +5,21 @@
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import { courtDisplayLabel, phaseLabel, rubberLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { PublicRubberSummary } from '$lib/server/services/liveBoardService';
+	import type { LivePageData } from '$lib/server/services/livePageService';
 	import { ChartLine } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
-	import type { getActiveTies, getScoreProgression } from './live.remote';
 	import ScoreProgressChart from './ScoreProgressChart.svelte';
+
+	type ActiveTie = NonNullable<LivePageData['activeTies']>['ties'][number];
+	type PlayingRubber = NonNullable<LivePageData['activeTies']>['rubbersByTieId'][string][number];
+	type QueryValue<T> = { current: T | null | undefined };
 
 	let {
 		query,
 		progressionQuery
 	}: {
-		query: ReturnType<typeof getActiveTies>;
-		progressionQuery: ReturnType<typeof getScoreProgression>;
+		query: QueryValue<LivePageData['activeTies']>;
+		progressionQuery: QueryValue<LivePageData['progression']>;
 	} = $props();
 
 	function toRubberRow(rubber: PublicRubberSummary): RubberRow {
@@ -46,11 +50,15 @@
 	let selectedTieId = $state<string | null>(null);
 
 	let selectedTie = $derived(
-		selectedTieId ? (query.current?.ties.find((t) => t.id === selectedTieId) ?? null) : null
+		selectedTieId
+			? (query.current?.ties.find((t: ActiveTie) => t.id === selectedTieId) ?? null)
+			: null
 	);
 	let selectedPlayingRubbers = $derived(
 		selectedTieId
-			? (query.current?.rubbersByTieId[selectedTieId] ?? []).filter((r) => r.status === 'playing')
+			? (query.current?.rubbersByTieId[selectedTieId] ?? []).filter(
+					(r: PlayingRubber) => r.status === 'playing'
+				)
 			: []
 	);
 	let byMatchId = $derived(progressionQuery.current?.byMatchId ?? {});
@@ -91,7 +99,7 @@
 		<div class="grid gap-4 md:grid-cols-2">
 			{#each ties as tie (tie.id)}
 				{@const tieRubbers = rubbersByTieId[tie.id] ?? []}
-				{@const hasPlayingRubber = tieRubbers.some((r) => r.status === 'playing')}
+				{@const hasPlayingRubber = tieRubbers.some((r: PlayingRubber) => r.status === 'playing')}
 				<Card class="overflow-hidden border-emerald-200">
 					<div class="px-5 pt-4 pb-3">
 						<div class="flex items-start justify-between gap-2">

@@ -6,6 +6,7 @@
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { Trophy } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { generateFinals, generateSemifinals, getFinalsData } from './finals.remote';
 	import {
 		canGenerateSemifinals,
@@ -48,6 +49,7 @@
 
 {#snippet headerActions()}
 	<div class="flex flex-col items-end gap-2">
+		<RealtimeSync topics={['finals', 'schedule']} onUpdate={() => finalsData.refresh()} />
 		<div class="flex gap-2">
 			<AppButton
 				variant="secondary"

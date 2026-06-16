@@ -133,7 +133,10 @@
 			<div>
 				<label class="block">
 					<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-					<AppInput {...updateTeam.fields.shortName.as('text', data.team.shortName ?? '')} class="mt-1" />
+					<AppInput
+						{...updateTeam.fields.shortName.as('text', data.team.shortName ?? '')}
+						class="mt-1"
+					/>
 				</label>
 			</div>
 			<div>

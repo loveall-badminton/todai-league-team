@@ -10,6 +10,7 @@ import type {
 	Side
 } from '$lib/domain/types';
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
+import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
@@ -38,6 +39,11 @@ async function applyAction(
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '操作に失敗しました');
 	}
+	// 得点・状態が変わったので、この試合を見る端末とライブボードへ通知する。
+	// 得点が試合結果を確定させると順位・スケジュール・決勝表にも波及しうるため
+	// ライブボードへは全 topic を通知する（fire-and-forget）。
+	notifyMatch(matchId);
+	notifyLiveBoard();
 }
 
 export const start = command(
@@ -268,6 +274,8 @@ export const cutoff = command(async () => {
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '操作に失敗しました');
 	}
+	notifyMatch(matchId);
+	notifyLiveBoard();
 });
 
 export const confirm = command(async () => {

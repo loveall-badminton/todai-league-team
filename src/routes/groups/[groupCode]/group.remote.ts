@@ -1,5 +1,6 @@
 import { command, form, getRequestEvent } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
+import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import {
 	assignOfficiatingTeams,
 	reorderTies,
@@ -48,6 +49,7 @@ export const generateRoundRobin = command(async () => {
 		scoringRuleId,
 		now: new Date().toISOString()
 	});
+	notifyLiveBoard(['standings', 'schedule']);
 	return { message: `${created}件の対戦を生成しました` };
 });
 
@@ -98,6 +100,7 @@ export const updateTie = form(
 			now
 		});
 
+		notifyLiveBoard(['schedule']);
 		return { message: '対戦情報を更新しました' };
 	}
 );
@@ -119,6 +122,7 @@ export const setManualRank = form(
 			reason: emptyToNull(reason),
 			now: new Date().toISOString()
 		});
+		notifyLiveBoard(['standings']);
 		return { message: '手動順位を保存しました' };
 	}
 );
@@ -144,6 +148,7 @@ export const createTiebreaker = form(
 			reason,
 			now: new Date().toISOString()
 		});
+		notifyLiveBoard(['standings', 'schedule']);
 		return { message: `順位決定再試合を作成しました: ${result.matchId}` };
 	}
 );
@@ -151,9 +156,11 @@ export const createTiebreaker = form(
 export const syncTiebreaker = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
 	requireAdmin();
 	await syncRankingTiebreakerResult(matchId, new Date().toISOString());
+	notifyLiveBoard(['standings', 'score']);
 });
 
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
 	requireAdmin();
 	await reorderTies(ids, new Date().toISOString());
+	notifyLiveBoard(['schedule']);
 });

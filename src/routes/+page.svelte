@@ -7,9 +7,13 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Settings } from '@lucide/svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { getDashboardData } from './dashboard.remote';
 
-	const dashboard = getDashboardData();
+	const dashboardQuery = getDashboardData();
+	let dashboard = $derived(await dashboardQuery);
+	let playing = $derived(dashboard.playing);
+	let recentTies = $derived(dashboard.recentTies);
 </script>
 
 <svelte:head>
@@ -17,76 +21,74 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<AppButton variant="secondary" href={resolve('/settings')}>
-		<Settings class="h-4 w-4" />
-		設定
-	</AppButton>
+	<div class="flex items-center gap-3">
+		<RealtimeSync topics={['score', 'schedule']} onUpdate={() => void dashboardQuery.refresh()} />
+		<AppButton variant="secondary" href={resolve('/settings')}>
+			<Settings class="h-4 w-4" />
+			設定
+		</AppButton>
+	</div>
 {/snippet}
 
 <PageHeader title="運営ホーム" actions={headerActions} />
-
-{#if dashboard.current}
-	{@const { playing, recentTies } = dashboard.current}
-
-	<!-- Playing ties -->
-	<Card class="p-4">
-		<div class="mb-3 flex items-center justify-between">
-			<h2 class="text-base font-semibold text-zinc-950">進行中の対戦</h2>
-			<Badge color="green">{playing.length}</Badge>
-		</div>
-		<div class="space-y-2">
-			{#each playing as tie (tie.id)}
-				<a
-					href={resolve('/ties/[tieId]', { tieId: tie.id })}
-					class="flex items-center justify-between rounded-xl border border-zinc-200 p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
-				>
-					<div class="min-w-0">
-						<p class="text-sm font-semibold text-zinc-950">{tie.tieCode}</p>
-						<p class="truncate text-xs text-zinc-500">
-							{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
-						</p>
-					</div>
-					<StatusBadge status={tie.status} />
-				</a>
-			{:else}
-				<div class="rounded-xl border border-dashed border-zinc-200 p-6 text-center">
-					<p class="text-sm text-zinc-400">進行中の対戦はありません</p>
+<!-- Playing ties -->
+<Card class="p-4">
+	<div class="mb-3 flex items-center justify-between">
+		<h2 class="text-base font-semibold text-zinc-950">進行中の対戦</h2>
+		<Badge color="green">{playing.length}</Badge>
+	</div>
+	<div class="space-y-2">
+		{#each playing as tie (tie.id)}
+			<a
+				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				class="flex items-center justify-between rounded-xl border border-zinc-200 p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
+			>
+				<div class="min-w-0">
+					<p class="text-sm font-semibold text-zinc-950">{tie.tieCode}</p>
+					<p class="truncate text-xs text-zinc-500">
+						{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
+					</p>
 				</div>
-			{/each}
-		</div>
-	</Card>
-
-	<!-- Recent ties list -->
-	<Card>
-		<div class="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-			<h2 class="text-base font-semibold text-zinc-950">団体戦カード</h2>
-			<a href={resolve('/ties')} class="text-xs font-medium text-zinc-500 hover:text-zinc-950">
-				すべて見る →
+				<StatusBadge status={tie.status} />
 			</a>
-		</div>
-		<div class="divide-y divide-zinc-100">
-			{#each recentTies as tie (tie.id)}
-				<a
-					href={resolve('/ties/[tieId]', { tieId: tie.id })}
-					class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
-				>
-					<div class="w-16 flex-none">
-						<span class="text-sm font-semibold text-zinc-950">{tie.tieCode}</span>
-					</div>
-					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm text-zinc-700">
-							{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
-							{tie.teamBName ?? '未定'}
-						</p>
-						<p class="text-xs text-zinc-400">{phaseLabel(tie.phase)}</p>
-					</div>
-					<StatusBadge status={tie.status} />
-				</a>
-			{:else}
-				<div class="px-4 py-8 text-center">
-					<p class="text-sm text-zinc-400">対戦はまだありません</p>
+		{:else}
+			<div class="rounded-xl border border-dashed border-zinc-200 p-6 text-center">
+				<p class="text-sm text-zinc-400">進行中の対戦はありません</p>
+			</div>
+		{/each}
+	</div>
+</Card>
+
+<!-- Recent ties list -->
+<Card>
+	<div class="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+		<h2 class="text-base font-semibold text-zinc-950">団体戦カード</h2>
+		<a href={resolve('/ties')} class="text-xs font-medium text-zinc-500 hover:text-zinc-950">
+			すべて見る →
+		</a>
+	</div>
+	<div class="divide-y divide-zinc-100">
+		{#each recentTies as tie (tie.id)}
+			<a
+				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
+			>
+				<div class="w-16 flex-none">
+					<span class="text-sm font-semibold text-zinc-950">{tie.tieCode}</span>
 				</div>
-			{/each}
-		</div>
-	</Card>
-{/if}
+				<div class="min-w-0 flex-1">
+					<p class="truncate text-sm text-zinc-700">
+						{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
+						{tie.teamBName ?? '未定'}
+					</p>
+					<p class="text-xs text-zinc-400">{phaseLabel(tie.phase)}</p>
+				</div>
+				<StatusBadge status={tie.status} />
+			</a>
+		{:else}
+			<div class="px-4 py-8 text-center">
+				<p class="text-sm text-zinc-400">対戦はまだありません</p>
+			</div>
+		{/each}
+	</div>
+</Card>

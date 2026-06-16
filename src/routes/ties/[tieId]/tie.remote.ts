@@ -1,5 +1,6 @@
 import { command, form, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
+import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import {
 	assignOfficiatingTeams,
 	deleteTie as deleteTieRepo,
@@ -80,6 +81,7 @@ export const updateTie = form(
 			note: emptyToNull(officiatingNote),
 			now
 		});
+		notifyLiveBoard(['schedule']);
 		return { message: '対戦情報を保存しました' };
 	}
 );
@@ -98,12 +100,14 @@ export const startTie = command(async () => {
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
+	notifyLiveBoard(['score', 'schedule']);
 });
 
 export const confirmTie = command(async () => {
 	const event = getRequestEvent();
 	requireAdmin();
 	await confirmTieService(event.params.tieId!);
+	notifyLiveBoard(['standings', 'schedule', 'finals']);
 });
 
 export const lockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
@@ -114,6 +118,7 @@ export const lockLineup = command(v.object({ teamId: v.string() }), async ({ tea
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
+	notifyLiveBoard(['schedule']);
 });
 
 export const unlockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
@@ -124,6 +129,7 @@ export const unlockLineup = command(v.object({ teamId: v.string() }), async ({ t
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
+	notifyLiveBoard(['schedule']);
 });
 
 export const revealLineups = command(async () => {
@@ -134,6 +140,7 @@ export const revealLineups = command(async () => {
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
+	notifyLiveBoard(['schedule']);
 });
 
 export const unrevealLineups = command(async () => {
@@ -144,11 +151,13 @@ export const unrevealLineups = command(async () => {
 	} catch (caught) {
 		error(400, errMsg(caught));
 	}
+	notifyLiveBoard(['schedule']);
 });
 
 export const deleteTie = command(async () => {
 	const event = getRequestEvent();
 	requireAdmin();
 	await deleteTieRepo(event.params.tieId!);
+	notifyLiveBoard(['standings', 'schedule', 'finals']);
 	redirect(303, '/ties');
 });

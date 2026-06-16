@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { page } from '$app/state';
+	import { page, updated } from '$app/state';
 	import { resolve } from '$app/paths';
 	import type { Component } from 'svelte';
 	import type { LayoutProps } from './$types';
@@ -60,6 +60,10 @@
 	function closeDrawer() {
 		drawerOpen = false;
 	}
+
+	$effect(() => {
+		if (updated.current) location.reload();
+	});
 </script>
 
 <svelte:head>

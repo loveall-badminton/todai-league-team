@@ -2,12 +2,12 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
 	import { GripVertical, X } from '@lucide/svelte';
 	import { onMount } from 'svelte';
-	import AppSwitch from '$lib/components/AppSwitch.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
@@ -62,14 +62,6 @@
 
 	let allTies = $derived([...data.ties]);
 	let hasActive = $derived(data.ties.some((t) => t.status === 'playing'));
-	let realtimeEnabled = $state(true);
-
-	onMount(() => {
-		const id = setInterval(() => {
-			if (hasActive && realtimeEnabled) void invalidateAll();
-		}, 12000);
-		return () => clearInterval(id);
-	});
 
 	let filter = $derived.by<TieFilter>(() => {
 		return parseSearchParams(page.url.searchParams, tiesSearchParamsSchema, { filter: 'all' })
@@ -132,7 +124,11 @@
 {#snippet headerActions()}
 	<div class="flex items-center gap-3">
 		{#if hasActive}
-			<AppSwitch bind:checked={realtimeEnabled} label="自動更新" />
+			<RealtimeSync
+				topics={['score', 'schedule']}
+				onUpdate={() => void invalidateAll()}
+				pollInterval={12000}
+			/>
 		{/if}
 		<AppButton type="button" onclick={() => (dialogOpen = true)}>+ 新規作成</AppButton>
 	</div>

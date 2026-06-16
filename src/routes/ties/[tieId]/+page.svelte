@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Badge from '$lib/components/Badge.svelte';
@@ -44,12 +45,6 @@
 	let { data }: PageProps = $props();
 
 	const liveRubbers = getLiveRubbers();
-
-	$effect(() => {
-		if (data.tie.status !== 'playing') return;
-		const id = setInterval(() => liveRubbers.refresh(), 10000);
-		return () => clearInterval(id);
-	});
 
 	const teamName = (id: string | null) => data.teams.find((t) => t.id === id)?.name ?? '未定';
 	const playerName = (id: string) => data.players.find((p) => p.id === id)?.name ?? id;
@@ -157,6 +152,13 @@
 				{/if}
 			</div>
 		</Card>
+		{#if data.tie.status === 'playing'}
+			<RealtimeSync
+				topics={['score']}
+				onUpdate={() => liveRubbers.refresh()}
+				pollInterval={10000}
+			/>
+		{/if}
 	</div>
 {/snippet}
 

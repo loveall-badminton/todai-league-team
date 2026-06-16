@@ -7,6 +7,7 @@ import {
 	reorderTies,
 	updateTieSchedule
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
 import { redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
@@ -97,6 +98,7 @@ export const create = form(
 			now: new Date().toISOString()
 		});
 
+		notifyLiveBoard(['schedule']);
 		redirect(303, `/ties/${id}`);
 	}
 );
@@ -104,6 +106,7 @@ export const create = form(
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
 	requireAdmin();
 	await reorderTies(ids, new Date().toISOString());
+	notifyLiveBoard(['schedule']);
 });
 
 export const updateTie = form(
@@ -153,6 +156,7 @@ export const updateTie = form(
 			now
 		});
 
+		notifyLiveBoard(['schedule']);
 		return { message: '対戦情報を保存しました' };
 	}
 );

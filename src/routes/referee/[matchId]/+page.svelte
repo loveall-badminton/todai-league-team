@@ -4,17 +4,16 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
+	import { matchChannel } from '$lib/realtime/channels';
 	import { matchStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { cn } from '$lib/utils/cn';
-	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
-	import { isSortable } from '@dnd-kit/svelte/sortable';
-	import { ArrowLeftRight, GripVertical } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
-	import CourtSideSortableItem from './CourtSideSortableItem.svelte';
 	import RefereeAdvancedControls from './RefereeAdvancedControls.svelte';
 	import RefereeCourtDiagram from './RefereeCourtDiagram.svelte';
 	import RefereeEventLog from './RefereeEventLog.svelte';
@@ -26,7 +25,6 @@
 		findLastUndoableEvent,
 		playerOptions
 	} from './refereeUtils';
-	import type { DragEndEvent, DragOverEvent } from '$lib/utils/dndEvents';
 	import * as v from 'valibot';
 
 	let { data }: PageProps = $props();
@@ -78,10 +76,6 @@
 	let courtSideKey = $derived(`referee_side_${data.state.matchId}`);
 	let manualChangeCountKey = $derived(`referee_changecount_${data.state.matchId}`);
 	let sideAStartsLeft = $state(true);
-	let courtSideOrder = $state<('A' | 'B')[]>(['A', 'B']);
-	let courtSideSnapshot: ('A' | 'B')[] = [];
-	let courtSideGridWidth = $state(0);
-	let courtSideCardWidth = $derived(Math.max(0, (courtSideGridWidth - 8) / 2));
 
 	// Manual change-of-ends counter (persisted to localStorage)
 	let manualChangeCount = $state(0);
@@ -97,54 +91,12 @@
 
 	function setSideAStartsLeft(val: boolean) {
 		sideAStartsLeft = val;
-		courtSideOrder = val ? ['A', 'B'] : ['B', 'A'];
 		saveJsonToLocalStorage(courtSideKey, courtSideSchema, val ? 'left' : 'right');
-	}
-
-	function onCourtSideDragStart() {
-		courtSideSnapshot = [...courtSideOrder];
-	}
-
-	function onCourtSideDragOver(event: DragOverEvent) {
-		const { source, target } = event.operation;
-		if (!isSortable(source) || !isSortable(target) || source.index === target.index) return;
-		const next = [...courtSideOrder];
-		const [moved] = next.splice(source.index, 1);
-		next.splice(target.index, 0, moved);
-		courtSideOrder = next;
-	}
-
-	function onCourtSideDragEnd(event: DragEndEvent) {
-		if (event.canceled) {
-			courtSideOrder = courtSideSnapshot;
-			return;
-		}
-		setSideAStartsLeft(courtSideOrder[0] === 'A');
 	}
 
 	function doChangeEnds() {
 		manualChangeCount += 1;
 		saveJsonToLocalStorage(manualChangeCountKey, manualChangeCountSchema, manualChangeCount);
-	}
-
-	function sideDisplayName(side: 'A' | 'B') {
-		return side === 'A' ? sideAName : sideBName;
-	}
-
-	function sideTeamName(side: 'A' | 'B') {
-		return (side === 'A' ? sideAPlayers : sideBPlayers)[0]?.teamName;
-	}
-
-	function sideAccent(side: 'A' | 'B'): 'pink' | 'cyan' {
-		return side === 'A' ? 'pink' : 'cyan';
-	}
-
-	function dndSide(id: unknown): 'A' | 'B' {
-		return id === 'B' ? 'B' : 'A';
-	}
-
-	function courtSideLabel(side: 'A' | 'B'): '左' | '右' {
-		return courtSideOrder.indexOf(side) === 0 ? '左' : '右';
 	}
 
 	// true = side A is currently on the physical left side of the court
@@ -170,6 +122,9 @@
 			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
 		}
 	}
+
+	// WebSocket 接続と自動更新は RealtimeSync コンポーネントが管理する。
+	// テンプレートの <RealtimeSync> を参照。
 </script>
 
 {#snippet scoreCard(
@@ -238,64 +193,18 @@
 				{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 			</h2>
 
-			{#if data.state.status === 'scheduled'}
-				<!-- Court side order (only at match start) -->
-				<div class="mb-4">
-					<div class="mb-2 text-xs font-medium text-zinc-400">
-						ドラッグアンドドロップで選手の位置を入れ替えてください。
-					</div>
-					<DragDropProvider
-						onDragStart={onCourtSideDragStart}
-						onDragOver={onCourtSideDragOver}
-						onDragEnd={onCourtSideDragEnd}
-					>
-						<div bind:clientWidth={courtSideGridWidth} class="grid grid-cols-2 gap-2">
-							{#each courtSideOrder as side, index (side)}
-								<CourtSideSortableItem
-									{side}
-									{index}
-									name={sideDisplayName(side)}
-									teamName={sideTeamName(side)}
-									sideLabel={courtSideLabel(side)}
-									accent={sideAccent(side)}
-								/>
-							{/each}
-						</div>
-						<DragOverlay dropAnimation={null}>
-							{#snippet children(source)}
-								{@const side = dndSide(source.id)}
-								<div
-									class={cn(
-										'min-h-24 rounded-xl border bg-white/95 p-3 shadow-xl backdrop-blur-sm',
-										sideAccent(side) === 'pink' ? 'border-pink-200' : 'border-cyan-200'
-									)}
-									style:width={courtSideCardWidth ? `${courtSideCardWidth}px` : undefined}
-								>
-									<div class="mb-2 flex items-center justify-between gap-2">
-										<span
-											class={cn(
-												'rounded-full px-2 py-0.5 text-xs font-bold',
-												sideAccent(side) === 'pink'
-													? 'bg-pink-100 text-pink-700'
-													: 'bg-cyan-100 text-cyan-700'
-											)}>{courtSideLabel(side)}</span
-										>
-										<div class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300">
-											<GripVertical class="h-4 w-4" />
-										</div>
-									</div>
-									<p class="truncate text-sm font-semibold text-zinc-950">
-										{sideDisplayName(side)}
-									</p>
-									{#if sideTeamName(side)}
-										<p class="mt-0.5 truncate text-xs text-zinc-400">{sideTeamName(side)}</p>
-									{/if}
-								</div>
-							{/snippet}
-						</DragOverlay>
-					</DragDropProvider>
-				</div>
-			{/if}
+			<div class="mb-4">
+				<CourtSideToggle
+					leftTeamName={leftSidePlayers[0]?.teamName}
+					rightTeamName={rightSidePlayers[0]?.teamName}
+					leftPlayers={leftSidePlayers.map((p) => p.name)}
+					rightPlayers={rightSidePlayers.map((p) => p.name)}
+					accentLeft={leftAccent}
+					accentRight={rightAccent}
+					label="エンドを入れ替える"
+					ontoggle={doChangeEnds}
+				/>
+			</div>
 
 			<form
 				onsubmit={async (e) => {
@@ -367,15 +276,8 @@
 		)}
 	</div>
 
-	<!-- Change-of-ends button -->
-	<AppButton
-		class="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-3 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-200 active:scale-95"
-		type="button"
-		onclick={doChangeEnds}
-	>
-		<ArrowLeftRight class="h-4 w-4" />
-		チェンジエンド
-	</AppButton>
+	<!-- Change-of-ends -->
+	<CourtSideToggle ontoggle={doChangeEnds} />
 
 	<!-- Service info -->
 	<Card class="p-5">
@@ -494,4 +396,11 @@
 
 	<!-- Event log -->
 	<RefereeEventLog events={data.events} />
+
+	<!-- WebSocket: 別端末の操作を反映 -->
+	<RealtimeSync
+		channel={matchChannel(data.match.id)}
+		topics={[]}
+		onUpdate={() => invalidateAll()}
+	/>
 </div>

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { Switch } from 'bits-ui';
+	import type { ComponentProps } from 'svelte';
 	import { cn } from '$lib/utils/cn';
 
 	let {
 		checked = $bindable(false),
 		label,
-		class: className = ''
-	}: {
-		checked?: boolean;
+		class: className = '',
+		...rootProps
+	}: ComponentProps<typeof Switch.Root> & {
 		label?: string;
 		class?: string;
 	} = $props();
@@ -16,6 +17,7 @@
 <label class={cn('flex cursor-pointer items-center gap-2 select-none', className)}>
 	<Switch.Root
 		bind:checked
+		{...rootProps}
 		class="relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 focus-visible:outline-none data-[state=checked]:bg-zinc-900 data-[state=unchecked]:bg-zinc-200"
 	>
 		<Switch.Thumb

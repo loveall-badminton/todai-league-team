@@ -1,9 +1,11 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
-	import type { getGroupStandings } from './live.remote';
+	import type { LivePageData } from '$lib/server/services/livePageService';
 
-	let { query }: { query: ReturnType<typeof getGroupStandings> } = $props();
+	type QueryValue<T> = { current: T | null | undefined };
+
+	let { query }: { query: QueryValue<LivePageData['standings']> } = $props();
 
 	const groups = $derived(
 		query.current
@@ -16,7 +18,9 @@
 
 	type StandingData = NonNullable<typeof query.current>;
 	function groupTeams(rows: StandingData['standingA'], allTeams: StandingData['teams']) {
-		return rows.map((row) => allTeams.find((t) => t.id === row.teamId)).filter((t) => t != null);
+		return rows
+			.map((row) => allTeams.find((t: StandingData['teams'][number]) => t.id === row.teamId))
+			.filter((t): t is StandingData['teams'][number] => t != null);
 	}
 </script>
 

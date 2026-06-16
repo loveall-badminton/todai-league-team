@@ -1,16 +1,21 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import type { getSchedule } from './live.remote';
+	import type { LivePageData } from '$lib/server/services/livePageService';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
 
-	let { query }: { query: ReturnType<typeof getSchedule> } = $props();
+	type QueryValue<T> = { current: T | null | undefined };
+	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
+
+	let { query }: { query: QueryValue<LivePageData['schedule']> } = $props();
 
 	function formatTime(val: string | null | undefined): string | null {
 		return val || null;
 	}
 
-	let grouped = $derived(query.current == null ? null : groupTiesByPhase(query.current));
+	let grouped = $derived(
+		query.current == null ? null : groupTiesByPhase<ScheduleTie>(query.current)
+	);
 </script>
 
 {#if query.current == null}

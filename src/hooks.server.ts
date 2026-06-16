@@ -4,7 +4,7 @@ import { createAuth } from '$lib/server/auth';
 import { getAuthProfile } from '$lib/server/auth/access';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 
-const AUTH_PATHS = ['/auth/login', '/auth/bootstrap'];
+const AUTH_PATHS = ['/auth/login', '/auth/bootstrap', '/api/live'];
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (!event.platform?.env?.DB)
