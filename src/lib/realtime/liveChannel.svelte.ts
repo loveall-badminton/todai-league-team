@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import PartySocket from 'partysocket';
-import type { LiveMessage } from './channels';
+import { parseLiveMessage, type LiveMessage } from './channels';
 
 export type LiveChannelStatus = 'connecting' | 'open' | 'closed';
 
@@ -47,8 +47,13 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 
 		ws.addEventListener('message', (event) => {
 			try {
-				const message = JSON.parse(event.data as string) as LiveMessage;
-				options.onMessage(message);
+				const parsed = JSON.parse(event.data);
+				const message = parseLiveMessage(parsed);
+				if (message) {
+					options.onMessage(message);
+				} else {
+					console.warn('[LiveChannel] invalid message', parsed);
+				}
 			} catch (err) {
 				console.warn('[LiveChannel] parse error', String(err));
 			}

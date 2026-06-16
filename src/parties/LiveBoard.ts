@@ -1,4 +1,6 @@
 import { Server, type Connection, type ConnectionContext } from 'partyserver';
+import { liveMessageSchema, type LiveMessage } from '$lib/realtime/channels';
+import * as v from 'valibot';
 
 export class LiveBoard extends Server<Env> {
 	static options = { hibernate: true };
@@ -10,7 +12,8 @@ export class LiveBoard extends Server<Env> {
 			url: ctx.request.url,
 			at: new Date().toISOString()
 		});
-		connection.send(JSON.stringify({ type: 'hello', at: new Date().toISOString() }));
+		const hello: LiveMessage = { type: 'hello', at: new Date().toISOString() };
+		connection.send(JSON.stringify(hello));
 	}
 
 	async onRequest(request: Request): Promise<Response> {
@@ -21,15 +24,24 @@ export class LiveBoard extends Server<Env> {
 			at: new Date().toISOString()
 		});
 		if (request.method === 'POST') {
-			const message = await request.json();
+			const raw = await request.json();
+			const parsed = v.safeParse(liveMessageSchema, raw);
+			if (!parsed.success) {
+				console.warn('[LiveBoard] invalid message', {
+					name: this.name,
+					issues: parsed.issues,
+					at: new Date().toISOString()
+				});
+				return Response.json({ ok: false, error: 'invalid message' }, { status: 400 });
+			}
 			const count = [...this.getConnections()].length;
 			console.log('[LiveBoard] broadcast', {
 				name: this.name,
-				message,
+				message: parsed.output,
 				clientCount: count,
 				at: new Date().toISOString()
 			});
-			this.broadcast(JSON.stringify(message));
+			this.broadcast(JSON.stringify(parsed.output));
 			return Response.json({ ok: true, clients: count });
 		}
 		return new Response('Not found', { status: 404 });
