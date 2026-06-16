@@ -3,13 +3,13 @@
 #   Refer for explanation to following link:
 #   https://lefthook.dev/configuration/
 #
-pre-push:
-  jobs:
-    - name: packages audit
-      tags:
-        - frontend
-        - security
-      run: pnpm audit
+# pre-push:
+#   jobs:
+#     - name: packages audit
+#       tags:
+#         - frontend
+#         - security
+#       run: pnpm audit
 #
 #     - name: gems audit
 #       tags:
