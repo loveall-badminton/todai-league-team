@@ -107,10 +107,10 @@ export const authUserProfiles = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		accountTypeIdx: index('auth_user_profiles_account_type_idx').on(table.accountType),
-		teamIdx: index('auth_user_profiles_team_id_idx').on(table.teamId)
-	})
+	(table) => [
+		index('auth_user_profiles_account_type_idx').on(table.accountType),
+		index('auth_user_profiles_team_id_idx').on(table.teamId)
+	]
 );
 
 export const teamPlayers = sqliteTable(
@@ -145,9 +145,7 @@ export const teamPlayers = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		teamIdx: index('team_players_team_id_idx').on(table.teamId)
-	})
+	(table) => [index('team_players_team_id_idx').on(table.teamId)]
 );
 
 export const ties = sqliteTable(
@@ -231,12 +229,12 @@ export const ties = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tieCodeUnique: uniqueIndex('ties_tie_code_unique').on(table.tieCode),
-		groupIdx: index('ties_group_code_idx').on(table.groupCode),
-		teamAIdx: index('ties_team_a_idx').on(table.teamAId),
-		teamBIdx: index('ties_team_b_idx').on(table.teamBId)
-	})
+	(table) => [
+		uniqueIndex('ties_tie_code_unique').on(table.tieCode),
+		index('ties_group_code_idx').on(table.groupCode),
+		index('ties_team_a_idx').on(table.teamAId),
+		index('ties_team_b_idx').on(table.teamBId)
+	]
 );
 
 export const tournaments = sqliteTable(
@@ -266,9 +264,7 @@ export const tournaments = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		publicSlugUnique: uniqueIndex('tournaments_public_slug_unique').on(table.publicSlug)
-	})
+	(table) => [uniqueIndex('tournaments_public_slug_unique').on(table.publicSlug)]
 );
 
 export const courts = sqliteTable(
@@ -298,13 +294,10 @@ export const courts = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tournamentIdx: index('courts_tournament_id_idx').on(table.tournamentId),
-		tournamentNameUnique: uniqueIndex('courts_tournament_name_unique').on(
-			table.tournamentId,
-			table.name
-		)
-	})
+	(table) => [
+		index('courts_tournament_id_idx').on(table.tournamentId),
+		uniqueIndex('courts_tournament_name_unique').on(table.tournamentId, table.name)
+	]
 );
 
 export const matches = sqliteTable(
@@ -406,14 +399,14 @@ export const matches = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tournamentIdx: index('matches_tournament_id_idx').on(table.tournamentId),
-		courtIdx: index('matches_court_id_idx').on(table.courtId),
-		rubberIdx: index('matches_rubber_id_idx').on(table.rubberId),
-		rankingTiebreakerIdx: index('matches_ranking_tiebreaker_id_idx').on(table.rankingTiebreakerId),
-		scoringRuleIdx: index('matches_scoring_rule_id_idx').on(table.scoringRuleId),
-		serverIdx: index('matches_current_server_idx').on(table.currentServerPlayerId)
-	})
+	(table) => [
+		index('matches_tournament_id_idx').on(table.tournamentId),
+		index('matches_court_id_idx').on(table.courtId),
+		index('matches_rubber_id_idx').on(table.rubberId),
+		index('matches_ranking_tiebreaker_id_idx').on(table.rankingTiebreakerId),
+		index('matches_scoring_rule_id_idx').on(table.scoringRuleId),
+		index('matches_current_server_idx').on(table.currentServerPlayerId)
+	]
 );
 
 export const matchSides = sqliteTable(
@@ -441,10 +434,10 @@ export const matchSides = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		matchIdx: index('match_sides_match_id_idx').on(table.matchId),
-		matchSideUnique: uniqueIndex('match_sides_match_side_unique').on(table.matchId, table.side)
-	})
+	(table) => [
+		index('match_sides_match_id_idx').on(table.matchId),
+		uniqueIndex('match_sides_match_side_unique').on(table.matchId, table.side)
+	]
 );
 
 export const matchSidePlayers = sqliteTable(
@@ -481,15 +474,15 @@ export const matchSidePlayers = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		matchIdx: index('match_side_players_match_id_idx').on(table.matchId),
-		matchSideIdx: index('match_side_players_match_side_idx').on(table.matchId, table.side),
-		matchSideOrderUnique: uniqueIndex('match_side_players_match_side_order_unique').on(
+	(table) => [
+		index('match_side_players_match_id_idx').on(table.matchId),
+		index('match_side_players_match_side_idx').on(table.matchId, table.side),
+		uniqueIndex('match_side_players_match_side_order_unique').on(
 			table.matchId,
 			table.side,
 			table.playerOrder
 		)
-	})
+	]
 );
 
 export const scoreEvents = sqliteTable(
@@ -563,14 +556,11 @@ export const scoreEvents = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		matchSeqUnique: uniqueIndex('score_events_match_seq_unique').on(table.matchId, table.seqNo),
-		matchIdempotencyUnique: uniqueIndex('score_events_match_idempotency_unique').on(
-			table.matchId,
-			table.idempotencyKey
-		),
-		matchSeqIdx: index('score_events_match_seq_idx').on(table.matchId, table.seqNo)
-	})
+	(table) => [
+		uniqueIndex('score_events_match_seq_unique').on(table.matchId, table.seqNo),
+		uniqueIndex('score_events_match_idempotency_unique').on(table.matchId, table.idempotencyKey),
+		index('score_events_match_seq_idx').on(table.matchId, table.seqNo)
+	]
 );
 
 export const matchSnapshots = sqliteTable('match_snapshots', {
@@ -635,12 +625,9 @@ export const scoreEventUndoLinks = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		matchTargetUnique: uniqueIndex('score_event_undo_links_match_target_unique').on(
-			table.matchId,
-			table.targetSeqNo
-		)
-	})
+	(table) => [
+		uniqueIndex('score_event_undo_links_match_target_unique').on(table.matchId, table.targetSeqNo)
+	]
 );
 
 export const rubbers = sqliteTable(
@@ -696,11 +683,11 @@ export const rubbers = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tieIdx: index('rubbers_tie_id_idx').on(table.tieId),
-		tieCodeUnique: uniqueIndex('rubbers_tie_code_unique').on(table.tieId, table.code),
-		matchIdx: index('rubbers_match_id_idx').on(table.matchId)
-	})
+	(table) => [
+		index('rubbers_tie_id_idx').on(table.tieId),
+		uniqueIndex('rubbers_tie_code_unique').on(table.tieId, table.code),
+		index('rubbers_match_id_idx').on(table.matchId)
+	]
 );
 
 export const lineupSubmissions = sqliteTable(
@@ -737,10 +724,10 @@ export const lineupSubmissions = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tieTeamUnique: uniqueIndex('lineup_submissions_tie_team_unique').on(table.tieId, table.teamId),
-		tieSideUnique: uniqueIndex('lineup_submissions_tie_side_unique').on(table.tieId, table.side)
-	})
+	(table) => [
+		uniqueIndex('lineup_submissions_tie_team_unique').on(table.tieId, table.teamId),
+		uniqueIndex('lineup_submissions_tie_side_unique').on(table.tieId, table.side)
+	]
 );
 
 export const lineupItems = sqliteTable(
@@ -771,12 +758,9 @@ export const lineupItems = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		submissionRubberUnique: uniqueIndex('lineup_items_submission_rubber_unique').on(
-			table.submissionId,
-			table.rubberCode
-		)
-	})
+	(table) => [
+		uniqueIndex('lineup_items_submission_rubber_unique').on(table.submissionId, table.rubberCode)
+	]
 );
 
 export const officiatingAssignments = sqliteTable(
@@ -813,10 +797,10 @@ export const officiatingAssignments = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		tieIdx: index('officiating_assignments_tie_id_idx').on(table.tieId),
-		assignedTeamIdx: index('officiating_assignments_assigned_team_id_idx').on(table.assignedTeamId)
-	})
+	(table) => [
+		index('officiating_assignments_tie_id_idx').on(table.tieId),
+		index('officiating_assignments_assigned_team_id_idx').on(table.assignedTeamId)
+	]
 );
 
 export const groupStandingOverrides = sqliteTable(
@@ -843,16 +827,10 @@ export const groupStandingOverrides = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		groupTeamUnique: uniqueIndex('group_standing_overrides_group_team_unique').on(
-			table.groupCode,
-			table.teamId
-		),
-		groupRankUnique: uniqueIndex('group_standing_overrides_group_rank_unique').on(
-			table.groupCode,
-			table.manualRank
-		)
-	})
+	(table) => [
+		uniqueIndex('group_standing_overrides_group_team_unique').on(table.groupCode, table.teamId),
+		uniqueIndex('group_standing_overrides_group_rank_unique').on(table.groupCode, table.manualRank)
+	]
 );
 
 export const rankingTiebreakers = sqliteTable(
@@ -895,10 +873,10 @@ export const rankingTiebreakers = sqliteTable(
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
-	(table) => ({
-		groupIdx: index('ranking_tiebreakers_group_code_idx').on(table.groupCode),
-		matchIdx: index('ranking_tiebreakers_match_id_idx').on(table.matchId)
-	})
+	(table) => [
+		index('ranking_tiebreakers_group_code_idx').on(table.groupCode),
+		index('ranking_tiebreakers_match_id_idx').on(table.matchId)
+	]
 );
 
 export const tournamentsRelations = relations(tournaments, ({ many }) => ({
