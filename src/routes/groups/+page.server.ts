@@ -1,11 +1,9 @@
-import { requireAdmin } from '$lib/server/auth/access';
+import { adminPageLoad } from '$lib/server/loadHelpers';
 import { listGroupTies, listTeamsByGroup } from '$lib/server/repositories/tokyoLeagueRepository';
-import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	requireAdmin();
-	await ensureDefaultSettings();
+	await adminPageLoad();
 	const [teamsA, teamsB, tiesA, tiesB] = await Promise.all([
 		listTeamsByGroup('A'),
 		listTeamsByGroup('B'),

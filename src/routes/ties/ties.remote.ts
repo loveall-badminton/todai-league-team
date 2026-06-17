@@ -9,22 +9,9 @@ import {
 } from '$lib/server/repositories/tokyoLeagueRepository';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
+import { emptyToNull, uniqueNonEmpty, venueOrNull } from '$lib/utils/validation';
 import { redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
-
-const emptyToNull = (s: string | undefined | null): string | null => {
-	const text = (s ?? '').trim();
-	return text === '' ? null : text;
-};
-
-const uniqueNonEmpty = (values: string[] | undefined): string[] => [
-	...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))
-];
-
-const venueOrNull = (s: string | undefined | null): 'first_gym' | 'second_gym' | null => {
-	if (s === 'first_gym' || s === 'second_gym') return s;
-	return null;
-};
 
 const policyFromValue = (
 	s: string | undefined | null

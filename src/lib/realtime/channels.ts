@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 
-export const liveTopicSchema = v.picklist(['score', 'standings', 'schedule', 'finals'] as const);
+const liveTopicSchema = v.picklist(['score', 'standings', 'schedule', 'finals'] as const);
 
 export type LiveTopic = v.InferOutput<typeof liveTopicSchema>;
 
@@ -31,7 +31,3 @@ export const LIVE_BOARD_CHANNEL = 'live-board';
 export function matchChannel(matchId: string): string {
 	return `match:${matchId}`;
 }
-
-export const PARTY_PREFIX = 'parties';
-
-export const LIVE_BOARD_PARTY = 'live-board';

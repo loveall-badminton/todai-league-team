@@ -2,9 +2,8 @@
 	import Card from '$lib/components/Card.svelte';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { LivePageData } from '$lib/server/services/livePageService';
+	import type { QueryValue } from '$lib/utils/types';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
-
-	type QueryValue<T> = { current: T | null | undefined };
 	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
 
 	let { query }: { query: QueryValue<LivePageData['schedule']> } = $props();

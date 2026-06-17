@@ -6,13 +6,13 @@
 	import { courtDisplayLabel, phaseLabel, rubberLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { PublicRubberSummary } from '$lib/server/services/liveBoardService';
 	import type { LivePageData } from '$lib/server/services/livePageService';
+	import type { QueryValue } from '$lib/utils/types';
 	import { ChartLine } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
 	import ScoreProgressChart from './ScoreProgressChart.svelte';
 
 	type ActiveTie = NonNullable<LivePageData['activeTies']>['ties'][number];
 	type PlayingRubber = NonNullable<LivePageData['activeTies']>['rubbersByTieId'][string][number];
-	type QueryValue<T> = { current: T | null | undefined };
 
 	let {
 		query,

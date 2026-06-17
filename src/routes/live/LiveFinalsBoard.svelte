@@ -2,8 +2,7 @@
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Card from '$lib/components/Card.svelte';
 	import type { LivePageData } from '$lib/server/services/livePageService';
-
-	type QueryValue<T> = { current: T | null | undefined };
+	import type { QueryValue } from '$lib/utils/types';
 
 	let { query }: { query: QueryValue<LivePageData['finalsBoard']> } = $props();
 </script>

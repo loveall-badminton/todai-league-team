@@ -45,7 +45,11 @@
 			},
 			onMessage: (message) => {
 				if (message.type !== 'updated') return;
-				const matched = message.topics.filter((t) => (topics as LiveTopic[]).includes(t));
+				if (topics.length === 0) {
+					onUpdate(message.topics);
+					return;
+				}
+				const matched = message.topics.filter((t) => topics.includes(t));
 				if (matched.length > 0) onUpdate(matched);
 			}
 		});

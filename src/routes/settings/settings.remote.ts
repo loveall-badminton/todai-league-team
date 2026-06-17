@@ -4,15 +4,12 @@ import {
 	updateLeagueSettings,
 	updateScoringRule as updateScoringRuleRepo
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { emptyToNull } from '$lib/utils/validation';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 
 const intPositive = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(1));
 const intNonNeg = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0));
-
-function emptyToNull(s: string): string | null {
-	return s.trim() === '' ? null : s.trim();
-}
 
 export const updateSettings = form(
 	v.object({

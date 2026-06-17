@@ -207,7 +207,7 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 	await cancelRubber(match.rubberId, now);
 }
 
-export async function cancelRubber(rubberId: string, now = new Date().toISOString()) {
+async function cancelRubber(rubberId: string, now = new Date().toISOString()) {
 	const db = getRequestDb();
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');

@@ -2,8 +2,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
 	import type { LivePageData } from '$lib/server/services/livePageService';
-
-	type QueryValue<T> = { current: T | null | undefined };
+	import type { QueryValue } from '$lib/utils/types';
 
 	let { query }: { query: QueryValue<LivePageData['standings']> } = $props();
 

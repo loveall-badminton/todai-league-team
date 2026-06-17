@@ -10,14 +10,9 @@ import {
 	upsertAuthProfile
 } from '$lib/server/auth/accountManagement';
 import { normalizeAccountId } from '$lib/server/auth/accountIds';
-import { APIError } from 'better-auth/api';
+import { apiErrorMessage } from '$lib/server/errors';
 
 const accountTypeSchema = v.picklist(['participant', 'team', 'admin'] as const);
-
-function apiErrorMessage(err: unknown, fallback: string): string {
-	if (err instanceof APIError) return err.message || fallback;
-	return err instanceof Error ? err.message : fallback;
-}
 
 export const createAccount = form(
 	v.object({

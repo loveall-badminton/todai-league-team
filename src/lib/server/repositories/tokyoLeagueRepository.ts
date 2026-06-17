@@ -499,20 +499,6 @@ export async function assignOfficiatingTeams(input: {
 	);
 }
 
-export async function assignOfficiatingTeam(input: {
-	tieId: string;
-	assignedTeamId: string | null;
-	note?: string | null;
-	now: string;
-}) {
-	await assignOfficiatingTeams({
-		tieId: input.tieId,
-		assignedTeamIds: input.assignedTeamId ? [input.assignedTeamId] : [],
-		note: input.note,
-		now: input.now
-	});
-}
-
 export async function setGroupStandingOverride(input: {
 	groupCode: GroupCode;
 	teamId: string;

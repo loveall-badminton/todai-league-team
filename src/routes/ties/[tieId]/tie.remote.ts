@@ -1,11 +1,13 @@
 import { command, form, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
+import { actionErrorMessage } from '$lib/server/errors';
 import {
 	assignOfficiatingTeams,
 	deleteTie as deleteTieRepo,
 	updateTieSchedule
 } from '$lib/server/repositories/tokyoLeagueRepository';
+import { emptyToNull, uniqueNonEmpty, venueOrNull } from '$lib/utils/validation';
 import {
 	lockLineup as lockLineupService,
 	revealLineups as revealLineupsService,
@@ -19,24 +21,6 @@ import {
 } from '$lib/server/services/tieOperationService';
 import { error, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
-
-const emptyToNull = (s: string | undefined | null): string | null => {
-	const text = (s ?? '').trim();
-	return text === '' ? null : text;
-};
-
-const uniqueNonEmpty = (values: string[] | undefined): string[] => [
-	...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))
-];
-
-const venueOrNull = (s: string | undefined | null): 'first_gym' | 'second_gym' | null => {
-	if (s === 'first_gym' || s === 'second_gym') return s;
-	return null;
-};
-
-function errMsg(caught: unknown) {
-	return caught instanceof Error ? caught.message : '処理に失敗しました';
-}
 
 export const updateTie = form(
 	v.object({
@@ -98,7 +82,7 @@ export const startTie = command(async () => {
 	try {
 		await startTieService(event.params.tieId!);
 	} catch (caught) {
-		error(400, errMsg(caught));
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
 	notifyLiveBoard(['score', 'schedule']);
 });
@@ -116,7 +100,7 @@ export const lockLineup = command(v.object({ teamId: v.string() }), async ({ tea
 	try {
 		await lockLineupService({ tieId: event.params.tieId!, teamId });
 	} catch (caught) {
-		error(400, errMsg(caught));
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
 	notifyLiveBoard(['schedule']);
 });
@@ -127,7 +111,7 @@ export const unlockLineup = command(v.object({ teamId: v.string() }), async ({ t
 	try {
 		await unlockLineupService({ tieId: event.params.tieId!, teamId });
 	} catch (caught) {
-		error(400, errMsg(caught));
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
 	notifyLiveBoard(['schedule']);
 });
@@ -138,7 +122,7 @@ export const revealLineups = command(async () => {
 	try {
 		await revealLineupsService(event.params.tieId!);
 	} catch (caught) {
-		error(400, errMsg(caught));
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
 	notifyLiveBoard(['schedule']);
 });
@@ -149,7 +133,7 @@ export const unrevealLineups = command(async () => {
 	try {
 		await unrevealLineupsService(event.params.tieId!);
 	} catch (caught) {
-		error(400, errMsg(caught));
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
 	notifyLiveBoard(['schedule']);
 });
