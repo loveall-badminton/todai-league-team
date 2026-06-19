@@ -64,7 +64,7 @@
 {/snippet}
 
 {#if service}
-	<Card class="p-5">
+	<Card>
 		<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">コート配置</h2>
 
 		<div class="mb-1 grid grid-cols-[1fr_2rem_1fr]">

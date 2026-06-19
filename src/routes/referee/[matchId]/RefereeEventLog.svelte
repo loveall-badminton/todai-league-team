@@ -36,7 +36,7 @@
 	}
 </script>
 
-<Card class="p-5">
+<Card>
 	<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">イベントログ</h2>
 	<div class="max-h-72 space-y-1.5 overflow-auto">
 		{#each reversedEvents as event (event.id)}

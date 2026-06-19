@@ -11,6 +11,7 @@
 	import type { QueryValue } from '$lib/utils/types';
 	import { cn } from '$lib/utils/cn';
 	import { ChevronDown } from '@lucide/svelte';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import ScoreProgressChart from './ScoreProgressChart.svelte';
 
 	type TieRubber = NonNullable<LivePageData['activeTies']>['rubbersByTieId'][string][number];
@@ -99,7 +100,7 @@
 {:else if query.current.ties.length > 0}
 	{@const { ties, rubbersByTieId } = query.current}
 	<section class="space-y-3">
-		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">進行中</h2>
+		<SectionLabel>進行中</SectionLabel>
 		<div class="grid gap-4 md:grid-cols-2">
 			{#each ties as tie (tie.id)}
 				{@const tieRubbers = rubbersByTieId[tie.id] ?? []}

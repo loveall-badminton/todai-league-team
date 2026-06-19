@@ -27,7 +27,7 @@
 				success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
 				warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',
 				violet:
-					'rounded-lg border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
+					'rounded-xl border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
 			},
 			size: {
 				sm: 'px-3 py-1.5 text-xs',

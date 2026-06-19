@@ -11,10 +11,10 @@ describe('statusBadgeColor', () => {
 		expect(statusBadgeColor('ready')).toBe('violet');
 		expect(statusBadgeColor('called')).toBe('blue');
 		expect(statusBadgeColor('warmup')).toBe('violet');
-		expect(statusBadgeColor('playing')).toBe('green');
+		expect(statusBadgeColor('playing')).toBe('emerald');
 		expect(statusBadgeColor('interval')).toBe('amber');
 		expect(statusBadgeColor('suspended')).toBe('amber');
-		expect(statusBadgeColor('finished')).toBe('orange');
+		expect(statusBadgeColor('finished')).toBe('amber');
 		expect(statusBadgeColor('forfeited')).toBe('red');
 		expect(statusBadgeColor('retired')).toBe('red');
 		expect(statusBadgeColor('confirmed')).toBe('emerald');

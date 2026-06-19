@@ -109,7 +109,7 @@
 </header>
 
 <!-- Team edit form -->
-<Card class="p-5">
+<Card>
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
 		<ConfirmDialog

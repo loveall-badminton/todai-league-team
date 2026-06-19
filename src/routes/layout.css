@@ -7,6 +7,23 @@
 	--font-sans:
 		'LINE Seed JP', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
 		'Segoe UI Symbol', 'Noto Color Emoji';
+
+	--color-success: var(--color-emerald-600);
+	--color-success-bg: var(--color-emerald-50);
+	--color-danger: var(--color-red-600);
+	--color-danger-bg: var(--color-red-50);
+	--color-warning: var(--color-amber-600);
+	--color-warning-bg: var(--color-amber-50);
+	--color-info: var(--color-blue-600);
+	--color-info-bg: var(--color-blue-50);
+
+	--color-court-a: var(--color-pink-500);
+	--color-court-a-bg: var(--color-pink-50);
+	--color-court-b: var(--color-cyan-500);
+	--color-court-b-bg: var(--color-cyan-50);
+
+	--radius-element: 0.75rem;
+	--radius-container: 1rem;
 }
 
 body,

@@ -44,7 +44,7 @@
 					← 左コート
 				</p>
 				{#if leftPlayers && leftPlayers.length > 0}
-					<p class="text-sm leading-snug font-semibold text-zinc-900">
+					<p class="text-sm leading-snug font-semibold text-zinc-950">
 						{leftPlayers.join(' / ')}
 					</p>
 				{/if}
@@ -68,7 +68,7 @@
 					右コート →
 				</p>
 				{#if rightPlayers && rightPlayers.length > 0}
-					<p class="text-sm leading-snug font-semibold text-zinc-900">
+					<p class="text-sm leading-snug font-semibold text-zinc-950">
 						{rightPlayers.join(' / ')}
 					</p>
 				{/if}

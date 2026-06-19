@@ -93,7 +93,7 @@
 <PageHeader eyebrow="予選リーグ" title={`${data.groupCode}リーグ`} actions={headerActions} />
 
 <!-- Teams -->
-<Card class="p-5">
+<Card>
 	<h2 class="text-sm font-medium tracking-wide text-zinc-500">所属チーム</h2>
 	<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 		{#each data.groupTeams as team (team.id)}
@@ -193,7 +193,7 @@
 								</div>
 								<div class="flex flex-1 items-center px-4 py-3">
 									<div class="flex min-w-0 flex-col gap-0.5">
-										<span class="font-semibold text-zinc-900">{tie.tieCode}</span>
+										<span class="font-semibold text-zinc-950">{tie.tieCode}</span>
 										<p class="truncate text-sm text-zinc-600">
 											{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
 											{tie.teamBName ?? '未定'}

@@ -26,7 +26,7 @@
 
 {#if isTeamAccount}
 	<div class="grid gap-4 sm:grid-cols-2">
-		<Card class="p-5">
+		<Card>
 			<div class="mb-3 flex items-center gap-2">
 				<ClipboardList class="h-4 w-4 text-zinc-500" />
 				<h2 class="text-sm font-semibold text-zinc-950">オーダー提出</h2>
@@ -64,7 +64,7 @@
 			{/if}
 		</Card>
 
-		<Card class="p-5">
+		<Card>
 			<div class="mb-3 flex items-center gap-2">
 				<Shield class="h-4 w-4 text-zinc-500" />
 				<h2 class="text-sm font-semibold text-zinc-950">審判担当</h2>

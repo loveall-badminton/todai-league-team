@@ -35,7 +35,7 @@
 <Card class="p-4">
 	<div class="mb-3 flex items-center justify-between">
 		<h2 class="text-base font-semibold text-zinc-950">進行中の対戦</h2>
-		<Badge color="green">{playing.length}</Badge>
+		<Badge color="emerald">{playing.length}</Badge>
 	</div>
 	<div class="space-y-2">
 		{#each playing as tie (tie.id)}

@@ -4,6 +4,7 @@
 	import type { LivePageData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
 
 	let { query }: { query: QueryValue<LivePageData['schedule']> } = $props();
@@ -33,7 +34,7 @@
 	</section>
 {:else if (grouped?.length ?? 0) > 0}
 	<section class="space-y-3">
-		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">進行予定表</h2>
+		<SectionLabel>進行予定表</SectionLabel>
 		<div class="space-y-4">
 			{#each grouped! as group (group.phase)}
 				<Card class="overflow-hidden">

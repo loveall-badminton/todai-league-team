@@ -266,7 +266,7 @@
 							</div>
 							<div class="flex flex-1 items-center px-4 py-3">
 								<div class="flex min-w-0 flex-col gap-0.5">
-									<span class="font-semibold text-zinc-900">{tie.tieCode}</span>
+									<span class="font-semibold text-zinc-950">{tie.tieCode}</span>
 									<p class="truncate text-sm text-zinc-600">
 										{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
 										{tie.teamBName ?? '未定'}

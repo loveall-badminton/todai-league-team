@@ -92,7 +92,7 @@
 
 <!-- Creation form (inline) -->
 {#if showForm}
-	<Card class="p-5">
+	<Card>
 		<h2 class="mb-4 text-base font-semibold text-zinc-950">チーム追加</h2>
 		<form {...create} class="space-y-4">
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

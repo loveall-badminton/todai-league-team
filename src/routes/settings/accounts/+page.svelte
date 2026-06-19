@@ -84,8 +84,8 @@
 
 <PageHeader eyebrow="設定" title="ユーザー管理" actions={headerActions} />
 
-<Card class="p-5">
-	<h2 class="mb-4 font-semibold text-zinc-900">アカウント発行</h2>
+<Card>
+	<h2 class="mb-4 font-semibold text-zinc-950">アカウント発行</h2>
 	<FormToast result={createAccount.result} />
 	<form {...createAccount} class="space-y-4">
 		<div class="grid gap-4 sm:grid-cols-2">
@@ -134,7 +134,7 @@
 <section class="space-y-4">
 	<div class="flex flex-wrap items-end justify-between gap-3">
 		<div>
-			<h2 class="font-semibold text-zinc-900">発行済みアカウント</h2>
+			<h2 class="font-semibold text-zinc-950">発行済みアカウント</h2>
 			<p class="mt-1 text-sm text-zinc-500">ログインID、権限、チーム紐づけを一覧で確認できます。</p>
 		</div>
 	</div>
@@ -163,7 +163,7 @@
 										<AccountIcon class="h-3.5 w-3.5" />
 									</div>
 									<div class="min-w-0">
-										<p class="truncate font-mono text-sm font-semibold text-zinc-900">
+										<p class="truncate font-mono text-sm font-semibold text-zinc-950">
 											{account.accountId}
 										</p>
 										<p class="truncate text-xs text-zinc-500">{account.name}</p>
@@ -240,7 +240,7 @@
 							</div>
 							<div>
 								<div class="flex flex-wrap items-center gap-2">
-									<Dialog.Title class="font-mono text-sm font-semibold text-zinc-900">
+									<Dialog.Title class="font-mono text-sm font-semibold text-zinc-950">
 										{editAccount.accountId}
 									</Dialog.Title>
 									<Badge color={accountTypeBadgeColor(accountType)}>

@@ -3,6 +3,7 @@
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
 	import type { LivePageData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	let { query }: { query: QueryValue<LivePageData['standings']> } = $props();
 
@@ -47,7 +48,7 @@
 	</section>
 {:else if groups.length > 0}
 	<section class="space-y-3">
-		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">順位表</h2>
+		<SectionLabel>順位表</SectionLabel>
 		<div class="grid gap-4 xl:grid-cols-2">
 			{#each groups as group (group.label)}
 				{@const teams = groupTeams(group.rows, query.current!.teams)}

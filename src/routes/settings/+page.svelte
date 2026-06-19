@@ -40,8 +40,8 @@
 <PageHeader title="設定" />
 
 <!-- League settings -->
-<Card class="p-5">
-	<h2 class="mb-4 font-semibold text-zinc-900">運営設定</h2>
+<Card>
+	<h2 class="mb-4 font-semibold text-zinc-950">運営設定</h2>
 	<form {...updateSettings} class="space-y-4">
 		<FormToast result={updateSettings.result} />
 		<div class="grid gap-1">
@@ -106,10 +106,10 @@
 </Card>
 
 <!-- Accounts -->
-<Card class="p-5">
+<Card>
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="font-semibold text-zinc-900">ユーザー管理</h2>
+			<h2 class="font-semibold text-zinc-950">ユーザー管理</h2>
 			<p class="mt-1 text-sm text-zinc-500">運営、一般参加者、チーム用のIDを管理します。</p>
 		</div>
 		<AppButton variant="secondary" href={resolve('/settings/accounts')}>開く</AppButton>
@@ -118,7 +118,7 @@
 
 <!-- Scoring rules -->
 <section class="space-y-3">
-	<h2 class="font-semibold text-zinc-900">得点ルール</h2>
+	<h2 class="font-semibold text-zinc-950">得点ルール</h2>
 	{#each data.scoringRules as rule (rule.id)}
 		{@const ruleForm = updateScoringRule.for(rule.id)}
 		<Card class="p-5"

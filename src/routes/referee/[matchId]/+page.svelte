@@ -172,7 +172,7 @@
 
 <div class="grid gap-4">
 	<!-- Header -->
-	<Card class="p-5">
+	<Card>
 		<PageHeader
 			title={`${leftSideName} vs ${rightSideName}`}
 			description={`${data.match.court?.name ?? 'コート未設定'} · ゲーム ${data.state.currentGameNo} · ${matchStatusLabel(
@@ -191,7 +191,7 @@
 
 	<!-- Start game form -->
 	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}
-		<Card class="p-5">
+		<Card>
 			<h2 class="mb-3 font-semibold">
 				{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 			</h2>
@@ -283,7 +283,7 @@
 	<CourtSideToggle ontoggle={doChangeEnds} />
 
 	<!-- Service info -->
-	<Card class="p-5">
+	<Card>
 		<div class="mb-3 flex items-center justify-between">
 			<h2 class="text-xs font-medium tracking-wide text-zinc-400">サービス情報</h2>
 			{#if canEditService}
@@ -338,11 +338,11 @@
 	/>
 
 	<!-- Controls -->
-	<Card class="p-5">
+	<Card>
 		<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">操作</h2>
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 			<AppButton
-				class="col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 sm:col-span-1"
+				class="col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 sm:col-span-1"
 				type="button"
 				disabled={!lastUndoableEvent || isLocked}
 				onclick={() => run(() => undo({}))}
@@ -353,7 +353,8 @@
 				</span>
 			</AppButton>
 			<AppButton
-				class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-40"
+				variant="warning"
+				class="w-full"
 				type="button"
 				disabled={isLocked}
 				onclick={() => run(() => suspend({ reason: 'referee_decision' }))}
@@ -361,7 +362,8 @@
 				中断
 			</AppButton>
 			<AppButton
-				class="w-full rounded-xl bg-green-100 px-3 py-2.5 text-sm font-medium text-green-800 hover:bg-green-200 disabled:opacity-40"
+				variant="success"
+				class="w-full"
 				type="button"
 				disabled={isLocked}
 				onclick={() => run(() => resume({}))}

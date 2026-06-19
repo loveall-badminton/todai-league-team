@@ -165,7 +165,7 @@
 		<!-- Main content -->
 		<div class="flex min-w-0 flex-1 flex-col text-zinc-950 lg:ml-52">
 			<main class="min-w-0 flex-1 px-4 py-6 sm:px-6">
-				<div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
+				<div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4">
 					{@render children()}
 				</div>
 			</main>

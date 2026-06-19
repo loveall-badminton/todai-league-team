@@ -3,6 +3,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import type { LivePageData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	let { query }: { query: QueryValue<LivePageData['finalsBoard']> } = $props();
 </script>
@@ -25,7 +26,7 @@
 	</section>
 {:else if query.current.finalsBoard.length > 0}
 	<section class="space-y-3">
-		<h2 class="text-xs font-semibold tracking-wider text-zinc-400">決勝トーナメント</h2>
+		<SectionLabel>決勝トーナメント</SectionLabel>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each query.current.finalsBoard as tie (tie.id)}
 				<Card class={tie.status === 'playing' ? 'border-emerald-200' : ''}>

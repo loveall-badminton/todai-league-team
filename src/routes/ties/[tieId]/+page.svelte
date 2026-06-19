@@ -260,7 +260,7 @@
 </div>
 
 <!-- Info / edit panel -->
-<Card class="p-5">
+<Card>
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-xs font-medium tracking-wide text-zinc-400">詳細情報</h2>
 		{#if !editing}
