@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import type { EntityOption } from '$lib/types/entities';
 	import { ArrowLeft } from '@lucide/svelte';
 	import Card from '$lib/components/Card.svelte';
 	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
@@ -27,7 +28,7 @@
 
 	let { data }: PageProps = $props();
 
-	type Player = { id: string; name: string; gender: string };
+	type Player = EntityOption & { gender: string };
 	type Item = { rubberCode: string; player1Id: string | null; player2Id: string | null };
 
 	let status = $derived(data.submission?.status ?? null);

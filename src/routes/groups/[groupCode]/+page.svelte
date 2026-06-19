@@ -1,19 +1,15 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import Card from '$lib/components/Card.svelte';
-	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Badge from '$lib/components/Badge.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import { GripVertical } from '@lucide/svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import type { PageProps } from './$types';
@@ -26,6 +22,8 @@
 		reorder,
 		updateTie
 	} from './group.remote';
+	import GroupTeamsCard from './GroupTeamsCard.svelte';
+	import GroupTiebreakerSection from './GroupTiebreakerSection.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -92,23 +90,7 @@
 
 <PageHeader eyebrow="予選リーグ" title={`${data.groupCode}リーグ`} actions={headerActions} />
 
-<!-- Teams -->
-<Card>
-	<h2 class="text-sm font-medium tracking-wide text-zinc-500">所属チーム</h2>
-	<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-		{#each data.groupTeams as team (team.id)}
-			<a
-				class="flex items-center justify-between rounded-xl border border-zinc-100 px-4 py-3 hover:border-zinc-300"
-				href={resolve('/teams/[teamId]', { teamId: team.id })}
-			>
-				<span class="text-sm font-medium">{team.name}</span>
-				<span class="text-xs text-zinc-500">{team.playerCount}名</span>
-			</a>
-		{:else}
-			<p class="col-span-full text-sm text-zinc-500">チームが登録されていません。</p>
-		{/each}
-	</div>
-</Card>
+<GroupTeamsCard teams={data.groupTeams} />
 
 <!-- Standings + round-robin matrix (merged) -->
 {#snippet standingsExtraHead()}
@@ -150,10 +132,10 @@
 	</td>
 {/snippet}
 
-<Card class="min-w-0 p-0">
-	<div class="border-b border-zinc-100 px-5 py-4">
+<Card class="min-w-0" flush>
+	{#snippet header()}
 		<h2 class="font-semibold">順位表</h2>
-	</div>
+	{/snippet}
 
 	<GroupStandingsTable
 		standings={data.standings}
@@ -209,99 +191,11 @@
 	{/if}
 </section>
 
-<!-- Ranking Tiebreakers -->
-<Card>
-	<div class="border-b border-zinc-100 px-5 py-4">
-		<h2 class="font-semibold">順位決定再試合</h2>
-	</div>
-	<div class="space-y-5 p-5">
-		<!-- Create form -->
-		<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
-			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側チーム</span>
-				<AppSelect
-					{...createTiebreaker.fields.teamAId.as('select')}
-					items={groupTeamItems}
-					required
-				/>
-			</div>
-			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側選手</span>
-				<AppSelect
-					{...createTiebreaker.fields.playerAId.as('select')}
-					items={allPlayerItems}
-					required
-				/>
-			</div>
-			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側チーム</span>
-				<AppSelect
-					{...createTiebreaker.fields.teamBId.as('select')}
-					items={groupTeamItems}
-					required
-				/>
-			</div>
-			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側選手</span>
-				<AppSelect
-					{...createTiebreaker.fields.playerBId.as('select')}
-					items={allPlayerItems}
-					required
-				/>
-			</div>
-			<div class="grid gap-1 lg:col-span-2">
-				<span class="text-xs font-medium text-zinc-500">理由</span>
-				<AppInput
-					{...createTiebreaker.fields.reason.as('text')}
-					placeholder="順位未確定のため"
-					required
-				/>
-			</div>
-			<div class="lg:col-span-6">
-				<AppButton type="submit">再試合作成</AppButton>
-			</div>
-		</form>
-		<FormToast result={createTiebreaker.result} />
-
-		<!-- Tiebreaker list -->
-		{#if data.rankingTiebreakers.length > 0}
-			<div class="space-y-2 border-t border-zinc-100 pt-2">
-				{#each data.rankingTiebreakers as item (item.id)}
-					<div
-						class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm"
-					>
-						<div class="space-y-0.5">
-							<p class="font-medium">{item.reason}</p>
-							<p class="text-xs text-zinc-500">
-								{tiebreakerStatusLabel(item.status)}
-								{#if item.winnerTeamId}
-									/ 勝者: {teamName(item.winnerTeamId)}
-								{/if}
-							</p>
-						</div>
-						{#if item.matchId}
-							<div class="flex items-center gap-2">
-								<AppButton
-									variant="secondary"
-									size="sm"
-									href={resolve('/referee/[matchId]', { matchId: item.matchId })}
-								>
-									審判
-								</AppButton>
-								<AppButton
-									variant="secondary"
-									size="sm"
-									onclick={() => run(() => syncTiebreaker({ matchId: item.matchId! }))}
-								>
-									同期
-								</AppButton>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-		{:else}
-			<p class="text-sm text-zinc-500">作成済みの順位決定再試合はありません。</p>
-		{/if}
-	</div>
-</Card>
+<GroupTiebreakerSection
+	createTiebreakerForm={createTiebreaker}
+	rankingTiebreakers={data.rankingTiebreakers}
+	{groupTeamItems}
+	{allPlayerItems}
+	onSyncTiebreaker={(matchId) => run(() => syncTiebreaker({ matchId }))}
+	{teamName}
+/>

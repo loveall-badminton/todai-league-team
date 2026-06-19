@@ -8,20 +8,19 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
-
-	type Team = { id: string; name: string };
+	import type { EntityOption } from '$lib/types/entities';
 
 	let {
 		tie,
 		index,
 		sortable: sortableEnabled = true,
-		teams = [] as Team[],
+		teams = [] as EntityOption[],
 		tieForm
 	}: {
 		tie: TieSummary;
 		index: number;
 		sortable?: boolean;
-		teams?: Team[];
+		teams?: EntityOption[];
 		tieForm: Record<string, unknown>;
 	} = $props();
 

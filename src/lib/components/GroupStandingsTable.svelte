@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Badge from '$lib/components/Badge.svelte';
+	import type { EntityOption } from '$lib/types/entities';
 	import type { GroupStanding } from '$lib/server/services/standingService';
 	import { cn } from '$lib/utils/cn';
 	import { getCellInfo, type StandingsTieRecord } from '$lib/utils/standings';
@@ -18,7 +19,7 @@
 	}: {
 		standings: GroupStanding[];
 		ties: TieRecord[];
-		teams: { id: string; name: string }[];
+		teams: EntityOption[];
 		linkTies?: boolean;
 		extraHead?: Snippet;
 		extraCell?: Snippet<[GroupStanding]>;

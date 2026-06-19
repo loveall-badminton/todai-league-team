@@ -3,12 +3,13 @@ import { and, eq } from 'drizzle-orm';
 import { authUserProfiles, matches, officiatingAssignments, rubbers } from '$lib/server/db/schema';
 import { getRequestEvent } from '$app/server';
 import { getRequestDb } from '$lib/server/db/request';
+import type { AccountType } from './accountManagement';
 
-export type AppRole = 'admin' | 'participant' | 'team';
+export type { AccountType };
 
 export type AuthProfile = {
 	userId: string;
-	accountType: AppRole;
+	accountType: AccountType;
 	teamId: string | null;
 	displayName: string | null;
 };
@@ -18,7 +19,7 @@ type RoleCarrier = {
 	role?: string | null;
 };
 
-export function normalizeAppRole(role: string | null | undefined): AppRole {
+export function normalizeAppRole(role: string | null | undefined): AccountType {
 	if (role === 'admin' || role === 'team' || role === 'participant') return role;
 	return 'participant';
 }

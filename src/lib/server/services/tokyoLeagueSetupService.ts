@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
+import type { ScoringConfig } from '$lib/domain/types';
 import { TOKYO_LEAGUE_SCORING_RULES } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
-import { appSettings, scoringRules } from '$lib/server/db/schema';
+import { appSettings, scoringRules, tournaments } from '$lib/server/db/schema';
 
 async function ensureDefaultScoringRules(now = new Date().toISOString()) {
 	const db = getRequestDb();
@@ -50,4 +51,32 @@ export async function ensureDefaultSettings(now = new Date().toISOString()) {
 
 	await db.insert(appSettings).values(values);
 	return values;
+}
+
+export const INTERNAL_TOURNAMENT_ID = 'tokyo-league-default';
+
+export function scoringConfigFromRule(rule: typeof scoringRules.$inferSelect): ScoringConfig {
+	return {
+		maxGames: rule.maxGames,
+		gamesToWin: rule.gamesToWin,
+		pointsToWin: rule.pointsToWin,
+		winBy: rule.winBy,
+		maxPoints: rule.maxPoints,
+		midGameIntervalPoint: rule.midGameIntervalPoint
+	};
+}
+
+export async function ensureInternalTournament(now: string) {
+	const db = getRequestDb();
+	const existing = await db.query.tournaments.findFirst({
+		where: eq(tournaments.id, INTERNAL_TOURNAMENT_ID)
+	});
+	if (existing) return;
+	await db.insert(tournaments).values({
+		id: INTERNAL_TOURNAMENT_ID,
+		name: '東大リーグ団体戦',
+		status: 'running',
+		createdAt: now,
+		updatedAt: now
+	});
 }

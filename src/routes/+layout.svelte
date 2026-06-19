@@ -17,7 +17,7 @@
 		X,
 		ClipboardList
 	} from '@lucide/svelte';
-	import type { AppRole } from '$lib/server/auth/access';
+	import type { AccountType } from '$lib/server/auth/accountManagement';
 	import Footer from './footer.svelte';
 	import Logout from './logout.svelte';
 	import { Toaster } from 'svelte-sonner';
@@ -29,7 +29,7 @@
 		label: string;
 		path: '/' | '/teams' | '/groups' | '/finals' | '/ties' | '/live' | '/live/tasks' | '/settings';
 		icon: Component;
-		roles: AppRole[];
+		roles: AccountType[];
 	};
 
 	const navItems: NavItem[] = [
@@ -44,7 +44,7 @@
 	];
 
 	let currentRole = $derived(
-		(data.authProfile?.accountType ?? data.user?.role ?? 'participant') as AppRole
+		(data.authProfile?.accountType ?? data.user?.role ?? 'participant') as AccountType
 	);
 	let visibleNavItems = $derived(navItems.filter((item) => item.roles.includes(currentRole)));
 	let authPage = $derived(page.url.pathname.startsWith('/auth'));

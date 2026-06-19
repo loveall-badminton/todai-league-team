@@ -177,8 +177,8 @@
 </Card>
 
 <!-- Players section -->
-<Card class="overflow-hidden">
-	<div class="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+<Card class="overflow-hidden" flush>
+	{#snippet header()}
 		<h2 class="text-base font-semibold text-zinc-950">
 			選手
 			<span class="ml-1.5 text-sm font-normal text-zinc-400">{players.length}名</span>
@@ -186,7 +186,7 @@
 		{#if players.length > 0}
 			<CopyButton text={players.map((p) => p.name).join('\n')} />
 		{/if}
-	</div>
+	{/snippet}
 
 	<!-- Add player form -->
 	<div class="border-b border-zinc-100 bg-zinc-50 px-4 py-4">

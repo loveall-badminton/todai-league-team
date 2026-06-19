@@ -2,6 +2,7 @@
 	import { Select } from 'bits-ui';
 	import { ChevronDown } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
+	import type { SelectItem } from '$lib/types/ui';
 
 	let {
 		name,
@@ -20,7 +21,7 @@
 		placeholder?: string;
 		required?: boolean;
 		disabled?: boolean;
-		items: { value: string; label: string }[];
+		items: SelectItem[];
 		class?: string;
 		onValueChange?: (value: string) => void;
 		'aria-invalid'?: boolean | 'false' | 'true';

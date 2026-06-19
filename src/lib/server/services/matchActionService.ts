@@ -56,15 +56,18 @@ export async function applyMatchAction(params: {
 	const serviceStateUpsert = buildServiceStateUpsert(afterState);
 	const rubberUpdate = match?.rubberId ? buildRubberUpdate(match.rubberId, afterState, now) : null;
 
-	// Build batch ops array dynamically to avoid repeated near-identical call sites.
-	// Cast to the required tuple type at the call site; the base 4 ops are always present.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const batchOps: any[] = [eventInsert, matchUpdate, snapshotUpsert, serviceStateUpsert];
-	if (rubberUpdate) batchOps.push(rubberUpdate);
+	const ops: Parameters<typeof db.batch>[0] = [
+		eventInsert,
+		matchUpdate,
+		snapshotUpsert,
+		serviceStateUpsert
+	];
+	const extra: (typeof ops)[number][] = [];
+	if (rubberUpdate) extra.push(rubberUpdate);
 	if (input.type === 'undo' && input.targetSeqNo != null) {
 		const targetEvent = await getScoreEventBySeqNo(matchId, input.targetSeqNo);
 		if (!targetEvent) throw new Error('Undo target event not found after insert');
-		batchOps.push(
+		extra.push(
 			db.insert(scoreEventUndoLinks).values({
 				id: crypto.randomUUID(),
 				matchId,
@@ -75,7 +78,7 @@ export async function applyMatchAction(params: {
 			})
 		);
 	}
-	await db.batch(batchOps as unknown as Parameters<typeof db.batch>[0]);
+	await db.batch([...ops, ...extra]);
 
 	if (match?.rubberId) {
 		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });

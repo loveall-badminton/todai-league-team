@@ -2,30 +2,30 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Pencil, ShieldCheck, UserRound, UsersRound } from '@lucide/svelte';
-	import { Dialog } from 'bits-ui';
+	import type { SelectItem } from '$lib/types/ui';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import { createAccount, deleteAccount, resetPassword, updateAccount } from './accounts.remote';
+	import AccountCreateForm from './AccountCreateForm.svelte';
+	import AccountEditDialog from './AccountEditDialog.svelte';
 
 	let { data }: PageProps = $props();
 
-	const accountTypeItems = [
+	const accountTypeItems: SelectItem[] = [
 		{ value: 'participant', label: '一般参加者' },
 		{ value: 'team', label: 'チーム' },
 		{ value: 'admin', label: '運営' }
 	];
-	let teamItems = $derived(data.teams.map((team) => ({ value: team.id, label: team.name })));
+	let teamItems = $derived(
+		data.teams.map((team): SelectItem => ({ value: team.id, label: team.name }))
+	);
 
 	onMount(() => {
 		createAccount.fields.set({
@@ -85,50 +85,7 @@
 <PageHeader eyebrow="設定" title="ユーザー管理" actions={headerActions} />
 
 <Card>
-	<h2 class="mb-4 font-semibold text-zinc-950">アカウント発行</h2>
-	<FormToast result={createAccount.result} />
-	<form {...createAccount} class="space-y-4">
-		<div class="grid gap-4 sm:grid-cols-2">
-			<label class="grid gap-1">
-				<span class="text-sm font-medium text-zinc-700">種別</span>
-				<AppSelect
-					{...createAccount.fields.accountType.as('select')}
-					items={accountTypeItems}
-					onValueChange={(v) =>
-						createAccount.fields.accountType.set(v as 'participant' | 'team' | 'admin')}
-				/>
-			</label>
-			{#if createAccount.fields.accountType.value() === 'team'}
-				<label class="grid gap-1">
-					<span class="text-sm font-medium text-zinc-700">チーム</span>
-					<AppSelect {...createAccount.fields.teamId.as('select')} items={teamItems} required />
-				</label>
-			{/if}
-		</div>
-
-		<div class="grid gap-4 sm:grid-cols-3">
-			<label class="grid gap-1">
-				<span class="text-sm font-medium text-zinc-700">ID</span>
-				<AppInput {...createAccount.fields.accountId.as('text')} autocomplete="username" required />
-			</label>
-			<label class="grid gap-1">
-				<span class="text-sm font-medium text-zinc-700">表示名</span>
-				<AppInput {...createAccount.fields.name.as('text')} required />
-			</label>
-			<label class="grid gap-1">
-				<span class="text-sm font-medium text-zinc-700">パスワード</span>
-				<AppInput
-					{...createAccount.fields.password.as('password')}
-					autocomplete="new-password"
-					required
-				/>
-			</label>
-		</div>
-
-		<div class="flex justify-end border-t border-zinc-100 pt-4">
-			<AppButton type="submit">発行</AppButton>
-		</div>
-	</form>
+	<AccountCreateForm form={createAccount} {accountTypeItems} {teamItems} />
 </Card>
 
 <section class="space-y-4">
@@ -140,7 +97,7 @@
 	</div>
 
 	{#if data.accounts.length}
-		<Card class="overflow-hidden p-0">
+		<Card class="overflow-hidden" flush>
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="border-b border-zinc-100 bg-zinc-50 text-xs font-medium text-zinc-500">
@@ -217,105 +174,15 @@
 	{/if}
 </section>
 
-<!-- Edit Dialog -->
-<Dialog.Root bind:open={editOpen}>
-	<Dialog.Portal>
-		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
-		>
-			{#if editAccount}
-				{#key editAccountId}
-					{@const accountType = accountTypeValue(editAccount)}
-					{@const AccountIcon = accountTypeIcon(accountType)}
-					{@const updateAccountForm = updateAccount.for(editAccount.id)}
-					{@const resetPasswordForm = resetPassword.for(editAccount.id)}
-
-					<div class="mb-5 flex items-start justify-between gap-3">
-						<div class="flex items-center gap-3">
-							<div
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600"
-							>
-								<AccountIcon class="h-4 w-4" />
-							</div>
-							<div>
-								<div class="flex flex-wrap items-center gap-2">
-									<Dialog.Title class="font-mono text-sm font-semibold text-zinc-950">
-										{editAccount.accountId}
-									</Dialog.Title>
-									<Badge color={accountTypeBadgeColor(accountType)}>
-										{accountTypeLabel(accountType)}
-									</Badge>
-								</div>
-								<p class="text-xs text-zinc-500">{editAccount.name}</p>
-							</div>
-						</div>
-						<DialogCloseButton class="shrink-0" />
-					</div>
-
-					<!-- Account info -->
-					<div class="space-y-3">
-						<h3 class="text-xs font-semibold tracking-wide text-zinc-400">アカウント情報</h3>
-						<FormToast result={updateAccountForm.result} />
-						<form {...updateAccountForm} class="space-y-3">
-							<input {...updateAccountForm.fields.userId.as('hidden', editAccount.id)} />
-							<label class="grid gap-1">
-								<span class="text-xs font-medium text-zinc-600">表示名</span>
-								<AppInput
-									{...updateAccountForm.fields.name.as('text', editAccount.name)}
-									required
-								/>
-							</label>
-							<div class={`grid gap-3 ${accountType === 'team' ? 'sm:grid-cols-2' : ''}`}>
-								<label class="grid gap-1">
-									<span class="text-xs font-medium text-zinc-600">種別</span>
-									<AppSelect
-										{...updateAccountForm.fields.accountType.as('select', accountType)}
-										items={accountTypeItems}
-									/>
-								</label>
-								{#if accountType === 'team'}
-									<label class="grid gap-1">
-										<span class="text-xs font-medium text-zinc-600">チーム</span>
-										<AppSelect
-											{...updateAccountForm.fields.teamId.as(
-												'select',
-												editAccount.profile?.teamId ?? data.teams[0]?.id ?? ''
-											)}
-											items={teamItems}
-										/>
-									</label>
-								{/if}
-							</div>
-							<div class="flex justify-end pt-1">
-								<AppButton type="submit">保存</AppButton>
-							</div>
-						</form>
-					</div>
-
-					<div class="my-5 border-t border-zinc-100"></div>
-
-					<!-- Password reset -->
-					<div class="space-y-3">
-						<h3 class="text-xs font-semibold tracking-wide text-zinc-400">パスワード変更</h3>
-						<FormToast result={resetPasswordForm.result} />
-						<form {...resetPasswordForm} class="space-y-3">
-							<input {...resetPasswordForm.fields.userId.as('hidden', editAccount.id)} />
-							<label class="grid gap-1">
-								<span class="text-xs font-medium text-zinc-600">新しいパスワード</span>
-								<AppInput
-									{...resetPasswordForm.fields.password.as('password')}
-									autocomplete="new-password"
-									required
-								/>
-							</label>
-							<div class="flex justify-end pt-1">
-								<AppButton type="submit">変更</AppButton>
-							</div>
-						</form>
-					</div>
-				{/key}
-			{/if}
-		</Dialog.Content>
-	</Dialog.Portal>
-</Dialog.Root>
+<AccountEditDialog
+	bind:open={editOpen}
+	{editAccount}
+	{updateAccount}
+	{resetPassword}
+	{accountTypeItems}
+	{accountTypeValue}
+	{accountTypeBadgeColor}
+	{accountTypeLabel}
+	{accountTypeIcon}
+	{teamItems}
+/>

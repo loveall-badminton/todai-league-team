@@ -37,12 +37,12 @@
 		<SectionLabel>進行予定表</SectionLabel>
 		<div class="space-y-4">
 			{#each grouped! as group (group.phase)}
-				<Card class="overflow-hidden p-0">
-					<div class="border-b border-zinc-100 px-4 py-2.5">
+				<Card class="overflow-hidden" flush>
+					{#snippet header()}
 						<h3 class="text-xs font-semibold tracking-wide text-zinc-500">
 							{phaseLabel(group.phase)}
 						</h3>
-					</div>
+					{/snippet}
 					<div class="divide-y divide-zinc-50">
 						{#each group.ties as tie (tie.id)}
 							{@const timeStr = formatTime(tie.scheduledStartAt)}

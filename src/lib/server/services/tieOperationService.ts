@@ -1,5 +1,4 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import type { ScoringConfig } from '$lib/domain/types';
 import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 import { getRequestDb } from '$lib/server/db/request';
 import {
@@ -10,12 +9,15 @@ import {
 	scoringRules,
 	teamPlayers,
 	teams,
-	ties,
-	tournaments
+	ties
 } from '$lib/server/db/schema';
 import { revealLineups } from './lineupService';
+import {
+	INTERNAL_TOURNAMENT_ID,
+	ensureInternalTournament,
+	scoringConfigFromRule
+} from './tokyoLeagueSetupService';
 
-const internalTournamentId = 'tokyo-league-default';
 const terminalRubberStatuses = new Set(['finished', 'confirmed', 'skipped', 'cancelled']);
 const matchResultStatuses = new Set(['finished', 'confirmed', 'forfeited', 'retired']);
 type TieStatus = typeof ties.$inferSelect.status;
@@ -119,7 +121,7 @@ export async function createMatchFromRubber(
 	await ensureInternalTournament(now);
 
 	const matchId = await createMatchWithPlayers({
-		tournamentId: internalTournamentId,
+		tournamentId: INTERNAL_TOURNAMENT_ID,
 		courtId: null,
 		discipline: rubber.discipline,
 		eventName: tie.tieCode,
@@ -252,30 +254,4 @@ async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberC
 		if (!player) throw new Error('選手が見つかりません');
 		return { ...player, teamName: team?.name ?? null };
 	});
-}
-
-async function ensureInternalTournament(now: string) {
-	const db = getRequestDb();
-	const existing = await db.query.tournaments.findFirst({
-		where: eq(tournaments.id, internalTournamentId)
-	});
-	if (existing) return;
-	await db.insert(tournaments).values({
-		id: internalTournamentId,
-		name: '東大リーグ団体戦',
-		status: 'running',
-		createdAt: now,
-		updatedAt: now
-	});
-}
-
-function scoringConfigFromRule(rule: typeof scoringRules.$inferSelect): ScoringConfig {
-	return {
-		maxGames: rule.maxGames,
-		gamesToWin: rule.gamesToWin,
-		pointsToWin: rule.pointsToWin,
-		winBy: rule.winBy,
-		maxPoints: rule.maxPoints,
-		midGameIntervalPoint: rule.midGameIntervalPoint
-	};
 }

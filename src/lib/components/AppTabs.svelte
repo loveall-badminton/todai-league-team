@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Tabs } from 'bits-ui';
 	import { cn } from '$lib/utils/cn';
+	import type { SelectItemWithCount } from '$lib/types/ui';
 
 	let {
 		value = $bindable(''),
@@ -10,7 +11,7 @@
 		triggerClass = ''
 	}: {
 		value?: string;
-		items: { value: string; label: string; count?: number }[];
+		items: SelectItemWithCount[];
 		onValueChange?: (value: string) => void;
 		listClass?: string;
 		triggerClass?: string;

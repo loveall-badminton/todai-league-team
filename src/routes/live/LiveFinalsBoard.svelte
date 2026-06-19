@@ -30,7 +30,7 @@
 		<SectionLabel>決勝トーナメント</SectionLabel>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each query.current.finalsBoard as tie (tie.id)}
-				<Card class={cn('p-0', tie.status === 'playing' ? 'border-emerald-200' : '')}>
+				<Card class={cn(tie.status === 'playing' ? 'border-emerald-200' : '')} flush>
 					<div class="p-4">
 						<p class="text-xs font-medium text-zinc-400">{phaseLabel(tie.phase)}</p>
 						<div class="mt-1.5 flex items-baseline justify-between gap-2">

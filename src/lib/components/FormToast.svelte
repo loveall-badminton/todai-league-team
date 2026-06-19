@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
+	import type { FormActionResult } from '$lib/types/forms';
 
 	let {
 		result,
 		variant = 'success'
 	}: {
-		result: { message?: string } | null | undefined;
+		result: FormActionResult | null | undefined;
 		variant?: 'success' | 'error' | 'warning';
 	} = $props();
 

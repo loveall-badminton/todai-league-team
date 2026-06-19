@@ -2,12 +2,7 @@
 	import { cn } from '$lib/utils/cn';
 	import { Check, ChevronDown } from '@lucide/svelte';
 	import { Select } from 'bits-ui';
-
-	type SelectItem = {
-		value: string;
-		label: string;
-		disabled?: boolean;
-	};
+	import type { SelectItemWithDisabled } from '$lib/types/ui';
 
 	let {
 		name,
@@ -22,7 +17,7 @@
 		value?: string[];
 		placeholder?: string;
 		disabled?: boolean;
-		items: SelectItem[];
+		items: SelectItemWithDisabled[];
 		class?: string;
 		onValueChange?: (value: string[]) => void;
 	} = $props();

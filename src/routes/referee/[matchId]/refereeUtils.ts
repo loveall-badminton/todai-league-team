@@ -1,3 +1,6 @@
+import type { SelectItem } from '$lib/types/ui';
+import type { EntityOption } from '$lib/types/entities';
+
 export type ScoreEvent = {
 	eventType: string;
 	seqNo: number;
@@ -46,8 +49,6 @@ export function undoLabel(event: ScoreEvent, sideAName: string, sideBName: strin
 /**
  * MatchPlayer 配列を AppSelect 用の {value, label} 配列に変換する。
  */
-export function playerOptions(
-	players: { id: string; name: string }[]
-): { value: string; label: string }[] {
+export function playerOptions(players: EntityOption[]): SelectItem[] {
 	return players.map((p) => ({ value: p.id, label: p.name }));
 }

@@ -1,15 +1,11 @@
 import { command, form } from '$app/server';
 import { groupPhaseFor, type TiePhase } from '$lib/domain/tokyoLeague';
 import { requireAdmin } from '$lib/server/auth/access';
-import {
-	assignOfficiatingTeams,
-	listTies,
-	reorderTies,
-	updateTieSchedule
-} from '$lib/server/repositories/tokyoLeagueRepository';
+import { listTies, reorderTies } from '$lib/server/repositories/tokyoLeagueRepository';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
-import { emptyToNull, uniqueNonEmpty, venueOrNull } from '$lib/utils/validation';
+import { persistUpdateTie, updateTieFormFields } from '$lib/server/services/updateTieForm';
+import { emptyToNull, venueOrNull } from '$lib/utils/validation';
 import { redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
 
@@ -99,51 +95,11 @@ export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ 
 export const updateTie = form(
 	v.object({
 		id: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		tieCode: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		scheduledStartAt: v.optional(v.string()),
-		venue: v.optional(v.string()),
-		courtBlockCode: v.optional(v.string()),
-		lineupDueAt: v.optional(v.string()),
-		operationNote: v.optional(v.string()),
-		scheduleChanged: v.optional(v.string()),
-		assignedTeamIds: v.optional(v.array(v.string())),
-		officiatingNote: v.optional(v.string())
+		...updateTieFormFields
 	}),
-	async ({
-		id,
-		tieCode,
-		scheduledStartAt,
-		venue,
-		courtBlockCode,
-		lineupDueAt,
-		operationNote,
-		scheduleChanged,
-		assignedTeamIds,
-		officiatingNote
-	}) => {
+	async (values) => {
 		requireAdmin();
-		const now = new Date().toISOString();
-
-		await updateTieSchedule({
-			id,
-			tieCode,
-			scheduledStartAt: emptyToNull(scheduledStartAt),
-			venue: venueOrNull(venue),
-			courtBlockCode: emptyToNull(courtBlockCode),
-			lineupDueAt: emptyToNull(lineupDueAt),
-			operationNote: emptyToNull(operationNote),
-			scheduleChanged: scheduleChanged === 'on',
-			now
-		});
-
-		await assignOfficiatingTeams({
-			tieId: id,
-			assignedTeamIds: uniqueNonEmpty(assignedTeamIds),
-			note: emptyToNull(officiatingNote),
-			now
-		});
-
-		notifyLiveBoard(['schedule']);
+		await persistUpdateTie({ ...values, now: new Date().toISOString() });
 		return { message: '対戦情報を保存しました' };
 	}
 );

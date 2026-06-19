@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
-import type { ScoringConfig } from '$lib/domain/types';
 import { getRequestDb } from '$lib/server/db/request';
 import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 import {
@@ -8,13 +7,15 @@ import {
 	rankingTiebreakers,
 	scoringRules,
 	teamPlayers,
-	teams,
-	tournaments
+	teams
 } from '$lib/server/db/schema';
 import { rubberStatusFromMatchResultStatus } from '$lib/server/services/tieOperationService';
-import { ensureDefaultSettings } from './tokyoLeagueSetupService';
-
-const internalTournamentId = 'tokyo-league-default';
+import {
+	INTERNAL_TOURNAMENT_ID,
+	ensureDefaultSettings,
+	ensureInternalTournament,
+	scoringConfigFromRule
+} from './tokyoLeagueSetupService';
 
 export type RankingTiebreakerTeamForValidation = {
 	id: string;
@@ -83,7 +84,7 @@ export async function createRankingTiebreaker(params: {
 	});
 
 	const matchId = await createMatchWithPlayers({
-		tournamentId: internalTournamentId,
+		tournamentId: INTERNAL_TOURNAMENT_ID,
 		courtId: null,
 		discipline: 'MS',
 		eventName: `${params.groupCode}リーグ順位決定再試合`,
@@ -126,30 +127,4 @@ export async function syncRankingTiebreakerResult(matchId: string, now = new Dat
 			updatedAt: now
 		})
 		.where(eq(rankingTiebreakers.id, tiebreaker.id));
-}
-
-async function ensureInternalTournament(now: string) {
-	const db = getRequestDb();
-	const existing = await db.query.tournaments.findFirst({
-		where: eq(tournaments.id, internalTournamentId)
-	});
-	if (existing) return;
-	await db.insert(tournaments).values({
-		id: internalTournamentId,
-		name: '東大リーグ団体戦',
-		status: 'running',
-		createdAt: now,
-		updatedAt: now
-	});
-}
-
-function scoringConfigFromRule(rule: typeof scoringRules.$inferSelect): ScoringConfig {
-	return {
-		maxGames: rule.maxGames,
-		gamesToWin: rule.gamesToWin,
-		pointsToWin: rule.pointsToWin,
-		winBy: rule.winBy,
-		maxPoints: rule.maxPoints,
-		midGameIntervalPoint: rule.midGameIntervalPoint
-	};
 }

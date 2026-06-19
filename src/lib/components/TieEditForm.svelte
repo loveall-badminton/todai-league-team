@@ -4,7 +4,7 @@
 	import AppMultipleSelect from '$lib/components/AppMultipleSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
 
-	type Team = { id: string; name: string };
+	import type { EntityOption } from '$lib/types/entities';
 
 	type TieFields = {
 		tieCode: string;
@@ -21,10 +21,10 @@
 
 	let {
 		tie,
-		teams = [] as Team[]
+		teams = [] as EntityOption[]
 	}: {
 		tie: TieFields;
-		teams?: Team[];
+		teams?: EntityOption[];
 	} = $props();
 
 	let assignedTeamIds = $derived(

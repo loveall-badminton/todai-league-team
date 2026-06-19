@@ -52,10 +52,10 @@
 		<div class="grid gap-4 xl:grid-cols-2">
 			{#each groups as group (group.label)}
 				{@const teams = groupTeams(group.rows, query.current!.teams)}
-				<Card class="overflow-hidden p-0">
-					<div class="border-b border-zinc-100 px-4 py-3">
+				<Card class="overflow-hidden" flush>
+					{#snippet header()}
 						<h3 class="text-sm font-semibold text-zinc-950">{group.label}</h3>
-					</div>
+					{/snippet}
 					<GroupStandingsTable standings={group.rows} ties={group.ties} {teams} />
 				</Card>
 			{/each}

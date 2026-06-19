@@ -115,7 +115,7 @@
 {/if}
 
 <!-- Team list -->
-<Card class="overflow-hidden p-0">
+<Card class="overflow-hidden" flush>
 	{#if teams.length === 0}
 		<div class="p-10 text-center">
 			<p class="text-sm text-zinc-400">チームはまだ登録されていません</p>

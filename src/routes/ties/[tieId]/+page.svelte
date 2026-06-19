@@ -9,18 +9,16 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
-	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import {
 		courtDisplayLabel,
 		phaseLabel,
 		rubberLabel,
-		rubberStatusLabel,
 		submissionStatusLabel,
 		tieStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
-	import { cn } from '$lib/utils/cn';
-	import { ArrowLeft, Check } from '@lucide/svelte';
+	import type { EntityOption } from '$lib/types/entities';
+	import { ArrowLeft } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import type { PageProps } from './$types';
@@ -37,11 +35,9 @@
 		unrevealLineups,
 		updateTie
 	} from './tie.remote';
-	import {
-		rubberStatusTextClass,
-		submissionBadgeColor,
-		getCurrentWorkflowStep
-	} from './tiePageHelpers';
+	import { submissionBadgeColor, getCurrentWorkflowStep } from './tiePageHelpers';
+	import TieWorkflowStepper from './TieWorkflowStepper.svelte';
+	import TieResultsSection from './TieResultsSection.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -55,8 +51,6 @@
 		if (winnerTeamId === data.tie.teamBId) return data.teamB?.name ?? 'B側';
 		return null;
 	};
-
-	const rubberStatusBgClass = rubberStatusTextClass;
 
 	const lineupBySide = (side: 'A' | 'B') => data.lineups.find((l) => l.submission.side === side);
 	const lineupPlayers = (rubberCode: string, side: 'A' | 'B') => {
@@ -100,18 +94,15 @@
 	// Workflow steps: 1=lineup_submit, 2=review, 3=start, 4=playing, 5=confirm
 	let currentStep = $derived(getCurrentWorkflowStep(data.tie.status));
 
-	const workflowSteps = [
-		{ label: 'オーダー提出', desc: '各チームが選手を登録' },
-		{ label: 'オーダー確認', desc: '運営が内容を確認' },
-		{ label: '試合開始', desc: '審判・コートを割り当て' },
-		{ label: '試合進行', desc: '審判がスコアを入力' },
-		{ label: '結果確定', desc: '運営が結果を承認' }
-	];
-
 	let editing = $state(false);
+	let skipEffect = $state(true);
 
 	$effect(() => {
 		const msg = updateTie.result?.message;
+		if (skipEffect) {
+			skipEffect = false;
+			return;
+		}
 		if (msg) {
 			toast.success(msg);
 			editing = false;
@@ -181,57 +172,8 @@
 </header>
 
 <!-- Workflow progress -->
-<Card class="px-5 py-4">
-	<div class="flex items-start gap-0 overflow-x-auto">
-		{#each workflowSteps as step, i (i)}
-			{@const stepNum = i + 1}
-			{@const isComplete = currentStep > stepNum}
-			{@const isCurrent = currentStep === stepNum}
-			<div class="flex min-w-20 flex-1 flex-col items-center gap-1.5 text-center sm:min-w-28">
-				<div class="flex w-full items-center">
-					<div
-						class={cn(
-							'mt-1.5 h-px flex-1',
-							i === 0 ? 'invisible' : isComplete || isCurrent ? 'bg-zinc-900' : 'bg-zinc-200'
-						)}
-					></div>
-					<div
-						class={cn(
-							'mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-							isComplete
-								? 'bg-zinc-900 text-white'
-								: isCurrent
-									? 'bg-zinc-900 text-white ring-4 ring-zinc-200'
-									: 'border-2 border-zinc-200 text-zinc-400'
-						)}
-					>
-						{#if isComplete}<Check class="size-4" />{:else}{stepNum}{/if}
-					</div>
-					<div
-						class={cn(
-							'mt-1.5 h-px flex-1',
-							i === workflowSteps.length - 1
-								? 'invisible'
-								: isComplete
-									? 'bg-zinc-900'
-									: 'bg-zinc-200'
-						)}
-					></div>
-				</div>
-				<p
-					class={cn(
-						'text-xs font-medium',
-						isCurrent ? 'text-zinc-950' : isComplete ? 'text-zinc-500' : 'text-zinc-300'
-					)}
-				>
-					{step.label}
-				</p>
-				{#if isCurrent}
-					<p class="text-[10px] text-zinc-500">{step.desc}</p>
-				{/if}
-			</div>
-		{/each}
-	</div>
+<Card class="p-0">
+	<TieWorkflowStepper {currentStep} />
 </Card>
 
 <!-- Action buttons -->
@@ -367,79 +309,19 @@
 
 	<!-- Steps 3+: Rubber results -->
 {:else}
-	{#snippet rubberExtraHead()}
-		<th class="w-24 px-4 py-3 text-left text-xs font-medium text-zinc-400">状態</th>
-		<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">操作</th>
-	{/snippet}
-
-	{#snippet rubberExtraCell(row: RubberRow)}
-		<td class="px-4 py-3">
-			<span class="text-xs {rubberStatusBgClass(row.status)}">
-				{rubberStatusLabel(row.status)}
-			</span>
-		</td>
-		<td class="px-4 py-3">
-			<div class="flex flex-wrap items-center gap-2">
-				{#if row.matchId}
-					<AppButton
-						variant="secondary"
-						size="sm"
-						href={resolve('/referee/[matchId]', { matchId: row.matchId })}
-					>
-						スコア入力
-					</AppButton>
-				{:else}
-					<span class="text-xs text-zinc-400">—</span>
-				{/if}
-				{#if row.matchId && row.matchStatus === 'confirmed'}
-					<ConfirmDialog
-						onConfirm={() => run(() => unconfirmMatch({ matchId: row.matchId! }))}
-						triggerLabel="承認解除"
-						triggerClass="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-						title="試合結果の承認を解除しますか？"
-						description="承認を解除すると審判画面での再操作が可能になります。"
-						confirmLabel="承認を解除する"
-						confirmVariant="warning"
-						confirmClass="border border-amber-300"
-					/>
-				{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
-					<ConfirmDialog
-						onConfirm={() => run(() => confirmMatch({ matchId: row.matchId! }))}
-						triggerLabel="運営承認"
-						triggerClass="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-						title="試合結果を運営承認しますか？"
-						description="承認後は審判画面を含むすべての画面で結果の変更ができなくなります。"
-						confirmLabel="運営承認する"
-						confirmVariant="success"
-					/>
-				{/if}
-			</div>
-		</td>
-	{/snippet}
-
-	<Card class="p-0">
-		<div class="border-b border-zinc-100 px-5 py-4">
-			<h2 class="font-semibold">種目別結果</h2>
-		</div>
-		<TieRubberList
-			rubbers={data.rubbers.map(toRubberRow)}
-			teamAName={teamName(data.tie.teamAId)}
-			teamBName={teamName(data.tie.teamBId)}
-			variant="table"
-			extraHead={rubberExtraHead}
-			extraCell={rubberExtraCell}
-		/>
-	</Card>
+	<TieResultsSection
+		rubbers={data.rubbers.map(toRubberRow)}
+		teamAName={teamName(data.tie.teamAId)}
+		teamBName={teamName(data.tie.teamBId)}
+		onConfirmMatch={(matchId) => run(() => confirmMatch({ matchId }))}
+		onUnconfirmMatch={(matchId) => run(() => unconfirmMatch({ matchId }))}
+	/>
 {/if}
 
-{#snippet lineupPanel(
-	side: 'A' | 'B',
-	team: { id: string; name: string } | null,
-	teamId: string | null
-)}
+{#snippet lineupPanel(side: 'A' | 'B', team: EntityOption | null, teamId: string | null)}
 	{@const lineup = lineupBySide(side)}
 	{@const subStatus = lineup?.submission.status ?? null}
-	<Card class="overflow-hidden">
+	<Card class="overflow-hidden" flush>
 		<!-- Panel header -->
 		<div class="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
 			<div class="flex items-center gap-3">

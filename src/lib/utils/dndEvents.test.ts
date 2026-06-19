@@ -6,6 +6,7 @@ vi.mock('@dnd-kit/svelte/sortable', () => ({
 }));
 
 import { isSortable } from '@dnd-kit/svelte/sortable';
+import type { DragOverEvent, DragEndEvent } from './dndEvents';
 import { createSortableHandlers } from './dndEvents';
 
 const mockIsSortable = vi.mocked(isSortable);
@@ -22,16 +23,11 @@ function makeDragOverEvent(sourceIndex: number, targetIndex: number) {
 			source: { index: sourceIndex },
 			target: { index: targetIndex }
 		}
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	} as any;
+	} as unknown as DragOverEvent;
 }
 
-/**
- * onDragEnd に渡すモックイベント。
- */
 function makeDragEndEvent(canceled: boolean) {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return { canceled } as any;
+	return { canceled } as unknown as DragEndEvent;
 }
 
 describe('createSortableHandlers', () => {
