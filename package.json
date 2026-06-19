@@ -28,6 +28,7 @@
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.1.0",
+		"@eslint/config-helpers": "^0.6.0",
 		"@eslint/js": "^10.0.1",
 		"@lucide/svelte": "^1.18.0",
 		"@sveltejs/adapter-cloudflare": "^7.2.8",

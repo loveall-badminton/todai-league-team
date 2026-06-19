@@ -255,8 +255,226 @@ describe('scoreEventRepository integration queries', () => {
 		]);
 		expect(eventBySeq).toMatchObject({ id: 'event-1', scoreAAfter: 1, scoreBAfter: 0 });
 		expect(eventByIdempotency).toMatchObject({ id: 'event-1' });
-		expect(lastUndoable).toMatchObject({ id: 'event-1' });
+		expect(lastUndoable).toBeNull();
 		expect(undoLinked).toBe(true);
+	});
+
+	test('getLastUndoableScoreEvent skips already-undone events and returns next', async () => {
+		const { matchId } = await seedTournamentMatch();
+		const state = await getMatchState(matchId);
+
+		await insertScoreEvent({
+			id: 'ev-1',
+			matchId,
+			seqNo: 1,
+			eventType: 'rally_won',
+			side: 'A',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'A' as const, observedSeqNo: 0, idempotencyKey: 'k1' },
+			createdAt: now
+		});
+		await insertScoreEvent({
+			id: 'ev-2',
+			matchId,
+			seqNo: 2,
+			eventType: 'rally_won',
+			side: 'B',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'B' as const, observedSeqNo: 1, idempotencyKey: 'k2' },
+			createdAt: now
+		});
+		await insertScoreEvent({
+			id: 'uev',
+			matchId,
+			seqNo: 3,
+			eventType: 'undo_applied',
+			targetSeqNo: 2,
+			side: null,
+			beforeState: state,
+			afterState: state,
+			input: {
+				type: 'undo',
+				targetSeqNo: 2,
+				observedSeqNo: 2,
+				idempotencyKey: 'ku'
+			} as ScoreEventInput,
+			createdAt: now
+		});
+		await insertUndoLink({
+			matchId,
+			undoEventId: 'uev',
+			targetEventId: 'ev-2',
+			targetSeqNo: 2,
+			createdAt: now
+		});
+
+		expect((await getLastUndoableScoreEvent(matchId))?.seqNo).toBe(1);
+	});
+
+	test('getLastUndoableScoreEvent returns null when all undoable events are undone', async () => {
+		const { matchId } = await seedTournamentMatch();
+		const state = await getMatchState(matchId);
+
+		await insertScoreEvent({
+			id: 'ev-1',
+			matchId,
+			seqNo: 1,
+			eventType: 'rally_won',
+			side: 'A',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'A' as const, observedSeqNo: 0, idempotencyKey: 'k1' },
+			createdAt: now
+		});
+		await insertScoreEvent({
+			id: 'uev',
+			matchId,
+			seqNo: 2,
+			eventType: 'undo_applied',
+			targetSeqNo: 1,
+			side: null,
+			beforeState: state,
+			afterState: state,
+			input: {
+				type: 'undo',
+				targetSeqNo: 1,
+				observedSeqNo: 1,
+				idempotencyKey: 'ku'
+			} as ScoreEventInput,
+			createdAt: now
+		});
+		await insertUndoLink({
+			matchId,
+			undoEventId: 'uev',
+			targetEventId: 'ev-1',
+			targetSeqNo: 1,
+			createdAt: now
+		});
+
+		expect(await getLastUndoableScoreEvent(matchId)).toBeNull();
+	});
+
+	test('getLastUndoableScoreEvent handles progressive sequential undos correctly', async () => {
+		const { matchId } = await seedTournamentMatch();
+		const state = await getMatchState(matchId);
+		let nextSeqNo = 0;
+
+		await insertScoreEvent({
+			id: 'ev-1',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'rally_won',
+			side: 'A',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'A' as const, observedSeqNo: 0, idempotencyKey: 'k1' },
+			createdAt: now
+		});
+		await insertScoreEvent({
+			id: 'ev-2',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'rally_won',
+			side: 'B',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'B' as const, observedSeqNo: 1, idempotencyKey: 'k2' },
+			createdAt: now
+		});
+		await insertScoreEvent({
+			id: 'ev-3',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'rally_won',
+			side: 'A',
+			beforeState: state,
+			afterState: state,
+			input: { type: 'rally_won', side: 'A' as const, observedSeqNo: 2, idempotencyKey: 'k3' },
+			createdAt: now
+		});
+
+		expect((await getLastUndoableScoreEvent(matchId))?.seqNo).toBe(3);
+
+		await insertScoreEvent({
+			id: 'uev-1',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'undo_applied',
+			targetSeqNo: 3,
+			side: null,
+			beforeState: state,
+			afterState: state,
+			input: {
+				type: 'undo',
+				targetSeqNo: 3,
+				observedSeqNo: 3,
+				idempotencyKey: 'ku1'
+			} as ScoreEventInput,
+			createdAt: now
+		});
+		await insertUndoLink({
+			matchId,
+			undoEventId: 'uev-1',
+			targetEventId: 'ev-3',
+			targetSeqNo: 3,
+			createdAt: now
+		});
+		expect((await getLastUndoableScoreEvent(matchId))?.seqNo).toBe(2);
+
+		await insertScoreEvent({
+			id: 'uev-2',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'undo_applied',
+			targetSeqNo: 2,
+			side: null,
+			beforeState: state,
+			afterState: state,
+			input: {
+				type: 'undo',
+				targetSeqNo: 2,
+				observedSeqNo: 4,
+				idempotencyKey: 'ku2'
+			} as ScoreEventInput,
+			createdAt: now
+		});
+		await insertUndoLink({
+			matchId,
+			undoEventId: 'uev-2',
+			targetEventId: 'ev-2',
+			targetSeqNo: 2,
+			createdAt: now
+		});
+		expect((await getLastUndoableScoreEvent(matchId))?.seqNo).toBe(1);
+
+		await insertScoreEvent({
+			id: 'uev-3',
+			matchId,
+			seqNo: ++nextSeqNo,
+			eventType: 'undo_applied',
+			targetSeqNo: 1,
+			side: null,
+			beforeState: state,
+			afterState: state,
+			input: {
+				type: 'undo',
+				targetSeqNo: 1,
+				observedSeqNo: 5,
+				idempotencyKey: 'ku3'
+			} as ScoreEventInput,
+			createdAt: now
+		});
+		await insertUndoLink({
+			matchId,
+			undoEventId: 'uev-3',
+			targetEventId: 'ev-1',
+			targetSeqNo: 1,
+			createdAt: now
+		});
+		expect(await getLastUndoableScoreEvent(matchId)).toBeNull();
+		void nextSeqNo;
 	});
 });
 

@@ -94,22 +94,31 @@ export async function getScoreEventByIdempotencyKey(
 
 export async function getLastUndoableScoreEvent(matchId: string): Promise<ScoreEvent | null> {
 	const db = getRequestDb();
-	const rows = await db
-		.select()
-		.from(scoreEvents)
-		.where(eq(scoreEvents.matchId, matchId))
-		.orderBy(desc(scoreEvents.seqNo));
+	const [rows, undoneLinks] = await Promise.all([
+		db
+			.select()
+			.from(scoreEvents)
+			.where(eq(scoreEvents.matchId, matchId))
+			.orderBy(desc(scoreEvents.seqNo)),
+		db
+			.select({ targetSeqNo: scoreEventUndoLinks.targetSeqNo })
+			.from(scoreEventUndoLinks)
+			.where(eq(scoreEventUndoLinks.matchId, matchId))
+	]);
+
+	const undoneSeqNos = new Set(undoneLinks.map((r) => r.targetSeqNo));
 
 	return (
-		rows.find((event) =>
-			[
-				'rally_won',
-				'correction_applied',
-				'match_suspended',
-				'match_resumed',
-				'match_started',
-				'game_started'
-			].includes(event.eventType)
+		rows.find(
+			(event) =>
+				[
+					'rally_won',
+					'correction_applied',
+					'match_suspended',
+					'match_resumed',
+					'match_started',
+					'game_started'
+				].includes(event.eventType) && !undoneSeqNos.has(event.seqNo)
 		) ?? null
 	);
 }

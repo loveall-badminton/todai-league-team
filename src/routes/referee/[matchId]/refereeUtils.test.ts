@@ -74,6 +74,57 @@ describe('findLastUndoableEvent', () => {
 			expect(findLastUndoableEvent(events, UNDOABLE)?.eventType).toBe(eventType);
 		}
 	});
+
+	test('sequential undo: undo most recent, then undo next most recent', () => {
+		const events: { eventType: string; seqNo: number; targetSeqNo: number | null }[] = [
+			{ eventType: 'rally_won', seqNo: 1, targetSeqNo: null },
+			{ eventType: 'rally_won', seqNo: 2, targetSeqNo: null },
+			{ eventType: 'rally_won', seqNo: 3, targetSeqNo: null }
+		];
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(3);
+		events.push({ eventType: 'undo_applied', seqNo: 4, targetSeqNo: 3 });
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(2);
+		events.push({ eventType: 'undo_applied', seqNo: 5, targetSeqNo: 2 });
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(1);
+		events.push({ eventType: 'undo_applied', seqNo: 6, targetSeqNo: 1 });
+		expect(findLastUndoableEvent(events, UNDOABLE)).toBeNull();
+	});
+
+	test('undo across mixed event types respects LIFO order', () => {
+		const events: { eventType: string; seqNo: number; targetSeqNo: number | null }[] = [
+			{ eventType: 'match_started', seqNo: 1, targetSeqNo: null },
+			{ eventType: 'rally_won', seqNo: 2, targetSeqNo: null },
+			{ eventType: 'match_suspended', seqNo: 3, targetSeqNo: null },
+			{ eventType: 'match_resumed', seqNo: 4, targetSeqNo: null },
+			{ eventType: 'rally_won', seqNo: 5, targetSeqNo: null },
+			{ eventType: 'correction_applied', seqNo: 6, targetSeqNo: null }
+		];
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(6);
+		events.push({ eventType: 'undo_applied', seqNo: 7, targetSeqNo: 6 });
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(5);
+		events.push({ eventType: 'undo_applied', seqNo: 8, targetSeqNo: 5 });
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(4);
+		events.push({ eventType: 'undo_applied', seqNo: 9, targetSeqNo: 4 });
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(3);
+	});
+
+	test('undo_applied with null targetSeqNo does not affect filtering', () => {
+		const events = [
+			{ eventType: 'rally_won', seqNo: 1, targetSeqNo: null },
+			{ eventType: 'undo_applied', seqNo: 2, targetSeqNo: null }
+		];
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(1);
+	});
+
+	test('returns most recent undoable event ignoring non-undoable in between', () => {
+		const events = [
+			{ eventType: 'rally_won', seqNo: 1, targetSeqNo: null },
+			{ eventType: 'let_called', seqNo: 2, targetSeqNo: null },
+			{ eventType: 'let_called', seqNo: 3, targetSeqNo: null },
+			{ eventType: 'rally_won', seqNo: 4, targetSeqNo: null }
+		];
+		expect(findLastUndoableEvent(events, UNDOABLE)?.seqNo).toBe(4);
+	});
 });
 
 // ─── undoLabel ───────────────────────────────────────────────────────────────
