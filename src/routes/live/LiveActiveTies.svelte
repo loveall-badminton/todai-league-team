@@ -9,6 +9,7 @@
 	import type { QueryValue } from '$lib/utils/types';
 	import { ChartLine } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
+	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import ScoreProgressChart from './ScoreProgressChart.svelte';
 
 	type ActiveTie = NonNullable<LivePageData['activeTies']>['ties'][number];
@@ -161,11 +162,7 @@
 							{selectedTie.teamAName ?? '未定'} vs {selectedTie.teamBName ?? '未定'}
 						</p>
 					</div>
-					<Dialog.Close
-						class="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
-					>
-						閉じる
-					</Dialog.Close>
+					<DialogCloseButton />
 				</div>
 				<!-- Scrollable chart area -->
 				<div class="space-y-5 overflow-y-auto px-6 py-5">

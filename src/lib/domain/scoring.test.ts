@@ -1309,3 +1309,185 @@ describe('singles service transitions through applyScoreEvent', () => {
 		expect(s.service?.serviceCourt).toBe('left'); // B score=1 → odd → left
 	});
 });
+
+// ─── match_unconfirmed ──────────────────────────────────────────────────────
+
+describe('match_unconfirmed', () => {
+	function buildConfirmedState(): MatchState {
+		let s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		s = step(
+			s,
+			{
+				type: 'match_started',
+				idempotencyKey: 'start',
+				initialServerPlayerId: 'a1',
+				initialReceiverPlayerId: 'b1'
+			},
+			singlesPlayers
+		);
+		s = playRallies(s, 'A', 21, singlesPlayers);
+		s = step(
+			s,
+			{
+				type: 'game_started',
+				idempotencyKey: 'g2',
+				gameNo: 2,
+				initialServerPlayerId: 'b1',
+				initialReceiverPlayerId: 'a1'
+			},
+			singlesPlayers
+		);
+		s = playRallies(s, 'A', 21, singlesPlayers);
+		s = step(s, { type: 'match_confirmed', idempotencyKey: 'conf' }, singlesPlayers);
+		return s;
+	}
+
+	test('match_unconfirmed from confirmed restores finished status', () => {
+		const confirmed = buildConfirmedState();
+		expect(confirmed.status).toBe('confirmed');
+		expect(confirmed.confirmedFromStatus).toBe('finished');
+		const unconfirmed = step(
+			confirmed,
+			{ type: 'match_unconfirmed', idempotencyKey: 'unconf' },
+			singlesPlayers
+		);
+		expect(unconfirmed.status).toBe('finished');
+		expect(unconfirmed.confirmedFromStatus).toBeNull();
+	});
+
+	test('match_unconfirmed from non-confirmed throws', () => {
+		let s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		s = step(
+			s,
+			{
+				type: 'match_started',
+				idempotencyKey: 'start',
+				initialServerPlayerId: 'a1',
+				initialReceiverPlayerId: 'b1'
+			},
+			singlesPlayers
+		);
+		expect(() =>
+			step(s, { type: 'match_unconfirmed', idempotencyKey: 'unconf' }, singlesPlayers)
+		).toThrow('confirmed');
+	});
+
+	test('confirmedFromStatus is set to previous status on confirm', () => {
+		const s = buildConfirmedState();
+		expect(s.confirmedFromStatus).toBe('finished');
+	});
+});
+
+// ─── confirmed match locking ────────────────────────────────────────────────
+
+describe('confirmed match rejects mutations', () => {
+	function buildConfirmed(): MatchState {
+		let s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		s = step(
+			s,
+			{
+				type: 'match_started',
+				idempotencyKey: 'start',
+				initialServerPlayerId: 'a1',
+				initialReceiverPlayerId: 'b1'
+			},
+			singlesPlayers
+		);
+		s = playRallies(s, 'A', 21, singlesPlayers);
+		s = step(
+			s,
+			{
+				type: 'game_started',
+				idempotencyKey: 'g2',
+				gameNo: 2,
+				initialServerPlayerId: 'b1',
+				initialReceiverPlayerId: 'a1'
+			},
+			singlesPlayers
+		);
+		s = playRallies(s, 'A', 21, singlesPlayers);
+		return step(s, { type: 'match_confirmed', idempotencyKey: 'conf' }, singlesPlayers);
+	}
+
+	test('rally_won is rejected when confirmed', () => {
+		const s = buildConfirmed();
+		expect(() =>
+			step(s, { type: 'rally_won', side: 'A', idempotencyKey: 'r' }, singlesPlayers)
+		).toThrow('承認済み');
+	});
+
+	test('correction is rejected when confirmed', () => {
+		const s = buildConfirmed();
+		expect(() =>
+			step(
+				s,
+				{
+					type: 'correction',
+					idempotencyKey: 'corr',
+					gameNo: 1,
+					score: { A: 0, B: 0 },
+					reason: 'test'
+				},
+				singlesPlayers
+			)
+		).toThrow('承認済み');
+	});
+
+	test('suspend is rejected when confirmed', () => {
+		const s = buildConfirmed();
+		expect(() =>
+			step(s, { type: 'match_suspended', idempotencyKey: 'sus', reason: 'injury' }, singlesPlayers)
+		).toThrow('承認済み');
+	});
+
+	test('forfeit is rejected when confirmed', () => {
+		const s = buildConfirmed();
+		expect(() =>
+			step(
+				s,
+				{
+					type: 'side_forfeited',
+					idempotencyKey: 'forf',
+					side: 'A',
+					reason: 'no_show'
+				},
+				singlesPlayers
+			)
+		).toThrow('承認済み');
+	});
+
+	test('undo is rejected when confirmed', () => {
+		const s = buildConfirmed();
+		expect(() =>
+			applyScoreEvent({
+				state: s,
+				players: singlesPlayers,
+				now: '2026-06-03T00:00:10.000Z',
+				input: {
+					type: 'undo',
+					idempotencyKey: 'undo_confirmed',
+					observedSeqNo: s.lastSeqNo,
+					restoreState: s
+				}
+			})
+		).toThrow('承認済み');
+	});
+});

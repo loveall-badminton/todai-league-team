@@ -112,6 +112,7 @@ export interface MatchState {
 	terminalReason: TerminalReason | null;
 	service: ServiceState | null;
 	lastSeqNo: number;
+	confirmedFromStatus?: MatchStatus | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -134,7 +135,8 @@ export type ScoreEventInput =
 	| MatchResumedInput
 	| SideForfeitedInput
 	| SideRetiredInput
-	| MatchConfirmedInput;
+	| MatchConfirmedInput
+	| MatchUnconfirmedInput;
 
 export interface MatchStartedInput extends ScoreEventInputBase {
 	type: 'match_started';
@@ -220,5 +222,10 @@ export interface SideRetiredInput extends ScoreEventInputBase {
 
 export interface MatchConfirmedInput extends ScoreEventInputBase {
 	type: 'match_confirmed';
+	note?: string;
+}
+
+export interface MatchUnconfirmedInput extends ScoreEventInputBase {
+	type: 'match_unconfirmed';
 	note?: string;
 }

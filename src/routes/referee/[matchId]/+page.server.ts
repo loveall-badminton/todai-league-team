@@ -6,7 +6,8 @@ import { getMatchWithPlayers, getMatchState } from '$lib/server/repositories/mat
 import { getScoreEvents } from '$lib/server/repositories/scoreEventRepository';
 
 export const load: PageServerLoad = async () => {
-	const { params } = getRequestEvent();
+	const event = getRequestEvent();
+	const params = event.params;
 	const matchId = params.matchId!;
 	await requireRefereeMatchAccess(matchId);
 

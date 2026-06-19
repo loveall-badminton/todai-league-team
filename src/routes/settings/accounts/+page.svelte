@@ -6,11 +6,12 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
-	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { Pencil, ShieldCheck, UserRound, UsersRound, X } from '@lucide/svelte';
+	import { Pencil, ShieldCheck, UserRound, UsersRound } from '@lucide/svelte';
 	import { Dialog } from 'bits-ui';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -184,7 +185,7 @@
 										<Pencil class="h-3.5 w-3.5" />
 										編集
 									</AppButton>
-									<DeleteConfirmDialog
+									<ConfirmDialog
 										onConfirm={async () => {
 											try {
 												await deleteAccount({ userId: account.id });
@@ -197,8 +198,12 @@
 											}
 										}}
 										triggerLabel="削除"
+										triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"
+										triggerVariant="ghost"
 										title="アカウントを削除しますか"
 										description={`${account.accountId} はログインできなくなります。`}
+										confirmVariant="danger"
+										confirmLabel="削除する"
 									/>
 								</div>
 							</td>
@@ -245,11 +250,7 @@
 								<p class="text-xs text-zinc-500">{editAccount.name}</p>
 							</div>
 						</div>
-						<Dialog.Close
-							class="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-						>
-							<X class="size-4" />
-						</Dialog.Close>
+						<DialogCloseButton class="shrink-0" />
 					</div>
 
 					<!-- Account info -->
@@ -265,7 +266,7 @@
 									required
 								/>
 							</label>
-							<div class="grid gap-3 sm:grid-cols-2">
+							<div class={`grid gap-3 ${accountType === 'team' ? 'sm:grid-cols-2' : ''}`}>
 								<label class="grid gap-1">
 									<span class="text-xs font-medium text-zinc-600">種別</span>
 									<AppSelect
@@ -273,16 +274,18 @@
 										items={accountTypeItems}
 									/>
 								</label>
-								<label class="grid gap-1">
-									<span class="text-xs font-medium text-zinc-600">チーム</span>
-									<AppSelect
-										{...updateAccountForm.fields.teamId.as(
-											'select',
-											editAccount.profile?.teamId ?? data.teams[0]?.id ?? ''
-										)}
-										items={teamItems}
-									/>
-								</label>
+								{#if accountType === 'team'}
+									<label class="grid gap-1">
+										<span class="text-xs font-medium text-zinc-600">チーム</span>
+										<AppSelect
+											{...updateAccountForm.fields.teamId.as(
+												'select',
+												editAccount.profile?.teamId ?? data.teams[0]?.id ?? ''
+											)}
+											items={teamItems}
+										/>
+									</label>
+								{/if}
 							</div>
 							<div class="flex justify-end pt-1">
 								<AppButton type="submit">保存</AppButton>

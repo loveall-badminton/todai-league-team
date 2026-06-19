@@ -509,7 +509,8 @@ export const scoreEvents = sqliteTable(
 				'side_forfeited',
 				'side_retired',
 				'match_finished',
-				'match_confirmed'
+				'match_confirmed',
+				'match_unconfirmed'
 			]
 		}).notNull(),
 

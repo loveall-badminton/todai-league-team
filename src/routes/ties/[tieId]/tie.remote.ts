@@ -1,6 +1,6 @@
 import { command, form, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
-import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
+import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import {
 	assignOfficiatingTeams,
@@ -19,6 +19,7 @@ import {
 	confirmTie as confirmTieService,
 	startTie as startTieService
 } from '$lib/server/services/tieOperationService';
+import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { error, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
 
@@ -145,3 +146,41 @@ export const deleteTie = command(async () => {
 	notifyLiveBoard(['standings', 'schedule', 'finals']);
 	redirect(303, '/ties');
 });
+
+export const confirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
+	requireAdmin();
+	await applyMatchAction({
+		matchId,
+		input: {
+			type: 'match_confirmed',
+			idempotencyKey: crypto.randomUUID(),
+			observedSeqNo: await getMatchSeqNo(matchId)
+		},
+		actorName: null,
+		now: new Date().toISOString()
+	});
+	notifyMatch(matchId);
+	notifyLiveBoard(['score']);
+});
+
+export const unconfirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
+	requireAdmin();
+	await applyMatchAction({
+		matchId,
+		input: {
+			type: 'match_unconfirmed',
+			idempotencyKey: crypto.randomUUID(),
+			observedSeqNo: await getMatchSeqNo(matchId)
+		},
+		actorName: null,
+		now: new Date().toISOString()
+	});
+	notifyMatch(matchId);
+	notifyLiveBoard(['score']);
+});
+
+async function getMatchSeqNo(matchId: string): Promise<number> {
+	const { getMatchState } = await import('$lib/server/repositories/matchRepository');
+	const state = await getMatchState(matchId);
+	return state.lastSeqNo;
+}

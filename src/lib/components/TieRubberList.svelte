@@ -7,6 +7,7 @@
 		id: string;
 		code: string;
 		status: string;
+		matchStatus?: string | null;
 		winnerSide: 'A' | 'B' | null;
 		playersA: string[];
 		playersB: string[];

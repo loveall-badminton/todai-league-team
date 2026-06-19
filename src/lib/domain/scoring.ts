@@ -88,6 +88,10 @@ export function applyScoreEvent(params: {
 		throw new Error(`Observed seqNo ${input.observedSeqNo} does not match ${state.lastSeqNo}`);
 	}
 
+	if (state.status === 'confirmed' && input.type !== 'match_unconfirmed') {
+		throw new Error('承認済みの試合は変更できません。運営が承認を解除してください。');
+	}
+
 	switch (input.type) {
 		case 'match_started':
 			return withSeq(
@@ -152,7 +156,19 @@ export function applyScoreEvent(params: {
 			if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
 				throw new Error('Only terminal matches can be confirmed');
 			}
-			return withSeq({ ...state, status: 'confirmed' }, now);
+			return withSeq({ ...state, status: 'confirmed', confirmedFromStatus: state.status }, now);
+		case 'match_unconfirmed':
+			if (state.status !== 'confirmed') {
+				throw new Error('Only confirmed matches can be unconfirmed');
+			}
+			return withSeq(
+				{
+					...state,
+					status: state.confirmedFromStatus ?? 'finished',
+					confirmedFromStatus: null
+				},
+				now
+			);
 	}
 }
 

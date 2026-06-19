@@ -3,25 +3,38 @@
 	import AppButton from './AppButton.svelte';
 	import { cn } from '$lib/utils/cn';
 
+	type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning' | 'violet';
+	type Size = 'sm' | 'md' | 'lg';
+
 	let {
 		formAction = '',
 		hiddenFields = [],
 		onConfirm = undefined,
 		triggerLabel,
+		triggerVariant = 'primary',
+		triggerSize = 'md',
+		triggerFullWidth = false,
 		triggerClass = '',
+		disabled = false,
 		title,
 		description,
 		confirmLabel = '実行する',
-		confirmClass = 'rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 transition-colors'
+		confirmVariant = 'primary',
+		confirmClass = ''
 	}: {
 		formAction?: string;
 		hiddenFields?: { name: string; value: string }[];
 		onConfirm?: (() => void | Promise<void>) | undefined;
 		triggerLabel: string;
+		triggerVariant?: Variant;
+		triggerSize?: Size;
+		triggerFullWidth?: boolean;
 		triggerClass?: string;
+		disabled?: boolean;
 		title: string;
 		description?: string;
 		confirmLabel?: string;
+		confirmVariant?: Variant;
 		confirmClass?: string;
 	} = $props();
 
@@ -43,10 +56,41 @@
 			if (formEl === node) formEl = undefined;
 		};
 	}
+
+	const triggerBase =
+		'inline-flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+
+	const triggerVariants = {
+		primary: 'rounded-xl bg-zinc-950 font-medium text-white hover:bg-zinc-800',
+		secondary:
+			'rounded-xl border border-zinc-200 bg-white font-medium text-zinc-700 hover:bg-zinc-50',
+		ghost: 'font-medium text-zinc-700 hover:text-zinc-950',
+		danger: 'rounded-xl bg-red-600 font-bold text-white shadow-sm hover:bg-red-700',
+		success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
+		warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',
+		violet:
+			'rounded-lg border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
+	} as const;
+
+	const triggerSizes = {
+		sm: 'px-3 py-1.5 text-xs',
+		md: 'px-4 py-2 text-sm',
+		lg: 'px-6 py-2.5 text-sm'
+	} as const;
+
+	let triggerStyles = $derived(
+		cn(
+			triggerBase,
+			triggerVariants[triggerVariant],
+			triggerSizes[triggerSize],
+			triggerFullWidth && 'w-full',
+			triggerClass
+		)
+	);
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Trigger class={cn(triggerClass)}>
+	<Dialog.Trigger class={triggerStyles} {disabled}>
 		{triggerLabel}
 	</Dialog.Trigger>
 	<Dialog.Portal>
@@ -64,7 +108,7 @@
 				>
 					キャンセル
 				</Dialog.Close>
-				<AppButton type="button" onclick={confirm} class={cn(confirmClass)}>
+				<AppButton type="button" onclick={confirm} variant={confirmVariant} class={confirmClass}>
 					{confirmLabel}
 				</AppButton>
 			</div>

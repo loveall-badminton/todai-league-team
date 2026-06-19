@@ -41,6 +41,9 @@
 			(currentGame?.score.B ?? 0) === 0
 	);
 
+	let isLocked = $derived(data.state.status === 'confirmed');
+	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(data.state.status));
+
 	// Undo: find last undoable event that hasn't been undone yet
 	const undoableEventTypes = [
 		'rally_won',
@@ -153,7 +156,7 @@
 					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400',
 					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 				)}
-				disabled={data.state.status !== 'playing'}
+				disabled={data.state.status !== 'playing' || isLocked}
 				onclick={() => run(() => rallyWon({ side }))}
 				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 			>
@@ -341,7 +344,7 @@
 			<AppButton
 				class="col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 sm:col-span-1"
 				type="button"
-				disabled={!lastUndoableEvent}
+				disabled={!lastUndoableEvent || isLocked}
 				onclick={() => run(() => undo({}))}
 			>
 				<span class="block text-xs text-zinc-400">取り消し</span>
@@ -350,15 +353,17 @@
 				</span>
 			</AppButton>
 			<AppButton
-				class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
+				class="w-full rounded-xl bg-amber-100 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-40"
 				type="button"
+				disabled={isLocked}
 				onclick={() => run(() => suspend({ reason: 'referee_decision' }))}
 			>
 				中断
 			</AppButton>
 			<AppButton
-				class="w-full rounded-xl bg-green-100 px-3 py-2.5 text-sm font-medium text-green-800 hover:bg-green-200"
+				class="w-full rounded-xl bg-green-100 px-3 py-2.5 text-sm font-medium text-green-800 hover:bg-green-200 disabled:opacity-40"
 				type="button"
+				disabled={isLocked}
 				onclick={() => run(() => resume({}))}
 			>
 				再開
@@ -366,7 +371,9 @@
 			<ConfirmDialog
 				onConfirm={() => run(() => confirm())}
 				triggerLabel="結果確定"
-				triggerClass="w-full rounded-xl bg-zinc-950 px-3 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+				triggerVariant="primary"
+				triggerFullWidth
+				disabled={!isTerminal || isLocked}
 				title="結果を確定しますか？"
 				description="確定後は通常の審判操作では変更できません。スコアと勝者を確認してください。"
 				confirmLabel="結果を確定する"
@@ -384,15 +391,17 @@
 	/>
 
 	<!-- Advanced controls -->
-	<RefereeAdvancedControls
-		{currentGame}
-		{sideAName}
-		{sideBName}
-		service={data.state.service}
-		players={data.players}
-		currentGameNo={data.state.currentGameNo}
-		onRun={run}
-	/>
+	{#if !isLocked}
+		<RefereeAdvancedControls
+			{currentGame}
+			{sideAName}
+			{sideBName}
+			service={data.state.service}
+			players={data.players}
+			currentGameNo={data.state.currentGameNo}
+			onRun={run}
+		/>
+	{/if}
 
 	<!-- Event log -->
 	<RefereeEventLog events={data.events} />

@@ -6,7 +6,6 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
@@ -26,12 +25,14 @@
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import type { PageProps } from './$types';
 	import {
+		confirmMatch,
 		confirmTie,
 		deleteTie,
 		getLiveRubbers,
 		lockLineup,
 		revealLineups,
 		startTie,
+		unconfirmMatch,
 		unlockLineup,
 		unrevealLineups,
 		updateTie
@@ -74,6 +75,7 @@
 			code: rubber.code,
 			matchId: rubber.matchId,
 			status,
+			matchStatus: statusSrc,
 			winnerSide: rubber.winnerSide,
 			playersA: lineupPlayers(rubber.code, 'A').map(playerName),
 			playersB: lineupPlayers(rubber.code, 'B').map(playerName),
@@ -238,7 +240,7 @@
 	{/if}
 
 	<span class="ml-auto">
-		<DeleteConfirmDialog
+		<ConfirmDialog
 			onConfirm={async () => {
 				try {
 					await deleteTie();
@@ -247,8 +249,12 @@
 				}
 			}}
 			triggerLabel="対戦を削除"
+			triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"
+			triggerVariant="ghost"
 			title="対戦を削除しますか？"
 			description={`「${data.tie.tieCode}」を削除します。種目やオーダーのデータもすべて削除されます。この操作は取り消せません。`}
+			confirmVariant="danger"
+			confirmLabel="削除する"
 		/>
 	</span>
 </div>
@@ -368,17 +374,41 @@
 			</span>
 		</td>
 		<td class="px-4 py-3">
-			{#if row.matchId}
-				<AppButton
-					variant="secondary"
-					size="sm"
-					href={resolve('/referee/[matchId]', { matchId: row.matchId })}
-				>
-					スコア入力
-				</AppButton>
-			{:else}
-				<span class="text-xs text-zinc-400">—</span>
-			{/if}
+			<div class="flex flex-wrap items-center gap-2">
+				{#if row.matchId}
+					<AppButton
+						variant="secondary"
+						size="sm"
+						href={resolve('/referee/[matchId]', { matchId: row.matchId })}
+					>
+						スコア入力
+					</AppButton>
+				{:else}
+					<span class="text-xs text-zinc-400">—</span>
+				{/if}
+				{#if row.matchId && row.matchStatus === 'confirmed'}
+					<ConfirmDialog
+						onConfirm={() => run(() => unconfirmMatch({ matchId: row.matchId! }))}
+						triggerLabel="承認解除"
+						triggerClass="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+						title="試合結果の承認を解除しますか？"
+						description="承認を解除すると審判画面での再操作が可能になります。"
+						confirmLabel="承認を解除する"
+						confirmVariant="warning"
+						confirmClass="border border-amber-300"
+					/>
+				{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
+					<ConfirmDialog
+						onConfirm={() => run(() => confirmMatch({ matchId: row.matchId! }))}
+						triggerLabel="運営承認"
+						triggerClass="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+						title="試合結果を運営承認しますか？"
+						description="承認後は審判画面を含むすべての画面で結果の変更ができなくなります。"
+						confirmLabel="運営承認する"
+						confirmVariant="success"
+					/>
+				{/if}
+			</div>
 		</td>
 	{/snippet}
 
@@ -433,7 +463,8 @@
 							title="オーダーの承認を解除しますか？"
 							description={`${team?.name ?? side + '側'}のオーダー承認を解除します。チームはオーダーを再編集・再提出できるようになります。`}
 							confirmLabel="承認を解除する"
-							confirmClass="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+							confirmVariant="warning"
+							confirmClass="border border-amber-300"
 						/>
 					{/if}
 				{:else if subStatus === 'submitted'}

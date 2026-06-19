@@ -141,7 +141,9 @@
 				<ConfirmDialog
 					onConfirm={applyCorrectionFromForm}
 					triggerLabel="訂正する"
-					triggerClass="w-full rounded-xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-zinc-800"
+					triggerVariant="primary"
+					triggerFullWidth
+					triggerClass="px-4 py-3 font-bold shadow-sm"
 					title="スコアを訂正しますか？"
 					description="現在のゲームスコアと必要に応じてサービス状態を上書きします。入力内容を確認してください。"
 					confirmLabel="訂正を確定する"
@@ -157,7 +159,9 @@
 					onConfirm={() =>
 						onRun(() => letCalled({ reason: letReason, note: letNote || undefined }))}
 					triggerLabel="記録する"
-					triggerClass="w-full rounded-xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-zinc-800"
+					triggerVariant="primary"
+					triggerFullWidth
+					triggerClass="px-4 py-3 font-bold shadow-sm"
 					title="レットを記録しますか？"
 					description="スコアは変えずにレットのイベントだけを記録します。"
 					confirmLabel="レットを記録する"
@@ -170,20 +174,20 @@
 				<ConfirmDialog
 					onConfirm={() => onRun(() => forfeit({ side: 'A' }))}
 					triggerLabel="{sideAName} 棄権"
-					triggerClass="rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+					triggerVariant="danger"
 					title="{sideAName}を棄権にしますか？"
 					description="{sideBName}を勝者として試合を棄権終了にします。"
 					confirmLabel="棄権を確定する"
-					confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+					confirmVariant="danger"
 				/>
 				<ConfirmDialog
 					onConfirm={() => onRun(() => forfeit({ side: 'B' }))}
 					triggerLabel="{sideBName} 棄権"
-					triggerClass="rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+					triggerVariant="danger"
 					title="{sideBName}を棄権にしますか？"
 					description="{sideAName}を勝者として試合を棄権終了にします。"
 					confirmLabel="棄権を確定する"
-					confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+					confirmVariant="danger"
 				/>
 			</div>
 		</CollapsibleSection>
@@ -193,20 +197,20 @@
 				<ConfirmDialog
 					onConfirm={() => onRun(() => retire({ side: 'A' }))}
 					triggerLabel="{sideAName} リタイア"
-					triggerClass="rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+					triggerVariant="danger"
 					title="{sideAName}をリタイアにしますか？"
 					description="{sideBName}を勝者として試合をリタイア終了にします。"
 					confirmLabel="リタイアを確定する"
-					confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+					confirmVariant="danger"
 				/>
 				<ConfirmDialog
 					onConfirm={() => onRun(() => retire({ side: 'B' }))}
 					triggerLabel="{sideBName} リタイア"
-					triggerClass="rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+					triggerVariant="danger"
 					title="{sideBName}をリタイアにしますか？"
 					description="{sideAName}を勝者として試合をリタイア終了にします。"
 					confirmLabel="リタイアを確定する"
-					confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+					confirmVariant="danger"
 				/>
 			</div>
 		</CollapsibleSection>
@@ -215,11 +219,12 @@
 			<ConfirmDialog
 				onConfirm={() => onRun(() => cutoff())}
 				triggerLabel="打ち切りにする"
-				triggerClass="w-full rounded-xl bg-red-600 px-3 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+				triggerVariant="danger"
+				triggerFullWidth
 				title="種目を打ち切りますか？"
 				description="この種目を打ち切りにします。スコアは記録されますが、勝者なしで終了します。この操作は取り消せません。"
 				confirmLabel="打ち切りを確定する"
-				confirmClass="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+				confirmVariant="danger"
 			/>
 		</CollapsibleSection>
 	</div>

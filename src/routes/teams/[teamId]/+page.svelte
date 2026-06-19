@@ -11,7 +11,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
-	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
@@ -112,13 +112,17 @@
 <Card class="p-5">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
-		<DeleteConfirmDialog
+		<ConfirmDialog
 			onConfirm={async () => {
 				await deleteTeam();
 			}}
 			triggerLabel="チームを削除"
+			triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"
+			triggerVariant="ghost"
 			title="チームを削除しますか？"
 			description={`「${data.team.name}」と所属選手のデータをすべて削除します。この操作は取り消せません。`}
+			confirmVariant="danger"
+			confirmLabel="削除する"
 		/>
 	</div>
 	<form {...updateTeam} class="space-y-4">

@@ -6,7 +6,7 @@
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
-	import { GripVertical, X } from '@lucide/svelte';
+	import { GripVertical } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -14,6 +14,7 @@
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
+	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
@@ -143,9 +144,7 @@
 		>
 			<div class="mb-5 flex items-center justify-between">
 				<Dialog.Title class="text-base font-semibold text-zinc-950">対戦を作成</Dialog.Title>
-				<Dialog.Close class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700">
-					<X class="size-4" />
-				</Dialog.Close>
+				<DialogCloseButton />
 			</div>
 
 			<form {...create} class="space-y-4">

@@ -5,7 +5,7 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
-	import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import type { TeamPlayer } from '$lib/server/repositories/tokyoLeagueRepository';
 	import { updatePlayer } from './team.remote';
 
@@ -139,11 +139,15 @@
 					>
 				</div>
 			</form>
-			<DeleteConfirmDialog
+			<ConfirmDialog
 				onConfirm={onDeleteConfirm}
 				triggerLabel="選手を削除"
+				triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"
+				triggerVariant="ghost"
 				title="選手を削除しますか？"
 				description={`「${player.name}」を削除します。この操作は取り消せません。`}
+				confirmVariant="danger"
+				confirmLabel="削除する"
 			/>
 		</div>
 	{/if}

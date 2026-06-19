@@ -27,7 +27,8 @@
 		side_forfeited: '棄権',
 		side_retired: 'リタイア',
 		match_finished: '試合終了',
-		match_confirmed: '結果確定'
+		match_confirmed: '結果確定',
+		match_unconfirmed: '承認解除'
 	};
 
 	function eventLabel(eventType: string): string {
