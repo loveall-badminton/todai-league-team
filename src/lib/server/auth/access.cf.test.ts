@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
+
+import { env } from 'cloudflare:workers';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createTestDb, type TestDb } from '$lib/server/testDb';
+import { createCfTestDb, type CfTestDb } from '$lib/server/cfTestDb';
 import {
 	authUserProfiles,
 	matches,
@@ -14,7 +17,7 @@ import {
 } from '$lib/server/db/schema';
 
 const mockState = vi.hoisted(() => ({
-	db: null as TestDb['db'] | null,
+	db: null as CfTestDb['db'] | null,
 	event: {
 		locals: {} as {
 			user?: { id: string; role?: string | null } | null;
@@ -54,18 +57,20 @@ import {
 	requireUser
 } from './access';
 
-let testDb: TestDb;
+let cfTestDb: CfTestDb;
 const now = '2026-06-15T01:00:00.000Z';
 
-beforeEach(() => {
-	testDb = createTestDb();
-	mockState.db = testDb.db;
+beforeAll(() => {
+	cfTestDb = createCfTestDb(env.DB);
+});
+
+beforeEach(async () => {
+	mockState.db = cfTestDb.db;
 	mockState.event = { locals: {}, url: new URL('https://example.test/protected?x=1') };
+	await cfTestDb.reset();
 });
 
 afterEach(() => {
-	mockState.db = null;
-	testDb.close();
 	invalidateAuthProfile('u-db');
 	invalidateAuthProfile('u-fallback');
 	invalidateAuthProfile('u-cache');
@@ -195,20 +200,20 @@ describe('canAccessTeamLineup', () => {
 
 describe('getAuthProfile', () => {
 	test('returns persisted profile from DB and caches it until invalidated', async () => {
-		await testDb.db.insert(teams).values({
+		await cfTestDb.db.insert(teams).values({
 			id: 'team-a',
 			name: 'Team A',
 			groupCode: 'A',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(user).values({
+		await cfTestDb.db.insert(user).values({
 			id: 'u-db',
 			name: 'User DB',
 			email: 'db@example.test',
 			emailVerified: false
 		});
-		await testDb.db.insert(authUserProfiles).values({
+		await cfTestDb.db.insert(authUserProfiles).values({
 			userId: 'u-db',
 			accountType: 'team',
 			teamId: 'team-a',
@@ -218,7 +223,7 @@ describe('getAuthProfile', () => {
 		});
 
 		const first = await getAuthProfile({ id: 'u-db', role: 'participant' });
-		await testDb.db
+		await cfTestDb.db
 			.update(authUserProfiles)
 			.set({ displayName: 'Changed', updatedAt: now })
 			.where(eq(authUserProfiles.userId, 'u-db'));
@@ -292,7 +297,7 @@ describe('require helpers', () => {
 
 describe('referee match access', () => {
 	async function seedAssignedMatch() {
-		await testDb.db
+		await cfTestDb.db
 			.insert(scoringRules)
 			.values({
 				id: 'GROUP_15',
@@ -308,20 +313,20 @@ describe('referee match access', () => {
 				updatedAt: now
 			})
 			.onConflictDoNothing();
-		await testDb.db
+		await cfTestDb.db
 			.insert(teams)
 			.values([
 				{ id: 'team-a', name: 'Team A', groupCode: 'A', createdAt: now, updatedAt: now },
 				{ id: 'team-b', name: 'Team B', groupCode: 'A', createdAt: now, updatedAt: now }
 			])
 			.onConflictDoNothing();
-		await testDb.db.insert(tournaments).values({
+		await cfTestDb.db.insert(tournaments).values({
 			id: 'tournament-1',
 			name: 'Tournament',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(ties).values({
+		await cfTestDb.db.insert(ties).values({
 			id: 'tie-1',
 			tieCode: 'A-1',
 			phase: 'group_a',
@@ -331,7 +336,7 @@ describe('referee match access', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(rubbers).values({
+		await cfTestDb.db.insert(rubbers).values({
 			id: 'rubber-1',
 			tieId: 'tie-1',
 			code: 'WD1',
@@ -341,7 +346,7 @@ describe('referee match access', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(matches).values({
+		await cfTestDb.db.insert(matches).values({
 			id: 'match-1',
 			tournamentId: 'tournament-1',
 			discipline: 'WD',
@@ -349,7 +354,7 @@ describe('referee match access', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(officiatingAssignments).values({
+		await cfTestDb.db.insert(officiatingAssignments).values({
 			id: 'assignment-1',
 			tieId: 'tie-1',
 			assignedTeamId: 'team-b',
@@ -360,16 +365,16 @@ describe('referee match access', () => {
 	}
 
 	test('getAssignedOfficiatingTeamId returns assigned umpire team or null', async () => {
-		await testDb.db
+		await cfTestDb.db
 			.insert(teams)
 			.values({ id: 'team-a', name: 'Team A', createdAt: now, updatedAt: now });
-		await testDb.db.insert(tournaments).values({
+		await cfTestDb.db.insert(tournaments).values({
 			id: 'tournament-empty',
 			name: 'Tournament',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(matches).values({
+		await cfTestDb.db.insert(matches).values({
 			id: 'match-without-rubber',
 			tournamentId: 'tournament-empty',
 			discipline: 'MS',
@@ -384,14 +389,14 @@ describe('referee match access', () => {
 
 	test('getAssignedOfficiatingTeamIds returns every assigned umpire team', async () => {
 		await seedAssignedMatch();
-		await testDb.db.insert(teams).values({
+		await cfTestDb.db.insert(teams).values({
 			id: 'team-c',
 			name: 'Team C',
 			groupCode: 'A',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(officiatingAssignments).values({
+		await cfTestDb.db.insert(officiatingAssignments).values({
 			id: 'assignment-2',
 			tieId: 'tie-1',
 			assignedTeamId: 'team-c',
@@ -427,14 +432,14 @@ describe('referee match access', () => {
 
 	test('requireRefereeMatchAccess allows any assigned umpire team account', async () => {
 		await seedAssignedMatch();
-		await testDb.db.insert(teams).values({
+		await cfTestDb.db.insert(teams).values({
 			id: 'team-c',
 			name: 'Team C',
 			groupCode: 'A',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(officiatingAssignments).values({
+		await cfTestDb.db.insert(officiatingAssignments).values({
 			id: 'assignment-2',
 			tieId: 'tie-1',
 			assignedTeamId: 'team-c',

@@ -1,7 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
+
+import { env } from 'cloudflare:workers';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { ScoreEventInput } from '$lib/domain/types';
-import { createTestDb, type TestDb } from '$lib/server/testDb';
+import { createCfTestDb, type CfTestDb } from '$lib/server/cfTestDb';
 import {
 	matchServiceStates,
 	matchSnapshots,
@@ -11,7 +14,7 @@ import {
 } from '$lib/server/db/schema';
 
 const mockState = vi.hoisted(() => ({
-	db: null as TestDb['db'] | null
+	db: null as CfTestDb['db'] | null
 }));
 
 vi.mock('$lib/server/db/request', () => ({
@@ -54,19 +57,17 @@ import {
 	listTies
 } from './tokyoLeagueRepository';
 
-let testDb: TestDb;
+let cfTestDb: CfTestDb;
 const now = '2026-06-15T01:00:00.000Z';
 
-beforeEach(() => {
-	testDb = createTestDb();
-	mockState.db = testDb.db;
+beforeAll(() => {
+	cfTestDb = createCfTestDb(env.DB);
 });
 
-afterEach(() => {
-	mockState.db = null;
-	testDb.close();
+beforeEach(async () => {
+	mockState.db = cfTestDb.db;
+	await cfTestDb.reset();
 });
-
 async function seedTournamentMatch() {
 	const tournamentId = await createTournament({
 		name: 'Repository Cup',
@@ -161,11 +162,11 @@ describe('matchRepository integration queries', () => {
 		await upsertMatchSnapshot(state);
 		await upsertMatchServiceState(state);
 
-		const matchRow = await testDb.db.query.matches.findFirst({ where: eq(matches.id, matchId) });
-		const snapshot = await testDb.db.query.matchSnapshots.findFirst({
+		const matchRow = await cfTestDb.db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+		const snapshot = await cfTestDb.db.query.matchSnapshots.findFirst({
 			where: eq(matchSnapshots.matchId, matchId)
 		});
-		const serviceState = await testDb.db.query.matchServiceStates.findFirst({
+		const serviceState = await cfTestDb.db.query.matchServiceStates.findFirst({
 			where: eq(matchServiceStates.matchId, matchId)
 		});
 
@@ -480,12 +481,12 @@ describe('scoreEventRepository integration queries', () => {
 
 describe('tokyoLeagueRepository officiating assignments', () => {
 	test('assigns multiple umpire teams and replaces the assignment set', async () => {
-		await testDb.db.insert(leagueTeams).values([
+		await cfTestDb.db.insert(leagueTeams).values([
 			{ id: 'team-a', name: 'Alpha', groupCode: 'A', createdAt: now, updatedAt: now },
 			{ id: 'team-b', name: 'Beta', groupCode: 'A', createdAt: now, updatedAt: now },
 			{ id: 'team-c', name: 'Gamma', groupCode: 'A', createdAt: now, updatedAt: now }
 		]);
-		await testDb.db.insert(leagueTies).values({
+		await cfTestDb.db.insert(leagueTies).values({
 			id: 'tie-1',
 			tieCode: 'A-1',
 			phase: 'group_a',

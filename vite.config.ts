@@ -1,5 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
@@ -42,7 +43,25 @@ export default defineConfig({
 					name: 'server',
 					environment: 'node',
 					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
+					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.cf.{test,spec}.{js,ts}']
+				}
+			},
+
+			{
+				extends: './vite.config.ts',
+				plugins: [
+					cloudflareTest({
+						wrangler: { configPath: './wrangler.jsonc' }
+					})
+				],
+				resolve: {
+					alias: {
+						'sveltekit-worker': './src/__mocks__/sveltekit-worker.ts'
+					}
+				},
+				test: {
+					name: 'cloudflare',
+					include: ['src/**/*.cf.{test,spec}.{js,ts}']
 				}
 			}
 		]

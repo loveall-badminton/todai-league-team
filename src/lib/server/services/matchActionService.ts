@@ -1,5 +1,7 @@
 import { applyScoreEvent, getCurrentGame } from '$lib/domain/scoring';
+import { MatchStatePayloadSchema } from '$lib/domain/schemas';
 import type { GameScore, MatchState, ScoreEventInput, ServiceState } from '$lib/domain/types';
+import * as v from 'valibot';
 import { getRequestDb } from '$lib/server/db/request';
 import {
 	matchServiceStates,
@@ -124,7 +126,7 @@ async function prepareUndoInput(matchId: string, input: ScoreEventInput): Promis
 
 function parsePayload(payloadJson: string): { beforeState?: MatchState; afterState?: MatchState } {
 	try {
-		return JSON.parse(payloadJson) as { beforeState?: MatchState; afterState?: MatchState };
+		return v.parse(MatchStatePayloadSchema, JSON.parse(payloadJson));
 	} catch {
 		return {};
 	}

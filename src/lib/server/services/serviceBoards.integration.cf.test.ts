@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
+
+import { env } from 'cloudflare:workers';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createTestDb, type TestDb } from '$lib/server/testDb';
+import { createCfTestDb, type CfTestDb } from '$lib/server/cfTestDb';
 import {
 	lineupItems,
 	lineupSubmissions,
@@ -16,7 +19,7 @@ import {
 } from '$lib/server/db/schema';
 
 const mockState = vi.hoisted(() => ({
-	db: null as TestDb['db'] | null
+	db: null as CfTestDb['db'] | null
 }));
 
 vi.mock('$lib/server/db/request', () => ({
@@ -32,22 +35,21 @@ import { createRankingTiebreaker, syncRankingTiebreakerResult } from './rankingT
 import { createTieWithRubbers } from './tieService';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
-let testDb: TestDb;
+let cfTestDb: CfTestDb;
 const now = '2026-06-15T01:00:00.000Z';
 
-beforeEach(() => {
-	testDb = createTestDb();
-	mockState.db = testDb.db;
+beforeAll(() => {
+	cfTestDb = createCfTestDb(env.DB);
 });
 
-afterEach(() => {
-	mockState.db = null;
-	testDb.close();
+beforeEach(async () => {
+	mockState.db = cfTestDb.db;
+	await cfTestDb.reset();
 });
 
 async function seedTeams() {
 	await ensureDefaultSettings(now);
-	await testDb.db.insert(teams).values([
+	await cfTestDb.db.insert(teams).values([
 		{ id: 'a1', name: 'A1', groupCode: 'A', displayOrder: 1, createdAt: now, updatedAt: now },
 		{ id: 'a2', name: 'A2', groupCode: 'A', displayOrder: 2, createdAt: now, updatedAt: now },
 		{ id: 'a3', name: 'A3', groupCode: 'A', displayOrder: 3, createdAt: now, updatedAt: now },
@@ -55,7 +57,7 @@ async function seedTeams() {
 		{ id: 'b2', name: 'B2', groupCode: 'B', displayOrder: 2, createdAt: now, updatedAt: now },
 		{ id: 'b3', name: 'B3', groupCode: 'B', displayOrder: 3, createdAt: now, updatedAt: now }
 	]);
-	await testDb.db.insert(teamPlayers).values([
+	await cfTestDb.db.insert(teamPlayers).values([
 		{ id: 'a1-p1', teamId: 'a1', name: 'A1 P1', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'a1-p2', teamId: 'a1', name: 'A1 P2', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'b1-p1', teamId: 'b1', name: 'B1 P1', gender: 'female', createdAt: now, updatedAt: now },
@@ -73,7 +75,7 @@ async function seedFinishedGroupTie(params: {
 	winnerTeamId: string;
 	displayOrder: number;
 }) {
-	await testDb.db.insert(ties).values({
+	await cfTestDb.db.insert(ties).values({
 		id: params.id,
 		tieCode: params.tieCode,
 		phase: params.groupCode === 'A' ? 'group_a' : 'group_b',
@@ -147,9 +149,9 @@ describe('finalsService DB generation', () => {
 		});
 
 		const changed = await generateSemifinalsAndFifthPlace(now);
-		const finalTies = await testDb.db.select().from(ties).where(eq(ties.phase, 'semifinal'));
-		const fifthPlace = await testDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-3') });
-		const rubberRows = await testDb.db
+		const finalTies = await cfTestDb.db.select().from(ties).where(eq(ties.phase, 'semifinal'));
+		const fifthPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-3') });
+		const rubberRows = await cfTestDb.db
 			.select()
 			.from(rubbers)
 			.where(eq(rubbers.tieId, finalTies[0].id));
@@ -165,7 +167,7 @@ describe('finalsService DB generation', () => {
 
 	test('generates final and third-place ties, and updates existing final ties', async () => {
 		await seedTeams();
-		await testDb.db.insert(ties).values([
+		await cfTestDb.db.insert(ties).values([
 			{
 				id: 'x-1-id',
 				tieCode: 'x-1',
@@ -205,8 +207,8 @@ describe('finalsService DB generation', () => {
 		});
 
 		const changed = await generateFinalAndThirdPlace(now);
-		const thirdPlace = await testDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-4') });
-		const final = await testDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-5') });
+		const thirdPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-4') });
+		const final = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-5') });
 
 		expect(changed).toBe(2);
 		expect(thirdPlace).toMatchObject({
@@ -232,7 +234,7 @@ describe('finalsService DB generation', () => {
 
 	test('rejects finals generation when knockout scoring rule is not configured', async () => {
 		await seedTeams();
-		await testDb.db
+		await cfTestDb.db
 			.update(appSettings)
 			.set({ knockoutScoringRuleId: null, updatedAt: now })
 			.where(eq(appSettings.id, 'default'));
@@ -249,14 +251,14 @@ describe('finalsService DB generation', () => {
 describe('liveBoardService DB boards', () => {
 	test('reads public rubbers with revealed lineup names and reconstructed legacy final score', async () => {
 		await seedTeams();
-		await testDb.db.insert(tournaments).values({
+		await cfTestDb.db.insert(tournaments).values({
 			id: 'tokyo-league-default',
 			name: '東大リーグ団体戦',
 			status: 'running',
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(ties).values({
+		await cfTestDb.db.insert(ties).values({
 			id: 'tie-live',
 			tieCode: 'LIVE-1',
 			phase: 'group_a',
@@ -269,7 +271,7 @@ describe('liveBoardService DB boards', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(matches).values({
+		await cfTestDb.db.insert(matches).values({
 			id: 'match-live',
 			tournamentId: 'tokyo-league-default',
 			discipline: 'WD',
@@ -282,7 +284,7 @@ describe('liveBoardService DB boards', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(rubbers).values({
+		await cfTestDb.db.insert(rubbers).values({
 			id: 'rubber-live',
 			tieId: 'tie-live',
 			code: 'WD1',
@@ -294,7 +296,7 @@ describe('liveBoardService DB boards', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(lineupSubmissions).values([
+		await cfTestDb.db.insert(lineupSubmissions).values([
 			{
 				id: 'lineup-a',
 				tieId: 'tie-live',
@@ -314,7 +316,7 @@ describe('liveBoardService DB boards', () => {
 				updatedAt: now
 			}
 		]);
-		await testDb.db.insert(lineupItems).values([
+		await cfTestDb.db.insert(lineupItems).values([
 			{
 				id: 'item-a',
 				submissionId: 'lineup-a',
@@ -334,7 +336,7 @@ describe('liveBoardService DB boards', () => {
 				updatedAt: now
 			}
 		]);
-		await testDb.db.insert(scoreEvents).values({
+		await cfTestDb.db.insert(scoreEvents).values({
 			id: 'score-legacy',
 			matchId: 'match-live',
 			seqNo: 10,
@@ -369,7 +371,7 @@ describe('liveBoardService DB boards', () => {
 		await expect(getFinalsTieBoard()).resolves.toEqual({ finalsBoard: [] });
 
 		await seedTeams();
-		await testDb.db.insert(ties).values({
+		await cfTestDb.db.insert(ties).values({
 			id: 'final-board',
 			tieCode: 'x-5',
 			phase: 'final',
@@ -392,7 +394,7 @@ describe('liveBoardService DB boards', () => {
 
 	test('reads unrevealed public rubbers without lineup or match data', async () => {
 		await seedTeams();
-		await testDb.db.insert(ties).values({
+		await cfTestDb.db.insert(ties).values({
 			id: 'tie-unrevealed',
 			tieCode: 'HIDDEN-1',
 			phase: 'group_a',
@@ -404,7 +406,7 @@ describe('liveBoardService DB boards', () => {
 			createdAt: now,
 			updatedAt: now
 		});
-		await testDb.db.insert(rubbers).values({
+		await cfTestDb.db.insert(rubbers).values({
 			id: 'rubber-unrevealed',
 			tieId: 'tie-unrevealed',
 			code: 'WD1',
@@ -441,14 +443,14 @@ describe('rankingTiebreakerService DB result sync', () => {
 			playerBId: 'b1-p1',
 			now
 		});
-		await testDb.db
+		await cfTestDb.db
 			.update(matches)
 			.set({ status: 'confirmed', winnerSide: 'B', updatedAt: now })
 			.where(eq(matches.id, created.matchId));
 
 		await syncRankingTiebreakerResult(created.matchId, now);
 
-		const tiebreaker = await testDb.db.query.rankingTiebreakers.findFirst({
+		const tiebreaker = await cfTestDb.db.query.rankingTiebreakers.findFirst({
 			where: eq(rankingTiebreakers.id, created.rankingTiebreakerId)
 		});
 		expect(tiebreaker).toMatchObject({
@@ -471,7 +473,7 @@ describe('rankingTiebreakerService DB result sync', () => {
 
 		await syncRankingTiebreakerResult(created.matchId, now);
 
-		const tiebreaker = await testDb.db.query.rankingTiebreakers.findFirst({
+		const tiebreaker = await cfTestDb.db.query.rankingTiebreakers.findFirst({
 			where: eq(rankingTiebreakers.id, created.rankingTiebreakerId)
 		});
 		expect(tiebreaker).toMatchObject({ status: 'scheduled', winnerTeamId: null });
@@ -479,7 +481,7 @@ describe('rankingTiebreakerService DB result sync', () => {
 
 	test('rejects creation when tiebreaker scoring rule is not configured', async () => {
 		await seedTeams();
-		await testDb.db
+		await cfTestDb.db
 			.update(appSettings)
 			.set({ tiebreakerScoringRuleId: null, updatedAt: now })
 			.where(eq(appSettings.id, 'default'));
@@ -508,7 +510,7 @@ describe('rankingTiebreakerService DB result sync', () => {
 			playerBId: 'b1-p1',
 			now
 		});
-		await testDb.db
+		await cfTestDb.db
 			.update(matches)
 			.set({ status: 'scheduled', winnerSide: 'A', updatedAt: now })
 			.where(eq(matches.id, created.matchId));
@@ -516,7 +518,7 @@ describe('rankingTiebreakerService DB result sync', () => {
 		await syncRankingTiebreakerResult(created.matchId, now);
 		await expect(syncRankingTiebreakerResult('missing-match', now)).resolves.toBeUndefined();
 
-		const tiebreaker = await testDb.db.query.rankingTiebreakers.findFirst({
+		const tiebreaker = await cfTestDb.db.query.rankingTiebreakers.findFirst({
 			where: eq(rankingTiebreakers.id, created.rankingTiebreakerId)
 		});
 		expect(tiebreaker).toMatchObject({ status: 'scheduled', winnerTeamId: null });

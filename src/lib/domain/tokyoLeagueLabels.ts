@@ -5,6 +5,8 @@ import {
 	type TiePhase,
 	type VenueCode
 } from './tokyoLeague';
+import * as v from 'valibot';
+import { CourtNumbersSchema } from './schemas';
 
 export const phaseLabel = (phase: string) => {
 	const labels: Record<TiePhase, string> = {
@@ -106,9 +108,10 @@ export const courtDisplayLabel = (
 	const vLabel = venue ? venueLabel(venue) : null;
 	if (!courtBlockCode) return vLabel ?? '未設定';
 	try {
-		const courts: number[] = JSON.parse(courtBlockCode);
-		if (Array.isArray(courts) && courts.length > 0) {
-			return `${vLabel ?? ''} ${courts.map((c) => `${c}面`).join('・')}`.trim();
+		const raw = JSON.parse(courtBlockCode);
+		const result = v.safeParse(CourtNumbersSchema, raw);
+		if (result.success && result.output.length > 0) {
+			return `${vLabel ?? ''} ${result.output.map((c) => `${c}面`).join('・')}`.trim();
 		}
 	} catch {
 		const block = COURT_BLOCKS.find((b) => b.code === courtBlockCode);
@@ -120,9 +123,10 @@ export const courtDisplayLabel = (
 export const courtBlockLabel = (code: string | null | undefined) => {
 	if (!code) return '未設定';
 	try {
-		const courts: number[] = JSON.parse(code);
-		if (Array.isArray(courts) && courts.length > 0) {
-			return `コート${courts.map((c) => `${c}面`).join('・')}`;
+		const raw = JSON.parse(code);
+		const result = v.safeParse(CourtNumbersSchema, raw);
+		if (result.success && result.output.length > 0) {
+			return `コート${result.output.map((c) => `${c}面`).join('・')}`;
 		}
 	} catch {
 		// ignore
@@ -148,8 +152,12 @@ export const venueCourtCount = (venue: string | null | undefined): number =>
 export const parseCourts = (courtBlockCode: string | null | undefined): number[] => {
 	if (!courtBlockCode) return [];
 	try {
-		const parsed = JSON.parse(courtBlockCode);
-		if (Array.isArray(parsed)) return parsed.map(Number).filter((n) => n > 0);
+		const raw = JSON.parse(courtBlockCode);
+		if (Array.isArray(raw)) {
+			const numbers = raw.map(Number).filter((n) => Number.isFinite(n));
+			const result = v.safeParse(CourtNumbersSchema, numbers);
+			if (result.success) return result.output.filter((n) => n > 0);
+		}
 	} catch {
 		const block = COURT_BLOCKS.find((b) => b.code === courtBlockCode);
 		if (block) return [...block.courtNumbers];

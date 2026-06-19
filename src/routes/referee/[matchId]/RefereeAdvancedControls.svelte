@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GameState, ServiceState, MatchPlayer } from '$lib/domain/types';
+	import type { GameState, LetCalledInput, ServiceState, MatchPlayer } from '$lib/domain/types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import AppTextarea from '$lib/components/AppTextarea.svelte';
@@ -27,7 +27,7 @@
 	} = $props();
 
 	let correctionFormEl = $state<HTMLFormElement>();
-	let letReason = $state('receiver_not_ready');
+	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
 	let letNote = $state('');
 
 	let courtAssignmentsJson = $derived(

@@ -1,13 +1,18 @@
 import { command, getRequestEvent } from '$app/server';
 import { otherSide } from '$lib/domain/scoring';
+import {
+	CourtAssignmentsSchema,
+	LetReasonSchema,
+	ServiceCourtSchema,
+	SideSchema,
+	SuspendReasonSchema
+} from '$lib/domain/schemas';
 import type {
 	CourtAssignments,
 	MatchPlayer,
 	MatchState,
 	ScoreEventInput,
-	ServiceCourt,
-	ServiceState,
-	Side
+	ServiceState
 } from '$lib/domain/types';
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
 import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
@@ -17,7 +22,7 @@ import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 
-const sideSchema = v.picklist(['A', 'B'] as const);
+const sideSchema = SideSchema;
 
 async function applyAction(
 	matchId: string,
@@ -187,7 +192,7 @@ export const correction = command(
 
 export const letCalled = command(
 	v.object({
-		reason: v.string(),
+		reason: LetReasonSchema,
 		note: v.optional(v.string())
 	}),
 	async ({ reason, note }) => {
@@ -197,11 +202,7 @@ export const letCalled = command(
 			type: 'let_called',
 			idempotencyKey: crypto.randomUUID(),
 			observedSeqNo: state.lastSeqNo,
-			reason: (reason || 'other') as ScoreEventInput extends infer T
-				? T extends { type: 'let_called'; reason: infer R }
-					? R
-					: never
-				: never,
+			reason,
 			note: note || undefined
 		}));
 	}
@@ -209,7 +210,7 @@ export const letCalled = command(
 
 export const suspend = command(
 	v.object({
-		reason: v.optional(v.string()),
+		reason: SuspendReasonSchema,
 		note: v.optional(v.string())
 	}),
 	async ({ reason, note }) => {
@@ -219,7 +220,7 @@ export const suspend = command(
 			type: 'match_suspended',
 			idempotencyKey: crypto.randomUUID(),
 			observedSeqNo: state.lastSeqNo,
-			reason: (reason || 'other') as 'other',
+			reason,
 			note: note || undefined
 		}));
 	}
@@ -311,12 +312,12 @@ function buildServiceFromArgs(
 	if (current?.discipline === 'doubles') {
 		const service: ServiceState = {
 			...current,
-			servingSide: servingSide as Side,
-			serviceCourt: serviceCourt as ServiceCourt,
+			servingSide: v.parse(SideSchema, servingSide),
+			serviceCourt: v.parse(ServiceCourtSchema, serviceCourt),
 			serverPlayerId,
 			receiverPlayerId,
 			courtAssignments: courtAssignmentsJson
-				? JSON.parse(courtAssignmentsJson)
+				? v.parse(CourtAssignmentsSchema, JSON.parse(courtAssignmentsJson))
 				: current.courtAssignments
 		};
 		validateServiceState(service, players);
@@ -325,8 +326,8 @@ function buildServiceFromArgs(
 
 	const service: ServiceState = {
 		discipline: 'singles' as const,
-		servingSide: servingSide as Side,
-		serviceCourt: serviceCourt as ServiceCourt,
+		servingSide: v.parse(SideSchema, servingSide),
+		serviceCourt: v.parse(ServiceCourtSchema, serviceCourt),
 		serverPlayerId,
 		receiverPlayerId
 	};

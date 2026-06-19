@@ -1,7 +1,9 @@
 import { asc, eq } from 'drizzle-orm';
 import { createInitialMatchState, getCurrentGame } from '$lib/domain/scoring';
+import { MatchStateSchema } from '$lib/domain/schemas';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
 import type { ScoringConfig } from '$lib/domain/types';
+import * as v from 'valibot';
 import { getRequestDb } from '$lib/server/db/request';
 import {
 	matchServiceStates,
@@ -54,7 +56,7 @@ export async function getMatchState(matchId: string): Promise<MatchState> {
 		where: eq(matchSnapshots.matchId, matchId)
 	});
 	if (!snapshot) throw new Error('Match snapshot not found');
-	return JSON.parse(snapshot.stateJson) as MatchState;
+	return v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
 }
 
 export async function getMatchPlayers(matchId: string): Promise<MatchPlayer[]> {
