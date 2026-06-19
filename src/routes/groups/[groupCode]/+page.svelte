@@ -150,7 +150,7 @@
 	</td>
 {/snippet}
 
-<Card class="min-w-0">
+<Card class="min-w-0 p-0">
 	<div class="border-b border-zinc-100 px-5 py-4">
 		<h2 class="font-semibold">順位表</h2>
 	</div>

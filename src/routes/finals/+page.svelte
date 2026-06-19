@@ -48,48 +48,47 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<div class="flex flex-col gap-2 sm:items-end">
-		<RealtimeSync topics={['finals', 'schedule']} onUpdate={() => finalsData.refresh()} />
-		<div class="flex flex-col gap-2 sm:flex-row">
-			<AppButton
-				variant="secondary"
-				disabled={!semifinalsCanGenerate}
-				onclick={async () => {
-					try {
-						const r = await generateSemifinals();
-						await finalsData.refresh();
-						if (r?.message) toast.success(r.message);
-					} catch (e) {
-						toast.error(e instanceof Error ? e.message : '失敗');
-					}
-				}}
-			>
-				準決勝・5位決定戦生成
-			</AppButton>
-			<AppButton
-				disabled={!finalsCanGenerate}
-				onclick={async () => {
-					try {
-						const r = await generateFinals();
-						await finalsData.refresh();
-						if (r?.message) toast.success(r.message);
-					} catch (e) {
-						toast.error(e instanceof Error ? e.message : '失敗');
-					}
-				}}
-			>
-				決勝・3位決定戦生成
-			</AppButton>
-		</div>
-		{#if semifinalsHint || finalsHint}
-			<p class="text-xs text-zinc-400">
-				{semifinalsHint ?? finalsHint}
-			</p>
-		{/if}
-	</div>
+	<RealtimeSync topics={['finals', 'schedule']} onUpdate={() => finalsData.refresh()} />
 {/snippet}
 
 <PageHeader title="決勝トーナメント" actions={headerActions} />
+
+<div class="mb-4 flex gap-2 flex-col sm:items-end sm:justify-between">
+	<div class="flex flex-col gap-2 sm:flex-row">
+		<AppButton
+			variant="secondary"
+			disabled={!semifinalsCanGenerate}
+			onclick={async () => {
+				try {
+					const r = await generateSemifinals();
+					await finalsData.refresh();
+					if (r?.message) toast.success(r.message);
+				} catch (e) {
+					toast.error(e instanceof Error ? e.message : '失敗');
+				}
+			}}
+		>
+			準決勝・5位決定戦生成
+		</AppButton>
+		<AppButton
+			disabled={!finalsCanGenerate}
+			onclick={async () => {
+				try {
+					const r = await generateFinals();
+					await finalsData.refresh();
+					if (r?.message) toast.success(r.message);
+				} catch (e) {
+					toast.error(e instanceof Error ? e.message : '失敗');
+				}
+			}}
+		>
+			決勝・3位決定戦生成
+		</AppButton>
+	</div>
+	{#if semifinalsHint || finalsHint}
+		<p class="text-xs text-zinc-400">{semifinalsHint ?? finalsHint}</p>
+	{/if}
+</div>
 
 {#if finalsData.current === null}
 	<div class="grid gap-2 sm:grid-cols-2">

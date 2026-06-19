@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -10,7 +9,7 @@
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import SortableTeamItem from './SortableTeamItem.svelte';
-	import { create, reorder } from './teams.remote';
+	import { create, importTeams, reorder } from './teams.remote';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -21,41 +20,18 @@
 	let { data }: PageProps = $props();
 
 	let showForm = $state(false);
-	let importing = $state(false);
-
 	let fileInput: HTMLInputElement;
 
-	async function handleImport(event: Event) {
-		const file = (event.target as HTMLInputElement).files?.[0];
-		if (!file) return;
-
-		importing = true;
-
-		const formData = new FormData();
-		formData.append('file', file);
-
-		try {
-			const res = await fetch('/teams/import', { method: 'POST', body: formData });
-			if (!res.ok) {
-				const text = await res.text();
-				toast.error(text || 'インポートに失敗しました');
-			} else {
-				const result: { addedCount: number; createdTeams: string[] } = await res.json();
-				let msg = `${result.addedCount}名の選手を追加しました`;
-				if (result.createdTeams.length > 0) {
-					msg += `（新規作成チーム: ${result.createdTeams.join('、')}）`;
-				}
-
-				await invalidateAll();
-				toast.success(msg);
-			}
-		} catch {
-			toast.error('インポートに失敗しました');
-		} finally {
-			importing = false;
-			fileInput.value = '';
+	$effect(() => {
+		const result = importTeams.result;
+		if (!result?.success) return;
+		const { addedCount, createdTeams } = result;
+		let msg = `${addedCount}名の選手を追加しました`;
+		if (createdTeams.length > 0) {
+			msg += `（新規作成チーム: ${createdTeams.join('、')}）`;
 		}
-	}
+		toast.success(msg);
+	});
 
 	let teams = $derived([...data.teams]);
 
@@ -73,14 +49,17 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<input bind:this={fileInput} type="file" accept=".csv" class="hidden" onchange={handleImport} />
-	<AppButton
-		type="button"
-		variant="secondary"
-		disabled={importing}
-		onclick={() => fileInput.click()}
-	>
-		{importing ? 'インポート中…' : 'インポート'}
+	<form {...importTeams} enctype="multipart/form-data" class="hidden">
+		<input
+			bind:this={fileInput}
+			type="file"
+			name="file"
+			accept=".csv"
+			onchange={(e) => e.currentTarget.form?.requestSubmit()}
+		/>
+	</form>
+	<AppButton type="button" variant="secondary" onclick={() => fileInput.click()}>
+		インポート
 	</AppButton>
 	<AppButton variant="secondary" href="/teams/export">エクスポート</AppButton>
 	<AppButton type="button" onclick={() => (showForm = !showForm)}>
@@ -136,7 +115,7 @@
 {/if}
 
 <!-- Team list -->
-<Card class="overflow-hidden">
+<Card class="overflow-hidden p-0">
 	{#if teams.length === 0}
 		<div class="p-10 text-center">
 			<p class="text-sm text-zinc-400">チームはまだ登録されていません</p>

@@ -26,7 +26,6 @@
 		playerOptions
 	} from './refereeUtils';
 	import * as v from 'valibot';
-	import { Plus } from '@lucide/svelte';
 
 	let { data }: PageProps = $props();
 
@@ -161,7 +160,7 @@
 				onclick={() => run(() => rallyWon({ side }))}
 				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 			>
-				<Plus class="size-5" />1
+				+1
 			</LongPressButton>
 		</div>
 	</Card>

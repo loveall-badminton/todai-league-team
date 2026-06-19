@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import AppSwitch from './AppSwitch.svelte';
 	import { LIVE_BOARD_CHANNEL, type LiveTopic } from '$lib/realtime/channels';
-	import { createLiveChannel } from '$lib/realtime/liveChannel.svelte';
+	import { createLiveChannel, type LiveChannel } from '$lib/realtime/liveChannel.svelte';
 
 	interface Props {
 		topics: readonly LiveTopic[];
@@ -17,7 +17,7 @@
 	let enabled = $state(true);
 	let connected = $state(false);
 	let fallbackActive = $state(false);
-	let liveChannel: ReturnType<typeof createLiveChannel> | null = null;
+	let liveChannel: LiveChannel | null = null;
 	let statusLabel = $derived(
 		enabled ? (connected ? '接続中' : fallbackActive ? '自動更新中' : '接続中…') : '自動更新'
 	);
@@ -69,7 +69,7 @@
 		fallbackActive = false;
 		const id = setTimeout(() => {
 			fallbackActive = true;
-		}, 3000);
+		}, 5000); //
 		return () => clearTimeout(id);
 	});
 
@@ -81,6 +81,4 @@
 	});
 </script>
 
-<div class="flex items-center gap-2">
-	<AppSwitch checked={enabled} onCheckedChange={setAutoUpdateEnabled} label={statusLabel} />
-</div>
+<AppSwitch checked={enabled} onCheckedChange={setAutoUpdateEnabled} label={statusLabel} />

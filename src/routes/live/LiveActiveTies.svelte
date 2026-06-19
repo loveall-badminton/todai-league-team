@@ -105,7 +105,7 @@
 			{#each ties as tie (tie.id)}
 				{@const tieRubbers = rubbersByTieId[tie.id] ?? []}
 				{@const hasPlayingRubber = tieRubbers.some((r: TieRubber) => r.status === 'playing')}
-				<Card class="overflow-hidden {hasPlayingRubber ? 'border-emerald-200' : ''}">
+				<Card class={cn('overflow-hidden p-0', hasPlayingRubber ? 'border-emerald-200' : '')}>
 					<div class="px-5 pt-4 pb-3">
 						<div class="flex items-start justify-between gap-2">
 							<div class="min-w-0">

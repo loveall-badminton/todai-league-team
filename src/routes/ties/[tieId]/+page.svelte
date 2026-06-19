@@ -417,7 +417,7 @@
 		</td>
 	{/snippet}
 
-	<Card>
+	<Card class="p-0">
 		<div class="border-b border-zinc-100 px-5 py-4">
 			<h2 class="font-semibold">種目別結果</h2>
 		</div>

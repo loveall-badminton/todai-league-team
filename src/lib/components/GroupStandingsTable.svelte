@@ -30,7 +30,7 @@
 </script>
 
 <div class="overflow-x-auto">
-	<table class="w-full min-w-[28rem] text-sm whitespace-nowrap sm:min-w-180">
+	<table class="w-full min-w-md text-sm whitespace-nowrap sm:min-w-180">
 		<thead>
 			<tr class="border-b border-zinc-100">
 				<th class="w-8 px-2 py-2 text-left text-xs font-medium text-zinc-400 sm:w-10 sm:px-4"

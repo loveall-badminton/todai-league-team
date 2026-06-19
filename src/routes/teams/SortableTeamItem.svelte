@@ -25,7 +25,7 @@
 	<!-- Drag handle -->
 	<div
 		{@attach sortable.attachHandle}
-		class="flex w-6 flex-shrink-0 cursor-grab items-center py-3.5 text-zinc-300 hover:text-zinc-500"
+		class="flex w-6 shrink-0 cursor-grab items-center py-3.5 text-zinc-300 hover:text-zinc-500"
 	>
 		<GripVertical class="h-4 w-4" />
 	</div>

@@ -140,7 +140,7 @@
 	</div>
 
 	{#if data.accounts.length}
-		<Card class="overflow-hidden">
+		<Card class="overflow-hidden p-0">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="border-b border-zinc-100 bg-zinc-50 text-xs font-medium text-zinc-500">
