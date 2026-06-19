@@ -99,7 +99,7 @@
 
 	<!-- Mobile slide-out drawer -->
 	<div
-		class="fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-xl transition-transform duration-200 ease-in-out lg:hidden {drawerOpen
+		class="fixed inset-y-0 left-0 z-50 w-64 transform overflow-y-auto bg-white shadow-xl transition-transform duration-200 ease-in-out lg:hidden {drawerOpen
 			? 'translate-x-0'
 			: '-translate-x-full'}"
 	>

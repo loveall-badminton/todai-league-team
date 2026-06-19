@@ -6,7 +6,7 @@
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { Dialog } from 'bits-ui';
-	import { GripVertical } from '@lucide/svelte';
+	import { GripVertical, Plus } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -131,7 +131,10 @@
 				pollInterval={12000}
 			/>
 		{/if}
-		<AppButton type="button" onclick={() => (dialogOpen = true)}>+ 新規作成</AppButton>
+		<AppButton type="button" onclick={() => (dialogOpen = true)}>
+			<Plus class="size-4" />
+			新規作成
+		</AppButton>
 	</div>
 {/snippet}
 

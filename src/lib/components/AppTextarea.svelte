@@ -11,7 +11,7 @@
 
 <textarea
 	class={cn(
-		'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950',
+		'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-zinc-950',
 		className
 	)}
 	bind:value

@@ -17,6 +17,7 @@
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
+	import { ArrowLeft } from '@lucide/svelte';
 	import {
 		updateTeam,
 		createPlayer,
@@ -103,7 +104,7 @@
 		href={resolve('/teams')}
 		class="mb-2 inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-950"
 	>
-		← チーム一覧
+		<ArrowLeft class="size-3" /> チーム一覧
 	</a>
 	<PageHeader title={data.team.name} actions={headerActions} />
 </header>

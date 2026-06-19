@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ChevronDown, GripVertical } from '@lucide/svelte';
+	import { ArrowRight, ChevronDown, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import { Collapsible } from 'bits-ui';
 	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
@@ -107,7 +107,7 @@
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
 				class="hidden shrink-0 items-center border-l border-zinc-100 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 sm:flex"
 			>
-				詳細 →
+				詳細 <ArrowRight class="inline size-3" />
 			</a>
 		</div>
 
@@ -122,7 +122,7 @@
 							href={resolve('/ties/[tieId]', { tieId: tie.id })}
 							class="text-xs text-zinc-400 hover:text-zinc-700 hover:underline"
 						>
-							詳細を開く →
+							詳細を開く <ArrowRight class="inline size-3" />
 						</a>
 					</div>
 				</form>

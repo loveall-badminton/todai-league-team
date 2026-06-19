@@ -20,7 +20,7 @@
 		tieStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
 	import { cn } from '$lib/utils/cn';
-	import { Check } from '@lucide/svelte';
+	import { ArrowLeft, Check } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import type { PageProps } from './$types';
@@ -165,7 +165,12 @@
 {/snippet}
 
 <header>
-	<a class="text-sm text-zinc-500 hover:text-zinc-700" href={resolve('/ties')}> ← 対戦一覧 </a>
+	<a
+		class="text-sm text-zinc-500 hover:text-zinc-700 inline-flex items-center gap-1"
+		href={resolve('/ties')}
+	>
+		<ArrowLeft class="size-3" /> 対戦一覧
+	</a>
 	<div class="mt-2">
 		<PageHeader
 			title={data.tie.tieCode}
@@ -182,7 +187,7 @@
 			{@const stepNum = i + 1}
 			{@const isComplete = currentStep > stepNum}
 			{@const isCurrent = currentStep === stepNum}
-			<div class="flex min-w-28 flex-1 flex-col items-center gap-1.5 text-center">
+			<div class="flex min-w-20 flex-1 flex-col items-center gap-1.5 text-center sm:min-w-28">
 				<div class="flex w-full items-center">
 					<div
 						class={cn(
@@ -490,16 +495,16 @@
 			<div class="divide-y divide-zinc-100">
 				{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
 					{@const item = lineup.items.find((i) => i.rubberCode === rubber.code)}
-					<div class="grid grid-cols-[8rem_1fr] gap-3 px-5 py-3.5">
+					<div class="grid grid-cols-[6rem_1fr] gap-3 px-5 py-3.5 sm:grid-cols-[8rem_1fr]">
 						<p class="pt-0.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
-						<div class="space-y-0.5">
+						<div class="min-w-0 space-y-0.5">
 							{#if item?.player1Id}
-								<p class="text-sm">{playerName(item.player1Id)}</p>
+								<p class="truncate text-sm">{playerName(item.player1Id)}</p>
 							{:else}
 								<p class="text-sm text-zinc-400">未入力</p>
 							{/if}
 							{#if item?.player2Id}
-								<p class="text-sm">{playerName(item.player2Id)}</p>
+								<p class="truncate text-sm">{playerName(item.player2Id)}</p>
 							{/if}
 						</div>
 					</div>

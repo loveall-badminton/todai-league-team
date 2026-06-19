@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { GripVertical } from '@lucide/svelte';
+	import { ArrowRight, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import type { TeamSummary } from '$lib/server/repositories/tokyoLeagueRepository';
@@ -70,7 +70,7 @@
 
 		<!-- Arrow -->
 		<div class="hidden w-12 text-right lg:block">
-			<span class="text-zinc-300">→</span>
+			<span class="text-zinc-300"><ArrowRight class="size-3" /></span>
 		</div>
 
 		<!-- Mobile: player count -->

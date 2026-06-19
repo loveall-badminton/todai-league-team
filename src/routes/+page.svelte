@@ -6,7 +6,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { Settings } from '@lucide/svelte';
+	import { ArrowRight, Settings } from '@lucide/svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { getDashboardData } from './dashboard.remote';
 
@@ -32,7 +32,7 @@
 
 <PageHeader title="運営ホーム" actions={headerActions} />
 <!-- Playing ties -->
-<Card class="p-4">
+<Card>
 	<div class="mb-3 flex items-center justify-between">
 		<h2 class="text-base font-semibold text-zinc-950">進行中の対戦</h2>
 		<Badge color="emerald">{playing.length}</Badge>
@@ -64,7 +64,7 @@
 	<div class="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
 		<h2 class="text-base font-semibold text-zinc-950">団体戦カード</h2>
 		<a href={resolve('/ties')} class="text-xs font-medium text-zinc-500 hover:text-zinc-950">
-			すべて見る →
+			すべて見る <ArrowRight class="inline size-3" />
 		</a>
 	</div>
 	<div class="divide-y divide-zinc-100">

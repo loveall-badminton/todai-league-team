@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
 	import { resolve } from '$app/paths';
-	import { ClipboardList, Shield } from '@lucide/svelte';
+	import { ArrowRight, ClipboardList, Shield } from '@lucide/svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -92,7 +92,10 @@
 											class="w-full justify-between"
 										>
 											<span>{rubberLabel(rubber.code)}</span>
-											<span class="text-zinc-400">{rubberStatusLabel(rubber.status)} →</span>
+											<span class="text-zinc-400"
+												>{rubberStatusLabel(rubber.status)}
+												<ArrowRight class="inline size-3" /></span
+											>
 										</AppButton>
 									{/each}
 								</div>

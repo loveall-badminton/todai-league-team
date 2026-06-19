@@ -48,9 +48,9 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<div class="flex flex-col items-end gap-2">
+	<div class="flex flex-col gap-2 sm:items-end">
 		<RealtimeSync topics={['finals', 'schedule']} onUpdate={() => finalsData.refresh()} />
-		<div class="flex gap-2">
+		<div class="flex flex-col gap-2 sm:flex-row">
 			<AppButton
 				variant="secondary"
 				disabled={!semifinalsCanGenerate}

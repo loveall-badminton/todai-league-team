@@ -26,6 +26,7 @@
 		playerOptions
 	} from './refereeUtils';
 	import * as v from 'valibot';
+	import { Plus } from '@lucide/svelte';
 
 	let { data }: PageProps = $props();
 
@@ -149,7 +150,7 @@
 		{#if teamName}
 			<p class="text-xs text-zinc-400">{teamName}</p>
 		{/if}
-		<p class="mt-1 text-7xl leading-none font-bold tabular-nums">{score}</p>
+		<p class="mt-1 text-5xl leading-none font-bold tabular-nums sm:text-7xl">{score}</p>
 		<div class="mt-4">
 			<LongPressButton
 				class={cn(
@@ -160,7 +161,7 @@
 				onclick={() => run(() => rallyWon({ side }))}
 				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 			>
-				+1
+				<Plus class="size-5" />1
 			</LongPressButton>
 		</div>
 	</Card>

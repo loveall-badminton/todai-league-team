@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeftRight } from '@lucide/svelte';
+	import { ArrowLeft, ArrowLeftRight, ArrowRight } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
 	import AppButton from './AppButton.svelte';
 
@@ -41,7 +41,7 @@
 						accentLeft === 'pink' ? 'text-pink-700' : 'text-cyan-700'
 					)}
 				>
-					← 左コート
+					<ArrowLeft class="inline size-3" /> 左コート
 				</p>
 				{#if leftPlayers && leftPlayers.length > 0}
 					<p class="text-sm leading-snug font-semibold text-zinc-950">
@@ -65,7 +65,7 @@
 						accentRight === 'cyan' ? 'text-cyan-700' : 'text-pink-700'
 					)}
 				>
-					右コート →
+					右コート <ArrowRight class="inline size-3" />
 				</p>
 				{#if rightPlayers && rightPlayers.length > 0}
 					<p class="text-sm leading-snug font-semibold text-zinc-950">

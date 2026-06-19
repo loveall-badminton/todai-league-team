@@ -29,7 +29,7 @@
 			<Tabs.Trigger
 				value={item.value}
 				class={cn(
-					'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+					'shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors',
 					value === item.value
 						? 'bg-zinc-900 text-white'
 						: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400',

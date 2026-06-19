@@ -118,13 +118,23 @@
 {:else}
 	<!-- Full table layout (tie detail style) -->
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-150 text-sm">
+		<table class="w-full min-w-[18rem] text-sm sm:min-w-150">
 			<thead>
 				<tr class="border-b border-zinc-100">
-					<th class="w-32 px-4 py-3 text-left text-xs font-medium text-zinc-400">種目</th>
-					<th class="px-4 py-3 text-left text-xs font-medium text-zinc-400">{teamAName}</th>
-					<th class="w-24 px-4 py-3 text-center text-xs font-medium text-zinc-400">スコア</th>
-					<th class="px-4 py-3 text-left text-xs font-medium text-zinc-400">{teamBName}</th>
+					<th
+						class="w-24 px-2 py-3 text-left text-[10px] font-medium text-zinc-400 sm:w-32 sm:px-4 sm:text-xs"
+						>種目</th
+					>
+					<th class="px-2 py-3 text-left text-[10px] font-medium text-zinc-400 sm:px-4 sm:text-xs"
+						>{teamAName}</th
+					>
+					<th
+						class="w-20 px-2 py-3 text-center text-[10px] font-medium text-zinc-400 sm:w-24 sm:px-4 sm:text-xs"
+						>スコア</th
+					>
+					<th class="px-2 py-3 text-left text-[10px] font-medium text-zinc-400 sm:px-4 sm:text-xs"
+						>{teamBName}</th
+					>
 					{@render extraHead?.()}
 				</tr>
 			</thead>
@@ -132,10 +142,14 @@
 				{#each rubbers as rubber (rubber.id)}
 					{@const isPlaying = rubber.status === 'playing'}
 					<tr class="border-b border-zinc-100 last:border-0 {isPlaying ? 'bg-emerald-50' : ''}">
-						<td class="px-4 py-3 font-medium">{rubberLabel(rubber.code)}</td>
-						<td class="px-4 py-3 text-sm">{@render playerNames(rubber.playersA, 'A', rubber)}</td>
-						<td class="px-4 py-3 text-center">{@render scoreCell(rubber)}</td>
-						<td class="px-4 py-3 text-sm">{@render playerNames(rubber.playersB, 'B', rubber)}</td>
+						<td class="px-2 py-3 font-medium sm:px-4">{rubberLabel(rubber.code)}</td>
+						<td class="px-2 py-3 text-sm sm:px-4"
+							>{@render playerNames(rubber.playersA, 'A', rubber)}</td
+						>
+						<td class="px-2 py-3 text-center sm:px-4">{@render scoreCell(rubber)}</td>
+						<td class="px-2 py-3 text-sm sm:px-4"
+							>{@render playerNames(rubber.playersB, 'B', rubber)}</td
+						>
 						{@render extraCell?.(rubber)}
 					</tr>
 				{:else}

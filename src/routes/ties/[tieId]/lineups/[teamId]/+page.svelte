@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { ArrowLeft } from '@lucide/svelte';
 	import Card from '$lib/components/Card.svelte';
 	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
@@ -142,7 +143,8 @@
 		class="text-sm text-zinc-500 hover:text-zinc-700"
 		href={resolve('/ties/[tieId]', { tieId: data.tie.id })}
 	>
-		← {data.tie.tieCode}
+		<ArrowLeft class="size-3" />
+		{data.tie.tieCode}
 	</a>
 	<PageHeader
 		title={data.team.name}

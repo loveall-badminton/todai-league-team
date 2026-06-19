@@ -69,13 +69,13 @@
 		success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
 		warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',
 		violet:
-			'rounded-lg border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
+			'rounded-xl border border-violet-200 bg-violet-50 font-medium text-violet-700 hover:bg-violet-100'
 	} as const;
 
 	const triggerSizes = {
-		sm: 'px-3 py-1.5 text-xs',
-		md: 'px-4 py-2 text-sm',
-		lg: 'px-6 py-2.5 text-sm'
+		sm: 'px-3 py-3 text-xs',
+		md: 'px-4 py-3 text-sm',
+		lg: 'px-6 py-3.5 text-sm'
 	} as const;
 
 	let triggerStyles = $derived(
@@ -96,7 +96,7 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
 		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
+			class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
 		>
 			<Dialog.Title class="text-base font-semibold text-zinc-950">{title}</Dialog.Title>
 			{#if description}
