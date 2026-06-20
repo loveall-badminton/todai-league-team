@@ -19,8 +19,10 @@ import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
+import { getLastUndoableScoreEvent } from '$lib/server/repositories/scoreEventRepository';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { buildRealtimeScorePayload, resolveRealtimeInput } from './refereeRealtime';
 
 const sideSchema = SideSchema;
 
@@ -34,21 +36,30 @@ async function applyAction(
 	await requireRefereeMatchAccess(matchId);
 	const state = await getMatchState(matchId);
 	const players = await getMatchPlayers(matchId);
+	let afterState: MatchState;
+	let input: ScoreEventInput;
 	try {
-		await applyMatchAction({
+		input = buildInput(state, players);
+		const lastUndoableEvent =
+			input.type === 'undo' && input.targetSeqNo === undefined
+				? await getLastUndoableScoreEvent(matchId)
+				: null;
+		input = resolveRealtimeInput(input, lastUndoableEvent?.seqNo);
+		afterState = await applyMatchAction({
 			matchId,
-			input: buildInput(state, players),
+			input,
 			actorName: null,
 			now: new Date().toISOString()
 		});
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '操作に失敗しました');
+		return;
 	}
-	// 得点・状態が変わったので、この試合を見る端末とライブボードへ通知する。
-	// 得点が試合結果を確定させると順位・スケジュール・決勝表にも波及しうるため
-	// ライブボードへは全 topic を通知する（fire-and-forget）。
-	notifyMatch(matchId);
-	notifyLiveBoard();
+	const data = {
+		score: buildRealtimeScorePayload(input, state, afterState)
+	};
+	notifyMatch(matchId, ['score'], data);
+	notifyLiveBoard(['score'], data);
 }
 
 export const start = command(
@@ -275,8 +286,9 @@ export const cutoff = command(async () => {
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '操作に失敗しました');
 	}
-	notifyMatch(matchId);
-	notifyLiveBoard();
+	const afterState = await getMatchState(matchId);
+	notifyMatch(matchId, ['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
+	notifyLiveBoard(['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
 });
 
 export const confirm = command(async () => {

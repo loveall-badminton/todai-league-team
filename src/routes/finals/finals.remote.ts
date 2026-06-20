@@ -41,7 +41,10 @@ export const generateSemifinals = command(async () => {
 	requireAdmin();
 	try {
 		const changed = await generateSemifinalsAndFifthPlace(new Date().toISOString());
-		notifyLiveBoard(['finals', 'schedule']);
+		notifyLiveBoard(['finals', 'schedule'], {
+			finals: { phases: [...finalPhases] },
+			schedule: { phases: [...finalPhases] }
+		});
 		return { message: `${changed}件の決勝トーナメント対戦を生成しました。` };
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '生成に失敗しました');
@@ -52,7 +55,10 @@ export const generateFinals = command(async () => {
 	requireAdmin();
 	try {
 		const changed = await generateFinalAndThirdPlace(new Date().toISOString());
-		notifyLiveBoard(['finals', 'schedule']);
+		notifyLiveBoard(['finals', 'schedule'], {
+			finals: { phases: [...finalPhases] },
+			schedule: { phases: [...finalPhases] }
+		});
 		return { message: `${changed}件の決勝・3位決定戦を生成しました。` };
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '生成に失敗しました');

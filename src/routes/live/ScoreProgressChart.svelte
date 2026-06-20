@@ -42,7 +42,7 @@
 			.line<{ x: number; y: number }>()
 			.x((d) => xScale(d.x))
 			.y((d) => yScale(d.y))
-			.curve(d3.curveStepAfter)
+			.curve(d3.curveLinear)
 	);
 
 	let pathA = $derived(series ? (lineGen(series.a) ?? '') : '');
@@ -69,6 +69,46 @@
 	let tooltipA = $derived(tooltipIndex != null ? (series?.a[tooltipIndex]?.y ?? null) : null);
 	let tooltipB = $derived(tooltipIndex != null ? (series?.b[tooltipIndex]?.y ?? null) : null);
 	let tooltipCX = $derived(tooltipX != null ? tooltipX + margin.left : null);
+
+	const tooltipLabel = {
+		width: 64,
+		height: 24,
+		gap: 8
+	};
+
+	function clamp(value: number, min: number, max: number) {
+		return Math.min(max, Math.max(min, value));
+	}
+
+	let tooltipAnchorY = $derived(
+		tooltipA != null && tooltipB != null
+			? margin.top + Math.min(yScale(tooltipA), yScale(tooltipB))
+			: null
+	);
+
+	let tooltipLabelX = $derived(
+		tooltipCX != null
+			? clamp(
+					tooltipCX + tooltipLabel.gap + tooltipLabel.width <= width
+						? tooltipCX + tooltipLabel.gap
+						: tooltipCX - tooltipLabel.gap - tooltipLabel.width,
+					0,
+					Math.max(0, width - tooltipLabel.width)
+				)
+			: null
+	);
+
+	let tooltipLabelY = $derived(
+		tooltipAnchorY != null
+			? clamp(
+					tooltipAnchorY - tooltipLabel.gap - tooltipLabel.height >= 0
+						? tooltipAnchorY - tooltipLabel.gap - tooltipLabel.height
+						: tooltipAnchorY + tooltipLabel.gap,
+					0,
+					Math.max(0, height - tooltipLabel.height)
+				)
+			: null
+	);
 </script>
 
 {#if series}
@@ -144,6 +184,29 @@
 							stroke-linejoin="round"
 						/>
 
+						<!-- Score dots -->
+						{#each series.a as p, i (`a-${i}-${p.x}-${p.y}`)}
+							<circle
+								cx={xScale(p.x)}
+								cy={yScale(p.y)}
+								r="2.5"
+								class="fill-white stroke-pink-600"
+								stroke-width="1.5"
+								pointer-events="none"
+							/>
+						{/each}
+
+						{#each series.b as p, i (`b-${i}-${p.x}-${p.y}`)}
+							<circle
+								cx={xScale(p.x)}
+								cy={yScale(p.y)}
+								r="2.5"
+								class="fill-white stroke-cyan-600"
+								stroke-width="1.5"
+								pointer-events="none"
+							/>
+						{/each}
+
 						<!-- Tooltip crosshair -->
 						{#if tooltipIndex != null && tooltipX != null}
 							<line
@@ -164,25 +227,22 @@
 						{/if}
 					</g>
 
-					<!-- Tooltip label (rendered in SVG coordinates, outside transform) -->
-					{#if tooltipIndex != null && tooltipCX != null && tooltipA != null && tooltipB != null}
-						{@const labelX = Math.min(tooltipCX + 6, width - 62)}
+					<!-- Tooltip label -->
+					{#if tooltipIndex != null && tooltipLabelX != null && tooltipLabelY != null && tooltipA != null && tooltipB != null}
 						<rect
-							x={labelX}
-							y={8}
-							width={56}
-							height={22}
-							rx="4"
+							x={tooltipLabelX}
+							y={tooltipLabelY}
+							width={tooltipLabel.width}
+							height={tooltipLabel.height}
+							rx="6"
 							class="fill-white stroke-zinc-200"
 							stroke-width="1"
 						/>
-						<text x={labelX + 6} y={23} font-size="11" font-weight="600">
-							<tspan class="fill-pink-600">{tooltipA}</tspan><tspan
-								class="fill-zinc-400"
-								font-weight="400"
-							>
-								–
-							</tspan><tspan class="fill-cyan-600">{tooltipB}</tspan>
+
+						<text x={tooltipLabelX + 8} y={tooltipLabelY + 16} font-size="11" font-weight="600">
+							<tspan class="fill-pink-600">{tooltipA}</tspan>
+							<tspan class="fill-zinc-400" font-weight="400"> – </tspan>
+							<tspan class="fill-cyan-600">{tooltipB}</tspan>
 						</text>
 					{/if}
 				</svg>

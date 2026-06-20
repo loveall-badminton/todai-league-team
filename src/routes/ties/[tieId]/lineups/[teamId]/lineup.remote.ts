@@ -18,7 +18,9 @@ export const lineup = form(submitLineupSchema, async ({ items }) => {
 		});
 
 		const submitValidation = await submitLineup({ tieId: params.tieId!, teamId: params.teamId! });
-		notifyLiveBoard(['schedule']);
+		notifyLiveBoard(['schedule'], {
+			schedule: { tieIds: [params.tieId!], scopes: ['tie_header', 'lineups'] }
+		});
 		return { message: 'オーダーを提出しました', warnings: submitValidation.warnings };
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '失敗');

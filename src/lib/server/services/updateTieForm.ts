@@ -45,5 +45,7 @@ export async function persistUpdateTie(params: {
 		note: emptyToNull(params.officiatingNote),
 		now: params.now
 	});
-	notifyLiveBoard(['schedule']);
+	notifyLiveBoard(['schedule'], {
+		schedule: { tieIds: [params.id], scopes: ['tie_header'] }
+	});
 }

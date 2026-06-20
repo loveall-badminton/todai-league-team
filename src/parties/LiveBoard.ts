@@ -24,7 +24,12 @@ export class LiveBoard extends Server<Env> {
 			at: new Date().toISOString()
 		});
 		if (request.method === 'POST') {
-			const raw = await request.json();
+			let raw: unknown;
+			try {
+				raw = await request.json();
+			} catch {
+				return Response.json({ ok: false, error: 'invalid json' }, { status: 400 });
+			}
 			const parsed = v.safeParse(liveMessageSchema, raw);
 			if (!parsed.success) {
 				console.warn('[LiveBoard] invalid message', {

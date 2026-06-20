@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { goto, invalidateAll } from '$app/navigation';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
@@ -12,14 +12,18 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
+	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import { shouldRefreshTiesPage, type RealtimeUpdate } from '$lib/realtime/updates';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
-	import type { PageProps } from './$types';
-	import { create, reorder, updateTie } from './ties.remote';
+	import { create, getTiesData, getTiesPageData, reorder, updateTie } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
 	import * as v from 'valibot';
 	import TieCreateDialog from './TieCreateDialog.svelte';
 
-	let { data }: PageProps = $props();
+	const tiesPageQuery = getTiesPageData();
+	let tiesPage = $derived(await tiesPageQuery);
+	const tiesQuery = getTiesData();
+	let tiesData = $derived(await tiesQuery);
 
 	const tiesSearchParamsSchema = v.object({
 		filter: v.optional(v.picklist(VALID_TIE_FILTERS), 'all')
@@ -30,7 +34,7 @@
 	onMount(() => {
 		create.fields.set({
 			tieCode: '',
-			scoringRuleId: data.scoringRules[0]?.id ?? '',
+			scoringRuleId: tiesPage.scoringRules[0]?.id ?? '',
 			groupCode: '',
 			phase: 'semifinal',
 			scheduledStartAt: '',
@@ -44,8 +48,8 @@
 		});
 	});
 
-	let allTies = $derived([...data.ties]);
-	let hasActive = $derived(data.ties.some((t) => t.status === 'playing'));
+	let allTies = $derived(tiesData.ties);
+	let hasActive = $derived(tiesData.ties.some((t) => t.status === 'playing'));
 
 	let filter = $derived.by<TieFilter>(() => {
 		return parseSearchParams(page.url.searchParams, tiesSearchParamsSchema, { filter: 'all' })
@@ -87,8 +91,8 @@
 			label: f.label,
 			count:
 				f.id === 'all'
-					? data.ties.length
-					: data.ties.filter((t) => tieMatchesFilter(t, f.id)).length
+					? tiesData.ties.length
+					: tiesData.ties.filter((t) => tieMatchesFilter(t, f.id)).length
 		}))
 	);
 
@@ -99,6 +103,11 @@
 		},
 		(ids) => reorder({ ids })
 	);
+
+	const handleRealtimeUpdate = createRealtimeQueryFlow({
+		refresh: () => tiesQuery.refresh(),
+		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshTiesPage(update)
+	});
 </script>
 
 <svelte:head>
@@ -110,7 +119,7 @@
 		{#if hasActive}
 			<RealtimeSync
 				topics={['score', 'schedule']}
-				onUpdate={() => void invalidateAll()}
+				onUpdate={(u) => void handleRealtimeUpdate(u)}
 				pollInterval={12000}
 			/>
 		{/if}
@@ -123,7 +132,7 @@
 
 <PageHeader title="対戦管理" actions={headerActions} />
 
-<TieCreateDialog bind:open={dialogOpen} {create} {data} />
+<TieCreateDialog bind:open={dialogOpen} {create} data={tiesPage} />
 
 <AppTabs value={filter} items={tabItems} onValueChange={setFilter} />
 
@@ -142,7 +151,7 @@
 					{tie}
 					{index}
 					sortable={filter === 'all'}
-					teams={data.teams}
+					teams={tiesPage.teams}
 					tieForm={updateTie.for(tie.id)}
 				/>
 			{/each}

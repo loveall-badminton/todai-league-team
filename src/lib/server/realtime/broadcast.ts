@@ -2,32 +2,42 @@ import { getRequestEvent } from '$app/server';
 import {
 	ALL_LIVE_TOPICS,
 	LIVE_BOARD_CHANNEL,
+	createLiveUpdatedMessage,
 	matchChannel,
-	liveMessageSchema,
-	type LiveMessage,
 	type LiveTopic
 } from '$lib/realtime/channels';
-import * as v from 'valibot';
+import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
 
-export function notifyLiveBoard(topics: LiveTopic[] = [...ALL_LIVE_TOPICS]): void {
-	console.log('[broadcast] notifyLiveBoard', { topics, at: new Date().toISOString() });
-	dispatch(LIVE_BOARD_CHANNEL, { type: 'updated', topics, at: new Date().toISOString() });
+export function notifyLiveBoard(): void;
+export function notifyLiveBoard<TTopics extends readonly LiveTopic[]>(
+	topics: TTopics,
+	data?: LiveUpdateData<TTopics[number]>
+): void;
+export function notifyLiveBoard(
+	topics: readonly LiveTopic[] = ALL_LIVE_TOPICS,
+	data?: LiveUpdateData
+): void {
+	console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
+	dispatch(LIVE_BOARD_CHANNEL, createLiveUpdatedMessage(topics, data));
 }
 
-export function notifyMatch(matchId: string, topics: LiveTopic[] = ['score']): void {
-	console.log('[broadcast] notifyMatch', { matchId, topics, at: new Date().toISOString() });
-	dispatch(matchChannel(matchId), { type: 'updated', topics, at: new Date().toISOString() });
+export function notifyMatch<TTopics extends readonly LiveTopic[]>(
+	matchId: string,
+	topics: TTopics,
+	data?: LiveUpdateData<TTopics[number]>
+): void {
+	console.log('[broadcast] notifyMatch', { matchId, topics, data, at: new Date().toISOString() });
+	dispatch(matchChannel(matchId), createLiveUpdatedMessage(topics, data));
 }
 
 function dispatch(channel: string, message: LiveMessage): void {
 	try {
-		const parsed = v.parse(liveMessageSchema, message);
 		const { platform } = getRequestEvent();
 		const namespace = platform?.env?.LiveBoard;
 		if (!namespace) {
 			console.warn('[broadcast] LiveBoard binding not available', {
 				channel,
-				message: parsed,
+				message,
 				at: new Date().toISOString()
 			});
 			return;
@@ -36,14 +46,14 @@ function dispatch(channel: string, message: LiveMessage): void {
 		const stub = namespace.getByName(channel);
 		console.log('[broadcast] dispatching', {
 			channel,
-			message: parsed,
+			message,
 			at: new Date().toISOString()
 		});
 		const task = stub
 			.fetch('https://live-board.internal/broadcast', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(parsed)
+				body: JSON.stringify(message)
 			})
 			.then((res) => {
 				console.log('[broadcast] dispatched ok', {

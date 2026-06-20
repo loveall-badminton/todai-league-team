@@ -18,6 +18,7 @@ export interface LiveChannel {
 export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 	let status = $state<LiveChannelStatus>('closed');
 	let socket: PartySocket | null = null;
+	let closedByUser = false;
 
 	function setStatus(next: LiveChannelStatus) {
 		if (status === next) return;
@@ -27,6 +28,7 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 
 	function connect() {
 		if (!browser) return;
+		closedByUser = false;
 		setStatus('connecting');
 
 		const ws = new PartySocket({
@@ -42,12 +44,15 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 		socket = ws;
 
 		ws.addEventListener('open', () => {
+			if (closedByUser || socket !== ws) return;
 			setStatus('open');
 		});
 
 		ws.addEventListener('message', (event) => {
+			if (closedByUser || socket !== ws) return;
 			try {
-				const parsed = JSON.parse(event.data);
+				const raw = typeof event.data === 'string' ? event.data : String(event.data);
+				const parsed = JSON.parse(raw);
 				const message = parseLiveMessage(parsed);
 				if (message) {
 					options.onMessage(message);
@@ -60,15 +65,21 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 		});
 
 		ws.addEventListener('close', () => {
+			if (socket === ws) socket = null;
+			if (closedByUser || (socket !== null && socket !== ws)) return;
 			setStatus('closed');
 		});
 
-		ws.addEventListener('error', () => {});
+		ws.addEventListener('error', () => {
+			if (closedByUser || socket !== ws) return;
+			setStatus('closed');
+		});
 	}
 
 	function onVisibilityChange() {
 		if (document.visibilityState !== 'visible' || status === 'open') return;
-		socket?.reconnect();
+		if (socket) socket.reconnect();
+		else connect();
 	}
 
 	if (browser) {
@@ -81,6 +92,7 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 			return status;
 		},
 		close() {
+			closedByUser = true;
 			if (browser) document.removeEventListener('visibilitychange', onVisibilityChange);
 			if (socket) {
 				socket.close();

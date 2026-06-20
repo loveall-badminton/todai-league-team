@@ -2,12 +2,18 @@
 	import { dev } from '$app/environment';
 	import { onMount } from 'svelte';
 	import AppSwitch from './AppSwitch.svelte';
-	import { LIVE_BOARD_CHANNEL, type LiveTopic } from '$lib/realtime/channels';
+	import {
+		LIVE_BOARD_CHANNEL,
+		filterSubscribedTopics,
+		isLiveUpdatedMessage,
+		type LiveTopic
+	} from '$lib/realtime/channels';
 	import { createLiveChannel, type LiveChannel } from '$lib/realtime/liveChannel.svelte';
+	import type { RealtimeUpdate } from '$lib/realtime/updates';
 
 	interface Props {
 		topics: readonly LiveTopic[];
-		onUpdate: (topics: LiveTopic[]) => void;
+		onUpdate: (update: RealtimeUpdate) => void | Promise<void>;
 		pollInterval?: number;
 		channel?: string;
 	}
@@ -44,13 +50,16 @@
 				if (status === 'open') fallbackActive = false;
 			},
 			onMessage: (message) => {
-				if (message.type !== 'updated') return;
-				if (topics.length === 0) {
-					onUpdate(message.topics);
-					return;
-				}
-				const matched = message.topics.filter((t) => topics.includes(t));
-				if (matched.length > 0) onUpdate(matched);
+				if (!isLiveUpdatedMessage(message)) return;
+				const matched = filterSubscribedTopics(message.topics, topics);
+				if (matched.length === 0) return;
+				onUpdate({
+					topics: matched,
+					data: message.data,
+					source: 'live',
+					channel,
+					at: message.at
+				});
 			}
 		});
 	}
@@ -73,10 +82,18 @@
 		return () => clearTimeout(id);
 	});
 
-	// 未接続時のみポーリング
+	// 未接続時のみポーリング (data なし)
 	$effect(() => {
 		if (!enabled || connected) return;
-		const id = setInterval(() => onUpdate([...topics]), pollInterval);
+		const id = setInterval(
+			() =>
+				onUpdate({
+					topics: [...topics],
+					source: 'poll',
+					channel
+				}),
+			pollInterval
+		);
 		return () => clearInterval(id);
 	});
 </script>

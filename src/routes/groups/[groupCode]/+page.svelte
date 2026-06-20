@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
@@ -11,10 +10,15 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { GripVertical } from '@lucide/svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
-	import type { PageProps } from './$types';
+	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import { shouldRefreshGroupPage, type RealtimeUpdate } from '$lib/realtime/updates';
+	import type { GroupStanding } from '$lib/server/services/standingService';
+	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import { toast } from 'svelte-sonner';
 	import {
 		generateRoundRobin,
+		getGroupPageData,
+		getGroupRealtimeData,
 		setManualRank,
 		createTiebreaker,
 		syncTiebreaker,
@@ -25,9 +29,12 @@
 	import GroupTiebreakerSection from './GroupTiebreakerSection.svelte';
 	import ManualRankForm from './ManualRankForm.svelte';
 
-	let { data }: PageProps = $props();
+	const groupStaticQuery = getGroupPageData();
+	let groupStatic = $derived(await groupStaticQuery);
+	const groupPageQuery = getGroupRealtimeData();
+	let groupPage = $derived(await groupPageQuery);
 
-	let allTies = $derived([...data.ties]);
+	let allTies = $derived(groupPage.ties);
 
 	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
 		() => allTies,
@@ -38,26 +45,26 @@
 	);
 
 	const teamName = (teamId: string | null) =>
-		data.allTeams.find((t) => t.id === teamId)?.name ?? '不明';
+		groupStatic.allTeams.find((t) => t.id === teamId)?.name ?? '不明';
 
 	let groupTeamItems = $derived([
 		{ value: '', label: '選択' },
-		...data.groupTeams.map((t) => ({ value: t.id, label: t.name }))
+		...groupStatic.groupTeams.map((t) => ({ value: t.id, label: t.name }))
 	]);
 
 	// Round-robin matrix helpers
 	let orderedTeams = $derived(
-		data.standings.length > 0
-			? data.standings
-					.map((r) => data.groupTeams.find((t) => t.id === r.teamId))
-					.filter((t) => t != null)
-			: data.groupTeams
+		groupPage.standings.length > 0
+			? groupPage.standings
+					.map((r: GroupStanding) => groupStatic.groupTeams.find((t) => t.id === r.teamId))
+					.filter((t): t is (typeof groupStatic.groupTeams)[number] => t != null)
+			: groupStatic.groupTeams
 	);
 
 	async function run(fn: () => Promise<unknown>) {
 		try {
 			const result = await fn();
-			await invalidateAll();
+			await groupPageQuery.refresh();
 			if (result && typeof result === 'object' && 'message' in result) {
 				toast.success(String((result as { message: string }).message));
 			}
@@ -65,22 +72,35 @@
 			toast.error(e instanceof Error ? e.message : '失敗');
 		}
 	}
+
+	const handleRealtimeUpdate = createRealtimeQueryFlow({
+		refresh: () => groupPageQuery.refresh(),
+		shouldRefresh: (update: RealtimeUpdate) =>
+			shouldRefreshGroupPage(
+				update,
+				groupStatic.groupCode,
+				groupPage.ties.map((tie: TieSummary) => tie.id)
+			)
+	});
 </script>
 
 <svelte:head>
-	<title>{data.groupCode}リーグ | 東大リーグ団体戦</title>
+	<title>{groupStatic.groupCode}リーグ | 東大リーグ団体戦</title>
 </svelte:head>
 
 {#snippet headerActions()}
 	<div class="flex items-center gap-3">
-		<RealtimeSync topics={['standings', 'schedule']} onUpdate={() => void invalidateAll()} />
+		<RealtimeSync
+			topics={['standings', 'schedule']}
+			onUpdate={(u) => void handleRealtimeUpdate(u)}
+		/>
 		<AppButton onclick={() => run(() => generateRoundRobin())}>総当たり生成</AppButton>
 	</div>
 {/snippet}
 
-<PageHeader eyebrow="予選リーグ" title={`${data.groupCode}リーグ`} actions={headerActions} />
+<PageHeader eyebrow="予選リーグ" title={`${groupStatic.groupCode}リーグ`} actions={headerActions} />
 
-<GroupTeamsCard teams={data.groupTeams} />
+<GroupTeamsCard teams={groupStatic.groupTeams} />
 
 <!-- Standings + round-robin matrix (merged) -->
 {#snippet standingsExtraHead()}
@@ -88,7 +108,7 @@
 	<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-zinc-400">手動順位</th>
 {/snippet}
 
-{#snippet standingsExtraCell(row: (typeof data.standings)[number])}
+{#snippet standingsExtraCell(row: (typeof groupPage.standings)[number])}
 	{@const rankForm = setManualRank.for(row.teamId)}
 	<td class="px-4 py-2.5">
 		{#if row.requiresTiebreaker}
@@ -114,8 +134,8 @@
 	{/snippet}
 
 	<GroupStandingsTable
-		standings={data.standings}
-		ties={data.ties}
+		standings={groupPage.standings}
+		ties={groupPage.ties}
 		teams={orderedTeams}
 		linkTies={true}
 		extraHead={standingsExtraHead}
@@ -133,7 +153,12 @@
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 			<div class="space-y-2">
 				{#each allTies as tie, index (tie.id)}
-					<SortableTieItem {tie} {index} teams={data.allTeams} tieForm={updateTie.for(tie.id)} />
+					<SortableTieItem
+						{tie}
+						{index}
+						teams={groupStatic.allTeams}
+						tieForm={updateTie.for(tie.id)}
+					/>
 				{/each}
 			</div>
 			<DragOverlay dropAnimation={null}>
@@ -169,9 +194,9 @@
 
 <GroupTiebreakerSection
 	createTiebreakerForm={createTiebreaker}
-	rankingTiebreakers={data.rankingTiebreakers}
+	rankingTiebreakers={groupPage.rankingTiebreakers}
 	{groupTeamItems}
-	groupTeamPlayers={data.groupTeamPlayers}
+	groupTeamPlayers={groupStatic.groupTeamPlayers}
 	onSyncTiebreaker={(matchId) => run(() => syncTiebreaker({ matchId }))}
 	{teamName}
 />

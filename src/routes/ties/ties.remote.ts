@@ -1,7 +1,8 @@
-import { command, form } from '$app/server';
+import { command, form, query } from '$app/server';
 import { groupPhaseFor, type TiePhase } from '$lib/domain/tokyoLeague';
 import { requireAdmin } from '$lib/server/auth/access';
 import { listTies, reorderTies } from '$lib/server/repositories/tokyoLeagueRepository';
+import { adminPageLoadWithDefaults } from '$lib/server/loadHelpers';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
 import { persistUpdateTie } from '$lib/server/services/updateTieForm';
@@ -16,6 +17,16 @@ const policyFromValue = (
 	if (s === 'first_match_before_opening' || s === 'manual') return s;
 	return 'ten_minutes_before';
 };
+
+export const getTiesData = query(async () => {
+	requireAdmin();
+	return { ties: await listTies() };
+});
+
+export const getTiesPageData = query(async () => {
+	const { teams, scoringRules } = await adminPageLoadWithDefaults();
+	return { teams, scoringRules };
+});
 
 export const create = form(
 	createTieSchema,
@@ -69,7 +80,7 @@ export const create = form(
 			now: new Date().toISOString()
 		});
 
-		notifyLiveBoard(['schedule']);
+		notifyLiveBoard(['schedule'], { schedule: { tieIds: [id], phases: [resolvedPhase] } });
 		redirect(303, `/ties/${id}`);
 	}
 );
@@ -77,7 +88,7 @@ export const create = form(
 export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ ids }) => {
 	requireAdmin();
 	await reorderTies(ids, new Date().toISOString());
-	notifyLiveBoard(['schedule']);
+	notifyLiveBoard(['schedule'], { schedule: { tieIds: ids } });
 });
 
 export const updateTie = form(updateTieSchema, async (values) => {

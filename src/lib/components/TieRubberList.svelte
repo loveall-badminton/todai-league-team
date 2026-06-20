@@ -78,7 +78,7 @@
 {#if variant === 'compact'}
 	<!-- Compact grid layout (live page card style) -->
 	<div class="overflow-x-auto">
-		<div class="min-w-[22rem]">
+		<div class="min-w-88">
 			<div
 				class="grid grid-cols-[4rem_1fr_5rem_1fr] items-center gap-x-2 px-4 py-1 text-[10px] font-medium tracking-wider text-zinc-300"
 			>
@@ -105,7 +105,7 @@
 {:else}
 	<!-- Full table layout (tie detail style) -->
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[18rem] text-sm sm:min-w-150">
+		<table class="w-full min-w-[18rem] text-sm sm:min-w-150 text-nowrap">
 			<thead>
 				<tr class="border-b border-zinc-100">
 					<th

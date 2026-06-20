@@ -8,7 +8,9 @@
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import { matchChannel } from '$lib/realtime/channels';
+	import { hasScoreUpdate, matchChannel } from '$lib/realtime/channels';
+	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { matchStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { cn } from '$lib/utils/cn';
 	import { onMount } from 'svelte';
@@ -32,17 +34,22 @@
 	const courtSideSchema = v.picklist(['left', 'right']);
 	const manualChangeCountSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
+	// ブロードキャストで受け取ったスコアデータで即時更新するためのローカルステート。
+	// invalidateAll() のたびに data.state から再同期する（$effect 参照）。
+	// svelte-ignore state_referenced_locally
+	let localState = $state(data.state);
+
 	let currentGame = $derived(
-		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
+		localState.games.find((game) => game.gameNo === localState.currentGameNo)
 	);
 	let canEditService = $derived(
-		data.state.status === 'playing' &&
+		localState.status === 'playing' &&
 			(currentGame?.score.A ?? 0) === 0 &&
 			(currentGame?.score.B ?? 0) === 0
 	);
 
-	let isLocked = $derived(data.state.status === 'confirmed');
-	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(data.state.status));
+	let isLocked = $derived(localState.status === 'confirmed');
+	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(localState.status));
 
 	// Undo: find last undoable event that hasn't been undone yet
 	const undoableEventTypes = [
@@ -76,8 +83,8 @@
 
 	// ── Change-of-ends tracking ────────────────────────────────────────────────
 	// Persisted to localStorage by matchId. true = side A starts on the left.
-	let courtSideKey = $derived(`referee_side_${data.state.matchId}`);
-	let manualChangeCountKey = $derived(`referee_changecount_${data.state.matchId}`);
+	let courtSideKey = $derived(`referee_side_${localState.matchId}`);
+	let manualChangeCountKey = $derived(`referee_changecount_${localState.matchId}`);
 	let sideAStartsLeft = $state(true);
 
 	// Manual change-of-ends counter (persisted to localStorage)
@@ -117,6 +124,12 @@
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
+	// invalidateAll などで data.state が変わったら localState も同期する
+	$effect(() => {
+		const s = data.state;
+		if (s) localState = structuredClone(s);
+	});
+
 	async function run(fn: () => Promise<unknown>) {
 		try {
 			await fn();
@@ -125,6 +138,15 @@
 			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
 		}
 	}
+
+	const handleRealtimeUpdate = createRealtimeQueryFlow({
+		refresh: () => invalidateAll(),
+		applyUpdate: (update: RealtimeUpdate) => {
+			if (!hasScoreUpdate(update.data)) return 'refresh';
+			localState = update.data.score.state;
+			return 'applied';
+		}
+	});
 
 	// WebSocket 接続と自動更新は RealtimeSync コンポーネントが管理する。
 	// テンプレートの <RealtimeSync> を参照。
@@ -154,7 +176,7 @@
 					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400',
 					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 				)}
-				disabled={data.state.status !== 'playing' || isLocked}
+				disabled={localState.status !== 'playing' || isLocked}
 				onclick={() => run(() => rallyWon({ side }))}
 				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 			>
@@ -173,25 +195,25 @@
 	<Card>
 		<PageHeader
 			title={`${leftSideName} vs ${rightSideName}`}
-			description={`${data.match.court?.name ?? 'コート未設定'} · ゲーム ${data.state.currentGameNo} · ${matchStatusLabel(
-				data.state.status
+			description={`${data.match.court?.name ?? 'コート未設定'} · ゲーム ${localState.currentGameNo} · ${matchStatusLabel(
+				localState.status
 			)}`}
 		/>
 		<div class="mt-2 flex items-center justify-between gap-3">
 			<div class="text-right">
 				<p class="text-xs text-zinc-400">ゲーム数</p>
 				<p class="text-2xl font-bold tabular-nums">
-					{data.state.gamesWon[leftSide]} – {data.state.gamesWon[rightSide]}
+					{localState.gamesWon[leftSide]} – {localState.gamesWon[rightSide]}
 				</p>
 			</div>
 		</div>
 	</Card>
 
 	<!-- Start game form -->
-	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}
+	{#if localState.status === 'scheduled' || localState.status === 'interval'}
 		<Card>
 			<h2 class="mb-3 font-semibold">
-				{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
+				{localState.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 			</h2>
 
 			<div class="mb-4">
@@ -214,11 +236,11 @@
 					await run(async () => {
 						const initialServerPlayerId = String(fd.get('initialServerPlayerId') ?? '');
 						const initialReceiverPlayerId = String(fd.get('initialReceiverPlayerId') ?? '');
-						if (data.state.status === 'scheduled') {
+						if (localState.status === 'scheduled') {
 							await start({ initialServerPlayerId, initialReceiverPlayerId });
 						} else {
 							await startGame({
-								gameNo: data.state.currentGameNo,
+								gameNo: localState.currentGameNo,
 								initialServerPlayerId,
 								initialReceiverPlayerId
 							});
@@ -231,7 +253,7 @@
 					<span class="text-xs font-medium text-zinc-500">1st サーバー</span>
 					<AppSelect
 						name="initialServerPlayerId"
-						value={data.state.service?.serverPlayerId ?? ''}
+						value={localState.service?.serverPlayerId ?? ''}
 						items={allPlayerItems}
 						required
 					/>
@@ -240,7 +262,7 @@
 					<span class="text-xs font-medium text-zinc-500">1st レシーバー</span>
 					<AppSelect
 						name="initialReceiverPlayerId"
-						value={data.state.service?.receiverPlayerId ?? ''}
+						value={localState.service?.receiverPlayerId ?? ''}
 						items={bFirstPlayerItems}
 						required
 					/>
@@ -265,7 +287,7 @@
 			leftSidePlayers[0]?.teamName,
 			currentGame?.score[leftSide] ?? 0,
 			leftAccent,
-			data.state.service?.servingSide === leftSide
+			localState.service?.servingSide === leftSide
 		)}
 		{@render scoreCard(
 			rightSide,
@@ -273,7 +295,7 @@
 			rightSidePlayers[0]?.teamName,
 			currentGame?.score[rightSide] ?? 0,
 			rightAccent,
-			data.state.service?.servingSide === rightSide
+			localState.service?.servingSide === rightSide
 		)}
 	</div>
 
@@ -297,23 +319,23 @@
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 			<div>
 				<p class="text-xs text-zinc-500">サーバー</p>
-				<p class="mt-0.5 font-medium">{playerName(data.state.service?.serverPlayerId)}</p>
+				<p class="mt-0.5 font-medium">{playerName(localState.service?.serverPlayerId)}</p>
 			</div>
 			<div>
 				<p class="text-xs text-zinc-500">レシーバー</p>
-				<p class="mt-0.5 font-medium">{playerName(data.state.service?.receiverPlayerId)}</p>
+				<p class="mt-0.5 font-medium">{playerName(localState.service?.receiverPlayerId)}</p>
 			</div>
 			<div class="col-span-2 sm:col-span-1">
 				<p class="text-xs text-zinc-500">サービスコート</p>
 				<p class="mt-0.5 font-medium">
-					{#if data.state.service}
-						{data.state.service?.servingSide === 'A'
+					{#if localState.service}
+						{localState.service?.servingSide === 'A'
 							? sideAName
-							: data.state.service?.servingSide === 'B'
+							: localState.service?.servingSide === 'B'
 								? sideBName
-								: '-'}が{data.state.service?.serviceCourt == 'right'
+								: '-'}が{localState.service?.serviceCourt == 'right'
 							? '右'
-							: data.state.service?.serviceCourt == 'left'
+							: localState.service?.serviceCourt == 'left'
 								? '左'
 								: '-'}からサーブ
 					{:else}
@@ -326,7 +348,7 @@
 
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
-		service={data.state.service}
+		service={localState.service}
 		{sideAIsLeft}
 		{leftAccent}
 		{rightAccent}
@@ -384,7 +406,7 @@
 	<!-- Scoresheet -->
 	<RefereeScoresheet
 		events={data.events}
-		games={data.state.games}
+		games={localState.games}
 		{sideAPlayers}
 		{sideBPlayers}
 		players={data.players}
@@ -396,9 +418,9 @@
 			{currentGame}
 			{sideAName}
 			{sideBName}
-			service={data.state.service}
+			service={localState.service}
 			players={data.players}
-			currentGameNo={data.state.currentGameNo}
+			currentGameNo={localState.currentGameNo}
 			onRun={run}
 		/>
 	{/if}
@@ -410,6 +432,6 @@
 	<RealtimeSync
 		channel={matchChannel(data.match.id)}
 		topics={[]}
-		onUpdate={() => invalidateAll()}
+		onUpdate={(u) => void handleRealtimeUpdate(u)}
 	/>
 </div>

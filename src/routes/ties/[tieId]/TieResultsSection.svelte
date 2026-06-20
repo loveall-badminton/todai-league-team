@@ -75,7 +75,7 @@
 	</td>
 {/snippet}
 
-<Card flush>
+<Card flush class="overflow-hidden">
 	{#snippet header()}
 		<h2 class="font-semibold">種目別結果</h2>
 	{/snippet}
