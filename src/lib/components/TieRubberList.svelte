@@ -2,20 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { rubberLabel, rubberStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { cn } from '$lib/utils/cn';
-
-	export type RubberRow = {
-		id: string;
-		code: string;
-		status: string;
-		matchStatus?: string | null;
-		winnerSide: 'A' | 'B' | null;
-		playersA: string[];
-		playersB: string[];
-		loserLabel: string | null;
-		gamesScore: string | null;
-		gameDetails: { gameNo: number; scoreA: number; scoreB: number }[];
-		matchId?: string | null;
-	};
+	import type { RubberRow } from '$lib/types/entities';
 
 	let {
 		rubbers,

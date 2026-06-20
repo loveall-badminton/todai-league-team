@@ -8,7 +8,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
+	import type { RubberRow } from '$lib/types/entities';
 	import { RUBBER_DEFINITIONS } from '$lib/domain/tokyoLeague';
 	import {
 		courtDisplayLabel,
@@ -131,7 +131,7 @@
 				<Badge color="amber">変更あり</Badge>
 			{/if}
 		</div>
-		<Card class="flex items-center gap-3 px-6 py-3">
+		<Card class="flex items-center gap-3">
 			<div class="text-center">
 				<div class="flex items-center gap-2">
 					<span class="text-4xl font-bold tabular-nums">{data.tie.teamScoreA}</span>
@@ -208,12 +208,12 @@
 
 <!-- Info / edit panel -->
 <Card>
-	<div class="mb-4 flex items-center justify-between">
+	{#snippet header()}
 		<h2 class="text-xs font-medium tracking-wide text-zinc-400">詳細情報</h2>
 		{#if !editing}
 			<AppButton size="sm" variant="secondary" onclick={() => (editing = true)}>編集</AppButton>
 		{/if}
-	</div>
+	{/snippet}
 
 	{#if editing}
 		<form {...updateTie} class="space-y-4">

@@ -2,7 +2,7 @@ import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import TieRubberList from './TieRubberList.svelte';
-import type { RubberRow } from './TieRubberList.svelte';
+import type { RubberRow } from '$lib/types/entities';
 
 function makeRubber(overrides: Partial<RubberRow> = {}): RubberRow {
 	return {

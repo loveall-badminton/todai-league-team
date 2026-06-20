@@ -6,34 +6,19 @@
 	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import { Dialog } from 'bits-ui';
 	import type { EntityOption } from '$lib/types/entities';
-	import type { FormField } from '$lib/types/forms';
-
-	type CreateForm = {
-		method: 'POST';
-		action: string;
-		fields: {
-			tieCode: FormField<string | undefined>;
-			scoringRuleId: FormField<string | undefined>;
-			groupCode: FormField<string | undefined>;
-			phase: FormField<string | undefined>;
-			scheduledStartAt: FormField<string | undefined>;
-			teamAId: FormField<string | undefined>;
-			teamBId: FormField<string | undefined>;
-		};
-	};
+	import type { FormInstance } from '$lib/types/forms';
+	import { createTieSchema } from './ties.schema';
 
 	type DialogData = {
 		scoringRules: { id: string; name?: string; code: string }[];
 		teams: EntityOption[];
 	};
 
-	/* eslint-disable svelte/no-unused-props -- method/action used via {...create} spread */
 	let {
 		open = $bindable(false),
 		create,
 		data
-	}: { open: boolean; create: CreateForm; data: DialogData } = $props();
-	/* eslint-enable svelte/no-unused-props */
+	}: { open: boolean; create: FormInstance<typeof createTieSchema>; data: DialogData } = $props();
 
 	const groupCodeItems = [
 		{ value: '', label: '決勝トーナメント' },

@@ -6,30 +6,49 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import type { FormField, FormActionResult } from '$lib/types/forms';
+	import type { FormInstance } from '$lib/types/forms';
+	import { createTiebreakerSchema } from './group.schema';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 
-	/* eslint-disable svelte/no-unused-props -- method/action used via {...form} spread */
+	type TiebreakerDiscipline = 'MD' | 'XD' | 'WD';
+	type PlayerForSelection = {
+		id: string;
+		name: string;
+		gender: 'male' | 'female' | 'unknown';
+	};
+
+	function filteredPlayers(
+		discipline: TiebreakerDiscipline,
+		order: 1 | 2,
+		players: PlayerForSelection[]
+	) {
+		return players.filter((player) => {
+			if (player.gender === 'unknown') return true;
+			if (discipline === 'WD') return player.gender === 'female';
+			if (discipline === 'MD') return player.gender === 'male';
+			return order === 1 ? player.gender === 'female' : player.gender === 'male';
+		});
+	}
+
+	function playerItems(players: PlayerForSelection[]): SelectItem[] {
+		return [
+			{ value: '', label: '選択' },
+			...players.map((player) => ({
+				value: player.id,
+				label: player.name
+			}))
+		];
+	}
+
 	let {
 		createTiebreakerForm,
 		rankingTiebreakers,
 		groupTeamItems,
-		allPlayerItems,
+		groupTeamPlayers,
 		onSyncTiebreaker,
 		teamName
 	}: {
-		createTiebreakerForm: {
-			method: 'POST';
-			action: string;
-			fields: {
-				teamAId: FormField<string | undefined>;
-				teamBId: FormField<string | undefined>;
-				playerAId: FormField<string | undefined>;
-				playerBId: FormField<string | undefined>;
-				reason: FormField<string | undefined>;
-			};
-			result: FormActionResult | undefined;
-		};
+		createTiebreakerForm: FormInstance<typeof createTiebreakerSchema>;
 		rankingTiebreakers: {
 			id: string;
 			reason: string;
@@ -38,33 +57,96 @@
 			matchId: string | null;
 		}[];
 		groupTeamItems: SelectItem[];
-		allPlayerItems: SelectItem[];
+		groupTeamPlayers: { teamId: string; players: PlayerForSelection[] }[];
 		onSyncTiebreaker: (matchId: string) => Promise<unknown>;
 		teamName: (id: string | null) => string;
 	} = $props();
-	/* eslint-enable svelte/no-unused-props */
+
+	let teamAId = $derived(createTiebreakerForm.fields.teamAId.value() ?? '');
+	let teamBId = $derived(createTiebreakerForm.fields.teamBId.value() ?? '');
+	const disciplineItems: SelectItem[] = [
+		{ value: 'MD', label: '男子ダブルス' },
+		{ value: 'XD', label: 'ミックスダブルス' },
+		{ value: 'WD', label: '女子ダブルス' }
+	];
+
+	let discipline = $state('');
+	let selectedDiscipline = $derived(discipline as TiebreakerDiscipline);
+	let teamAPlayers = $derived(
+		teamAId ? (groupTeamPlayers.find((team) => team.teamId === teamAId)?.players ?? []) : []
+	);
+	let playerA1Items = $derived<SelectItem[]>(
+		discipline === ''
+			? [{ value: '', label: '選択' }]
+			: playerItems(filteredPlayers(selectedDiscipline, 1, teamAPlayers))
+	);
+	let playerA2Items = $derived<SelectItem[]>(
+		discipline === ''
+			? [{ value: '', label: '選択' }]
+			: playerItems(filteredPlayers(selectedDiscipline, 2, teamAPlayers))
+	);
+	let playerADisabled = $derived(discipline === '' || teamAId === '');
+
+	let teamBPlayers = $derived(
+		teamBId ? (groupTeamPlayers.find((team) => team.teamId === teamBId)?.players ?? []) : []
+	);
+	let playerB1Items = $derived<SelectItem[]>(
+		discipline === ''
+			? [{ value: '', label: '選択' }]
+			: playerItems(filteredPlayers(selectedDiscipline, 1, teamBPlayers))
+	);
+	let playerB2Items = $derived<SelectItem[]>(
+		discipline === ''
+			? [{ value: '', label: '選択' }]
+			: playerItems(filteredPlayers(selectedDiscipline, 2, teamBPlayers))
+	);
+	let playerBDisabled = $derived(discipline === '' || teamBId === '');
 </script>
 
 <Card>
-	<div class="border-b border-zinc-100 px-5 py-4">
+	{#snippet header()}
 		<h2 class="font-semibold">順位決定再試合</h2>
-	</div>
-	<div class="space-y-5 p-5">
+	{/snippet}
+	<div class="space-y-5">
 		<form {...createTiebreakerForm} class="grid gap-3 lg:grid-cols-6">
+			<div class="grid gap-1 lg:col-span-6">
+				<span class="text-xs font-medium text-zinc-500">種目</span>
+				<AppSelect
+					{...createTiebreakerForm.fields.discipline.as('select')}
+					items={disciplineItems}
+					required
+					onValueChange={(value) => {
+						discipline = value;
+					}}
+				/>
+			</div>
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側チーム</span>
 				<AppSelect
 					{...createTiebreakerForm.fields.teamAId.as('select')}
 					items={groupTeamItems}
 					required
+					onValueChange={(value) => {
+						teamAId = value;
+					}}
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側選手</span>
+				<span class="text-xs font-medium text-zinc-500">A側選手1</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerAId.as('select')}
-					items={allPlayerItems}
+					{...createTiebreakerForm.fields.playerA1Id.as('select')}
+					items={playerA1Items}
 					required
+					disabled={playerADisabled}
+				/>
+			</div>
+			<div class="grid gap-1">
+				<span class="text-xs font-medium text-zinc-500">A側選手2</span>
+				<AppSelect
+					{...createTiebreakerForm.fields.playerA2Id.as('select')}
+					items={playerA2Items}
+					required
+					disabled={playerADisabled}
 				/>
 			</div>
 			<div class="grid gap-1">
@@ -73,17 +155,31 @@
 					{...createTiebreakerForm.fields.teamBId.as('select')}
 					items={groupTeamItems}
 					required
+					onValueChange={(value) => {
+						teamBId = value;
+					}}
+				/>
+			</div>
+
+			<div class="grid gap-1">
+				<span class="text-xs font-medium text-zinc-500">B側選手1</span>
+				<AppSelect
+					{...createTiebreakerForm.fields.playerB1Id.as('select')}
+					items={playerB1Items}
+					required
+					disabled={playerBDisabled}
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側選手</span>
+				<span class="text-xs font-medium text-zinc-500">B側選手2</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerBId.as('select')}
-					items={allPlayerItems}
+					{...createTiebreakerForm.fields.playerB2Id.as('select')}
+					items={playerB2Items}
 					required
+					disabled={playerBDisabled}
 				/>
 			</div>
-			<div class="grid gap-1 lg:col-span-2">
+			<div class="grid gap-1 lg:col-span-6">
 				<span class="text-xs font-medium text-zinc-500">理由</span>
 				<AppInput
 					{...createTiebreakerForm.fields.reason.as('text')}

@@ -9,7 +9,6 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Pencil, ShieldCheck, UserRound, UsersRound } from '@lucide/svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import { createAccount, deleteAccount, resetPassword, updateAccount } from './accounts.remote';
@@ -27,7 +26,7 @@
 		data.teams.map((team): SelectItem => ({ value: team.id, label: team.name }))
 	);
 
-	onMount(() => {
+	$effect(() => {
 		createAccount.fields.set({
 			accountType: 'participant',
 			accountId: '',
@@ -85,6 +84,9 @@
 <PageHeader eyebrow="設定" title="ユーザー管理" actions={headerActions} />
 
 <Card>
+	{#snippet header()}
+		<h2 class="font-semibold text-zinc-950">アカウント発行</h2>
+	{/snippet}
 	<AccountCreateForm form={createAccount} {accountTypeItems} {teamItems} />
 </Card>
 

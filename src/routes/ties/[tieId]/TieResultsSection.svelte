@@ -4,7 +4,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
-	import type { RubberRow } from '$lib/components/TieRubberList.svelte';
+	import type { RubberRow } from '$lib/types/entities';
 
 	let {
 		rubbers,

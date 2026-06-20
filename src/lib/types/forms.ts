@@ -1,30 +1,28 @@
-export interface FormFieldOptions {
-	name: string;
-	[key: string]: unknown;
-}
+import type { RemoteForm, RemoteFormInput } from '@sveltejs/kit';
+import type * as v from 'valibot';
 
-export interface FormField<T = string> {
-	as(type: string, ...args: unknown[]): FormFieldOptions;
-	value(): T | undefined;
-	set(value: T | undefined): void;
-	issues(): Array<{ message: string }> | undefined;
-}
+export type FormActionResult = { message?: string };
 
-export interface FormActionResult {
-	message?: string;
-}
+export type FormActionResultWithWarnings = FormActionResult & { warnings?: string[] };
 
-export interface FormActionResultWithWarnings extends FormActionResult {
-	warnings?: string[];
-}
+type InferFormInput<T> =
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	T extends RemoteForm<infer Input, infer _Output>
+		? Input
+		: // eslint-disable-next-line @typescript-eslint/no-unused-vars
+			T extends v.GenericSchema<infer Input, infer _Output, infer _Issue>
+			? Input
+			: T;
 
-export interface FormInstance<TFields extends Record<string, unknown>, TOutput> {
-	method: 'POST';
-	action: string;
-	fields: { [K in keyof TFields]: FormField<TFields[K]> };
-	result: TOutput | undefined;
-}
+type SafeFormInput<T> =
+	InferFormInput<T> extends RemoteFormInput ? InferFormInput<T> : Record<string, never>;
 
-export interface ScopedForm<TFields extends Record<string, unknown>, TOutput> {
-	for(id: string): FormInstance<TFields, TOutput>;
-}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type InferFormOutput<T> = T extends RemoteForm<infer _Input, infer Output> ? Output : object;
+
+export type FormInstance<T = Record<string, never>> = RemoteForm<
+	SafeFormInput<T>,
+	InferFormOutput<T>
+>;
+
+export type ScopedForm<T = Record<string, never>> = Omit<FormInstance<T>, 'for'>;

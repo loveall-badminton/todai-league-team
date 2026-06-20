@@ -7,7 +7,7 @@
 	let {
 		name,
 		value = $bindable([]),
-		placeholder = '選択してください',
+		placeholder = '選択',
 		disabled = false,
 		items,
 		class: className = '',

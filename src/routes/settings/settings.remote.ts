@@ -6,20 +6,10 @@ import {
 } from '$lib/server/repositories/tokyoLeagueRepository';
 import { emptyToNull } from '$lib/utils/validation';
 import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
-
-const intPositive = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(1));
-const intNonNeg = v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(0));
+import { updateScoringRuleSchema, updateSettingsSchema } from './settings.schema';
 
 export const updateSettings = form(
-	v.object({
-		eventName: v.pipe(v.string(), v.trim(), v.minLength(1, '大会名は必須です')),
-		groupStageScoringRuleId: v.string(),
-		knockoutScoringRuleId: v.string(),
-		tiebreakerScoringRuleId: v.string(),
-		lineupRevealPolicy: v.picklist(['on_tie_start', 'manual'] as const),
-		defaultLineupDueMinutesBefore: intNonNeg
-	}),
+	updateSettingsSchema,
 	async ({
 		eventName,
 		groupStageScoringRuleId,
@@ -47,16 +37,7 @@ export const updateSettings = form(
 );
 
 export const updateScoringRule = form(
-	v.object({
-		id: v.string(),
-		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		maxGames: intPositive,
-		gamesToWin: intPositive,
-		pointsToWin: intPositive,
-		winBy: intPositive,
-		maxPoints: intPositive,
-		midGameIntervalPoint: intPositive
-	}),
+	updateScoringRuleSchema,
 	async ({
 		id,
 		name,

@@ -5,7 +5,6 @@
 	import Card from '$lib/components/Card.svelte';
 	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
 	import { lineup } from './lineup.remote';
@@ -15,7 +14,7 @@
 		slotLabel,
 		savedPlayerValue
 	} from './lineupHelpers';
-	import AppButton from '$lib/components/AppButton.svelte';
+	import LineupForm from './LineupForm.svelte';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import {
@@ -141,7 +140,7 @@
 <!-- Header -->
 <header>
 	<a
-		class="text-sm text-zinc-500 hover:text-zinc-700"
+		class="text-sm text-zinc-500 hover:text-zinc-700 flex items-center"
 		href={resolve('/ties/[tieId]', { tieId: data.tie.id })}
 	>
 		<ArrowLeft class="size-3" />
@@ -200,57 +199,16 @@
 		</div>
 	{:else}
 		<Card class="overflow-hidden">
-			<form {...lineupForm} class="divide-y divide-zinc-100">
-				{#each RUBBER_DEFINITIONS as rubber, index (rubber.code)}
-					{@const itemField = lineup.fields.items[index]}
-					<div class="px-5 py-4">
-						<input {...itemField.rubberCode.as('hidden', rubber.code)} />
-						<p class="mb-2.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
-						<div class="grid grid-cols-2 gap-2">
-							{#each [1, 2] as order (order)}
-								{@const typedOrder = order as 1 | 2}
-								{@const slotPlayers = filteredPlayers(rubber.discipline, typedOrder)}
-								{@const playerItems = [
-									{ value: '', label: '未入力' },
-									...slotPlayers.map((p) => ({ value: p.id, label: p.name }))
-								]}
-								<div>
-									<span class="mb-1 block text-xs text-zinc-400">
-										{slotLabel(rubber.discipline, typedOrder)}
-									</span>
-									{#if typedOrder === 1}
-										<AppSelect
-											{...itemField.player1Id.as('select', draftValue(rubber.code, 1))}
-											items={playerItems}
-											placeholder="未入力"
-										/>
-									{:else}
-										<AppSelect
-											{...itemField.player2Id.as('select', draftValue(rubber.code, 2))}
-											items={playerItems}
-											placeholder="未入力"
-										/>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					</div>
-				{/each}
-
-				<div class="flex justify-end gap-2 px-5 py-4">
-					<AppButton
-						type="button"
-						disabled={lineup.pending > 0}
-						onclick={saveLocalDraft}
-						variant="secondary"
-					>
-						下書き保存
-					</AppButton>
-					<AppButton type="submit" disabled={lineup.pending > 0}>
-						{lineup.pending > 0 ? '送信中…' : '提出する'}
-					</AppButton>
-				</div>
-			</form>
+			<LineupForm
+				rawForm={lineup}
+				enhancedForm={lineupForm}
+				rubberDefinitions={RUBBER_DEFINITIONS}
+				{draftValue}
+				{filteredPlayers}
+				{slotLabel}
+				{rubberLabel}
+				onSaveDraft={saveLocalDraft}
+			/>
 		</Card>
 	{/if}
 {/if}

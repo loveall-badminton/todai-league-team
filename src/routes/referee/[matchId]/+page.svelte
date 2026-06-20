@@ -139,11 +139,9 @@
 	serviceActive: boolean
 )}
 	<Card
-		class="p-5 {serviceActive
-			? accent === 'pink'
-				? 'border-2 border-pink-500'
-				: 'border-2 border-cyan-500'
-			: ''}"
+		class={cn(
+			serviceActive && ['border-2', accent === 'pink' ? 'border-pink-500' : 'border-cyan-500']
+		)}
 	>
 		<p class="text-sm font-medium text-zinc-500">{name}</p>
 		{#if teamName}

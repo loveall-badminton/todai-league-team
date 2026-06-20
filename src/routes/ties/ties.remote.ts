@@ -4,10 +4,11 @@ import { requireAdmin } from '$lib/server/auth/access';
 import { listTies, reorderTies } from '$lib/server/repositories/tokyoLeagueRepository';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
-import { persistUpdateTie, updateTieFormFields } from '$lib/server/services/updateTieForm';
+import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import { emptyToNull, venueOrNull } from '$lib/utils/validation';
 import { redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { createTieSchema, updateTieSchema } from './ties.schema';
 
 const policyFromValue = (
 	s: string | undefined | null
@@ -17,20 +18,7 @@ const policyFromValue = (
 };
 
 export const create = form(
-	v.object({
-		tieCode: v.pipe(v.string(), v.trim(), v.minLength(1, 'コードは必須です')),
-		scoringRuleId: v.pipe(v.string(), v.trim(), v.minLength(1, '得点ルールは必須です')),
-		groupCode: v.optional(v.string()),
-		phase: v.optional(v.string()),
-		scheduledStartAt: v.optional(v.string()),
-		teamAId: v.optional(v.string()),
-		teamBId: v.optional(v.string()),
-		roundLabel: v.optional(v.string()),
-		venue: v.optional(v.string()),
-		courtBlockCode: v.optional(v.string()),
-		lineupDueAt: v.optional(v.string()),
-		lineupDuePolicy: v.optional(v.string())
-	}),
+	createTieSchema,
 	async ({
 		tieCode,
 		scoringRuleId,
@@ -92,14 +80,8 @@ export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ 
 	notifyLiveBoard(['schedule']);
 });
 
-export const updateTie = form(
-	v.object({
-		id: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		...updateTieFormFields
-	}),
-	async (values) => {
-		requireAdmin();
-		await persistUpdateTie({ ...values, now: new Date().toISOString() });
-		return { message: '対戦情報を保存しました' };
-	}
-);
+export const updateTie = form(updateTieSchema, async (values) => {
+	requireAdmin();
+	await persistUpdateTie({ ...values, now: new Date().toISOString() });
+	return { message: '対戦情報を保存しました' };
+});

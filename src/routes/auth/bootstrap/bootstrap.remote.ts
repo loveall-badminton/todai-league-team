@@ -3,15 +3,11 @@ import { normalizeAccountId } from '$lib/server/auth/accountIds';
 import { bootstrapAdminAccount } from '$lib/server/auth/accountManagement';
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth';
-import * as v from 'valibot';
 import { userCount } from '$lib/server/auth/userCount';
+import { createAdminSchema } from './bootstrap.schema';
 
 export const createAdmin = form(
-	v.object({
-		accountId: v.string(),
-		password: v.string(),
-		name: v.string()
-	}),
+	createAdminSchema,
 	async ({ accountId: rawAccountId, password, name }) => {
 		if ((await userCount()) > 0) {
 			return fail(403, { message: '初回管理者はすでに作成済みです。', accountId: '', name: '' });

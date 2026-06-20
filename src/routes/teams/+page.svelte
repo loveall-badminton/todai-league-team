@@ -1,7 +1,5 @@
 <script lang="ts">
 	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
@@ -9,6 +7,7 @@
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import SortableTeamItem from './SortableTeamItem.svelte';
+	import TeamCreateForm from './TeamCreateForm.svelte';
 	import { create, importTeams, reorder } from './teams.remote';
 
 	const groupCodeItems = [
@@ -73,44 +72,7 @@
 {#if showForm}
 	<Card>
 		<h2 class="mb-4 text-base font-semibold text-zinc-950">チーム追加</h2>
-		<form {...create} class="space-y-4">
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="lg:col-span-2">
-					<label class="block">
-						<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
-						<AppInput
-							{...create.fields.name.as('text')}
-							required
-							placeholder="例: 東京大学"
-							class="mt-1"
-						/>
-					</label>
-				</div>
-				<div>
-					<label class="block">
-						<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-						<AppInput {...create.fields.shortName.as('text')} placeholder="例: 東大" class="mt-1" />
-					</label>
-				</div>
-				<div>
-					<label class="block">
-						<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
-						<AppSelect
-							{...create.fields.groupCode.as('select')}
-							items={groupCodeItems}
-							placeholder="未割当"
-							class="mt-1"
-						/>
-					</label>
-				</div>
-			</div>
-			<div class="flex gap-2">
-				<AppButton type="submit">追加</AppButton>
-				<AppButton type="button" variant="secondary" onclick={() => (showForm = false)}
-					>キャンセル</AppButton
-				>
-			</div>
-		</form>
+		<TeamCreateForm form={create} {groupCodeItems} onCancel={() => (showForm = false)} />
 	</Card>
 {/if}
 
@@ -124,18 +86,6 @@
 			</AppButton>
 		</div>
 	{:else}
-		<!-- Desktop header row -->
-		<div
-			class="hidden border-b border-zinc-100 px-4 py-2.5 lg:grid lg:grid-cols-[auto_1fr_auto_auto_auto_auto]"
-		>
-			<span class="w-6"></span>
-			<span class="text-xs font-medium tracking-wide text-zinc-400">チーム名</span>
-			<span class="w-16 text-center text-xs font-medium tracking-wide text-zinc-400">リーグ</span>
-			<span class="w-20 text-right text-xs font-medium tracking-wide text-zinc-400">選手</span>
-			<span class="w-16 text-center text-xs font-medium tracking-wide text-zinc-400">状態</span>
-			<span class="w-12"></span>
-		</div>
-
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 			<div class="divide-y divide-zinc-100">
 				{#each teams as team, index (team.id)}

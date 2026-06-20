@@ -79,7 +79,7 @@ export const start = command(
 
 export const startGame = command(
 	v.object({
-		gameNo: v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer()),
+		gameNo: v.pipe(v.unknown(), v.toNumber(), v.integer()),
 		initialServerPlayerId: v.string(),
 		initialReceiverPlayerId: v.string()
 	}),
@@ -124,7 +124,7 @@ export const rallyWon = command(v.object({ side: sideSchema }), async ({ side })
 
 export const undo = command(
 	v.object({
-		targetSeqNo: v.optional(v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer())),
+		targetSeqNo: v.optional(v.pipe(v.unknown(), v.toNumber(), v.integer())),
 		reason: v.optional(v.string())
 	}),
 	async ({ targetSeqNo, reason }) => {
@@ -142,10 +142,10 @@ export const undo = command(
 
 export const correction = command(
 	v.object({
-		gameNo: v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer()),
-		scoreA: v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer()),
-		scoreB: v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer()),
-		reason: v.pipe(v.string(), v.minLength(1)),
+		gameNo: v.pipe(v.unknown(), v.toNumber(), v.integer()),
+		scoreA: v.pipe(v.unknown(), v.toNumber(), v.integer()),
+		scoreB: v.pipe(v.unknown(), v.toNumber(), v.integer()),
+		reason: v.pipe(v.string(), v.nonEmpty()),
 		servingSide: v.optional(v.string()),
 		serviceCourt: v.optional(v.string()),
 		serverPlayerId: v.optional(v.string()),

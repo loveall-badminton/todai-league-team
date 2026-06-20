@@ -522,8 +522,11 @@ describe('rankingTiebreakerService tied-ranking DB flow', () => {
 			reason: '1位同率',
 			teamAId: 'team-a',
 			teamBId: 'team-b',
-			playerAId: 'a-m1',
-			playerBId: 'b-m1',
+			discipline: 'XD',
+			playerA1Id: 'a-f1',
+			playerA2Id: 'a-m1',
+			playerB1Id: 'b-f1',
+			playerB2Id: 'b-m1',
 			now
 		});
 
@@ -547,14 +550,16 @@ describe('rankingTiebreakerService tied-ranking DB flow', () => {
 			matchId: result.matchId
 		});
 		expect(match).toMatchObject({
-			discipline: 'MS',
+			discipline: 'XD',
 			eventName: 'Aリーグ順位決定再試合',
 			category: '1位同率',
 			roundName: 'Team A vs Team B',
 			rankingTiebreakerId: result.rankingTiebreakerId
 		});
 		expect(players.map((player) => [player.side, player.name, player.teamName])).toEqual([
+			['A', 'A 女1', 'Team A'],
 			['A', 'A 男1', 'Team A'],
+			['B', 'B 女1', 'Team B'],
 			['B', 'B 男1', 'Team B']
 		]);
 	});

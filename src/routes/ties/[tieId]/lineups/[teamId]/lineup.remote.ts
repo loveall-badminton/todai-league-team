@@ -3,27 +3,9 @@ import { requireTeamLineupAccess } from '$lib/server/auth/access';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { saveLineupDraft, submitLineup } from '$lib/server/services/lineupService';
 import { error } from '@sveltejs/kit';
-import * as v from 'valibot';
+import { submitLineupSchema } from './lineup.schema';
 
-const playerIdField = v.optional(v.string(), '');
-const lineupItemSchema = <const TRubberCode extends string>(rubberCode: TRubberCode) =>
-	v.object({
-		rubberCode: v.literal(rubberCode),
-		player1Id: playerIdField,
-		player2Id: playerIdField
-	});
-
-const lineupSchema = v.object({
-	items: v.tuple([
-		lineupItemSchema('WD1'),
-		lineupItemSchema('XD1'),
-		lineupItemSchema('MD3'),
-		lineupItemSchema('MD2'),
-		lineupItemSchema('MD1')
-	])
-});
-
-export const lineup = form(lineupSchema, async ({ items }) => {
+export const lineup = form(submitLineupSchema, async ({ items }) => {
 	const event = getRequestEvent();
 	const { params } = event;
 	requireTeamLineupAccess(params.teamId!);

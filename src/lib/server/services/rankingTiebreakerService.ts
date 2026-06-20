@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import type { MatchDiscipline } from '$lib/domain/types';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
@@ -24,7 +25,41 @@ export type RankingTiebreakerTeamForValidation = {
 export type RankingTiebreakerPlayerForValidation = {
 	id: string;
 	teamId: string;
+	gender?: 'male' | 'female' | 'unknown';
 };
+
+function assertUniquePlayers(label: string, players: RankingTiebreakerPlayerForValidation[]) {
+	if (new Set(players.map((player) => player.id)).size !== players.length) {
+		throw new Error(`${label}側の再試合選手が重複しています`);
+	}
+}
+
+function isEligibleForDiscipline(
+	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>,
+	order: 1 | 2,
+	player: RankingTiebreakerPlayerForValidation
+) {
+	if (!player.gender || player.gender === 'unknown') return true;
+	if (discipline === 'WD') return player.gender === 'female';
+	if (discipline === 'MD') return player.gender === 'male';
+	return order === 1 ? player.gender === 'female' : player.gender === 'male';
+}
+
+function assertEligiblePlayersForDiscipline(
+	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>,
+	playersA: RankingTiebreakerPlayerForValidation[],
+	playersB: RankingTiebreakerPlayerForValidation[]
+) {
+	const allPlayers = [
+		{ side: 'A', order: 1 as const, player: playersA[0] },
+		{ side: 'A', order: 2 as const, player: playersA[1] },
+		{ side: 'B', order: 1 as const, player: playersB[0] },
+		{ side: 'B', order: 2 as const, player: playersB[1] }
+	];
+	if (allPlayers.some(({ order, player }) => !isEligibleForDiscipline(discipline, order, player))) {
+		throw new Error('再試合選手の性別が種目条件に一致していません');
+	}
+}
 
 export function validateRankingTiebreakerSelection<
 	TTeam extends RankingTiebreakerTeamForValidation,
@@ -32,16 +67,27 @@ export function validateRankingTiebreakerSelection<
 >(params: {
 	teamA: TTeam | null | undefined;
 	teamB: TTeam | null | undefined;
-	playerA: TPlayer | null | undefined;
-	playerB: TPlayer | null | undefined;
+	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>;
+	playersA: (TPlayer | null | undefined)[];
+	playersB: (TPlayer | null | undefined)[];
 }) {
-	const { teamA, teamB, playerA, playerB } = params;
-	if (!teamA || !teamB || !playerA || !playerB) throw new Error('チームまたは選手が見つかりません');
+	const { teamA, teamB, discipline } = params;
+	const playersA = params.playersA.filter((player): player is TPlayer => player != null);
+	const playersB = params.playersB.filter((player): player is TPlayer => player != null);
+	if (!teamA || !teamB || playersA.length !== 2 || playersB.length !== 2) {
+		throw new Error('チームまたは選手が見つかりません');
+	}
 	if (teamA.id === teamB.id) throw new Error('順位決定再試合は異なるチーム間で作成してください');
-	if (playerA.teamId !== teamA.id || playerB.teamId !== teamB.id) {
+	assertUniquePlayers('A', playersA);
+	assertUniquePlayers('B', playersB);
+	if (
+		playersA.some((player) => player.teamId !== teamA.id) ||
+		playersB.some((player) => player.teamId !== teamB.id)
+	) {
 		throw new Error('再試合選手は対象チーム所属から選択してください');
 	}
-	return { teamA, teamB, playerA, playerB };
+	assertEligiblePlayersForDiscipline(discipline, playersA, playersB);
+	return { teamA, teamB, playersA, playersB };
 }
 
 export async function createRankingTiebreaker(params: {
@@ -49,8 +95,11 @@ export async function createRankingTiebreaker(params: {
 	reason: string;
 	teamAId: string;
 	teamBId: string;
-	playerAId: string;
-	playerBId: string;
+	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>;
+	playerA1Id: string;
+	playerA2Id: string;
+	playerB1Id: string;
+	playerB2Id: string;
 	now?: string;
 }) {
 	const db = getRequestDb();
@@ -62,13 +111,21 @@ export async function createRankingTiebreaker(params: {
 	});
 	if (!scoringRule) throw new Error('順位決定再試合ルールが見つかりません');
 
-	const [teamA, teamB, playerA, playerB] = await Promise.all([
+	const [teamA, teamB, playerA1, playerA2, playerB1, playerB2] = await Promise.all([
 		db.query.teams.findFirst({ where: eq(teams.id, params.teamAId) }),
 		db.query.teams.findFirst({ where: eq(teams.id, params.teamBId) }),
-		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerAId) }),
-		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerBId) })
+		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerA1Id) }),
+		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerA2Id) }),
+		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerB1Id) }),
+		db.query.teamPlayers.findFirst({ where: eq(teamPlayers.id, params.playerB2Id) })
 	]);
-	const validated = validateRankingTiebreakerSelection({ teamA, teamB, playerA, playerB });
+	const validated = validateRankingTiebreakerSelection({
+		teamA,
+		teamB,
+		discipline: params.discipline,
+		playersA: [playerA1, playerA2],
+		playersB: [playerB1, playerB2]
+	});
 
 	await ensureInternalTournament(now);
 	const rankingTiebreakerId = crypto.randomUUID();
@@ -86,7 +143,7 @@ export async function createRankingTiebreaker(params: {
 	const matchId = await createMatchWithPlayers({
 		tournamentId: INTERNAL_TOURNAMENT_ID,
 		courtId: null,
-		discipline: 'MS',
+		discipline: params.discipline,
 		eventName: `${params.groupCode}リーグ順位決定再試合`,
 		category: params.reason,
 		roundName: `${validated.teamA.name} vs ${validated.teamB.name}`,
@@ -94,8 +151,10 @@ export async function createRankingTiebreaker(params: {
 		scoringRuleId: scoringRule.id,
 		scoring: scoringConfigFromRule(scoringRule),
 		players: [
-			{ side: 'A', order: 1, name: validated.playerA.name, teamName: validated.teamA.name },
-			{ side: 'B', order: 1, name: validated.playerB.name, teamName: validated.teamB.name }
+			{ side: 'A', order: 1, name: validated.playersA[0].name, teamName: validated.teamA.name },
+			{ side: 'A', order: 2, name: validated.playersA[1].name, teamName: validated.teamA.name },
+			{ side: 'B', order: 1, name: validated.playersB[0].name, teamName: validated.teamB.name },
+			{ side: 'B', order: 2, name: validated.playersB[1].name, teamName: validated.teamB.name }
 		],
 		now
 	});

@@ -3,14 +3,10 @@ import { normalizeAccountId } from '$lib/server/auth/accountIds';
 import { safeRedirectTo } from '$lib/server/auth/redirectUtils';
 import { redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth';
-import * as v from 'valibot';
+import { signInSchema } from './login.schema';
 
 export const signIn = form(
-	v.object({
-		accountId: v.string(),
-		password: v.string(),
-		redirectTo: v.optional(v.string())
-	}),
+	signInSchema,
 	async ({ accountId, password, redirectTo: rawRedirectTo }) => {
 		const { locals } = getRequestEvent();
 

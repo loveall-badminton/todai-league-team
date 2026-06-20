@@ -6,7 +6,7 @@ import {
 	reorderTies,
 	setGroupStandingOverride
 } from '$lib/server/repositories/tokyoLeagueRepository';
-import { persistUpdateTie, updateTieFormFields } from '$lib/server/services/updateTieForm';
+import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import {
 	createRankingTiebreaker,
 	syncRankingTiebreakerResult
@@ -15,6 +15,7 @@ import { generateGroupRoundRobinTies } from '$lib/server/services/tieService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { createTiebreakerSchema, setManualRankSchema, updateTieSchema } from './group.schema';
 
 function parseGroupCode(value: string): 'A' | 'B' {
 	if (value === 'A' || value === 'B') return value;
@@ -39,49 +40,39 @@ export const generateRoundRobin = command(async () => {
 	return { message: `${created}件の対戦を生成しました` };
 });
 
-export const updateTie = form(
-	v.object({
-		id: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		...updateTieFormFields
-	}),
-	async (values) => {
-		requireAdmin();
-		await persistUpdateTie({ ...values, now: new Date().toISOString() });
-		return { message: '対戦情報を更新しました' };
-	}
-);
+export const updateTie = form(updateTieSchema, async (values) => {
+	requireAdmin();
+	await persistUpdateTie({ ...values, now: new Date().toISOString() });
+	return { message: '対戦情報を更新しました' };
+});
 
-export const setManualRank = form(
-	v.object({
-		teamId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		manualRank: v.pipe(v.string(), v.transform(Number), v.number(), v.integer(), v.minValue(1)),
-		reason: v.optional(v.string())
-	}),
-	async ({ teamId, manualRank, reason }) => {
-		const event = getRequestEvent();
-		requireAdmin();
-		const groupCode = parseGroupCode(event.params.groupCode!);
-		await setGroupStandingOverride({
-			groupCode,
-			teamId,
-			manualRank,
-			reason: emptyToNull(reason),
-			now: new Date().toISOString()
-		});
-		notifyLiveBoard(['standings']);
-		return { message: '手動順位を保存しました' };
-	}
-);
+export const setManualRank = form(setManualRankSchema, async ({ teamId, manualRank, reason }) => {
+	const event = getRequestEvent();
+	requireAdmin();
+	const groupCode = parseGroupCode(event.params.groupCode!);
+	await setGroupStandingOverride({
+		groupCode,
+		teamId,
+		manualRank,
+		reason: emptyToNull(reason),
+		now: new Date().toISOString()
+	});
+	notifyLiveBoard(['standings']);
+	return { message: '手動順位を保存しました' };
+});
 
 export const createTiebreaker = form(
-	v.object({
-		teamAId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		teamBId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		playerAId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		playerBId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		reason: v.pipe(v.string(), v.trim(), v.minLength(1))
-	}),
-	async ({ teamAId, teamBId, playerAId, playerBId, reason }) => {
+	createTiebreakerSchema,
+	async ({
+		teamAId,
+		teamBId,
+		discipline,
+		playerA1Id,
+		playerA2Id,
+		playerB1Id,
+		playerB2Id,
+		reason
+	}) => {
 		const event = getRequestEvent();
 		requireAdmin();
 		const groupCode = parseGroupCode(event.params.groupCode!);
@@ -89,8 +80,11 @@ export const createTiebreaker = form(
 			groupCode,
 			teamAId,
 			teamBId,
-			playerAId,
-			playerBId,
+			discipline,
+			playerA1Id,
+			playerA2Id,
+			playerB1Id,
+			playerB2Id,
 			reason,
 			now: new Date().toISOString()
 		});

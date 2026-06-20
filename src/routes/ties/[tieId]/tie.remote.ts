@@ -3,7 +3,7 @@ import { requireAdmin } from '$lib/server/auth/access';
 import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeagueRepository';
-import { persistUpdateTie, updateTieFormFields } from '$lib/server/services/updateTieForm';
+import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import {
 	lockLineup as lockLineupService,
 	revealLineups as revealLineupsService,
@@ -18,8 +18,9 @@ import {
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { error, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { updateTieSchema } from './tie.schema';
 
-export const updateTie = form(v.object(updateTieFormFields), async (values) => {
+export const updateTie = form(updateTieSchema, async (values) => {
 	requireAdmin();
 	const tieId = getRequestEvent().params.tieId!;
 	await persistUpdateTie({ ...values, id: tieId, now: new Date().toISOString() });

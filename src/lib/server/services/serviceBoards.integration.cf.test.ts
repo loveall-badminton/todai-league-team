@@ -61,6 +61,7 @@ async function seedTeams() {
 		{ id: 'a1-p1', teamId: 'a1', name: 'A1 P1', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'a1-p2', teamId: 'a1', name: 'A1 P2', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'b1-p1', teamId: 'b1', name: 'B1 P1', gender: 'female', createdAt: now, updatedAt: now },
+		{ id: 'b1-p2', teamId: 'b1', name: 'B1 P2', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'b2-p1', teamId: 'b2', name: 'B2 P1', gender: 'female', createdAt: now, updatedAt: now },
 		{ id: 'b2-p2', teamId: 'b2', name: 'B2 P2', gender: 'female', createdAt: now, updatedAt: now }
 	]);
@@ -439,8 +440,11 @@ describe('rankingTiebreakerService DB result sync', () => {
 			reason: '同率1位',
 			teamAId: 'a1',
 			teamBId: 'b1',
-			playerAId: 'a1-p1',
-			playerBId: 'b1-p1',
+			discipline: 'WD',
+			playerA1Id: 'a1-p1',
+			playerA2Id: 'a1-p2',
+			playerB1Id: 'b1-p1',
+			playerB2Id: 'b1-p2',
 			now
 		});
 		await cfTestDb.db
@@ -466,8 +470,11 @@ describe('rankingTiebreakerService DB result sync', () => {
 			reason: '同率2位',
 			teamAId: 'a1',
 			teamBId: 'b1',
-			playerAId: 'a1-p1',
-			playerBId: 'b1-p1',
+			discipline: 'WD',
+			playerA1Id: 'a1-p1',
+			playerA2Id: 'a1-p2',
+			playerB1Id: 'b1-p1',
+			playerB2Id: 'b1-p2',
 			now
 		});
 
@@ -492,8 +499,11 @@ describe('rankingTiebreakerService DB result sync', () => {
 				reason: '同率3位',
 				teamAId: 'a1',
 				teamBId: 'b1',
-				playerAId: 'a1-p1',
-				playerBId: 'b1-p1',
+				discipline: 'WD',
+				playerA1Id: 'a1-p1',
+				playerA2Id: 'a1-p2',
+				playerB1Id: 'b1-p1',
+				playerB2Id: 'b1-p2',
 				now
 			})
 		).rejects.toThrow('順位決定再試合ルールが未設定です');
@@ -506,8 +516,11 @@ describe('rankingTiebreakerService DB result sync', () => {
 			reason: '同率4位',
 			teamAId: 'a1',
 			teamBId: 'b1',
-			playerAId: 'a1-p1',
-			playerBId: 'b1-p1',
+			discipline: 'WD',
+			playerA1Id: 'a1-p1',
+			playerA2Id: 'a1-p2',
+			playerB1Id: 'b1-p1',
+			playerB2Id: 'b1-p2',
 			now
 		});
 		await cfTestDb.db

@@ -2,6 +2,7 @@ import { command, form, getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { invalidateAuthProfile, requireAdmin } from '$lib/server/auth/access';
+import { createAccountSchema, resetPasswordSchema, updateAccountSchema } from './accounts.schema';
 import {
 	assertTeamExists,
 	createManagedAccount,
@@ -12,16 +13,8 @@ import {
 import { normalizeAccountId } from '$lib/server/auth/accountIds';
 import { apiErrorMessage } from '$lib/server/errors';
 
-const accountTypeSchema = v.picklist(['participant', 'team', 'admin'] as const);
-
 export const createAccount = form(
-	v.object({
-		accountType: accountTypeSchema,
-		accountId: v.pipe(v.string(), v.trim()),
-		name: v.pipe(v.string(), v.trim(), v.minLength(1, '表示名は必須です')),
-		password: v.pipe(v.string(), v.minLength(1, 'パスワードは必須です')),
-		teamId: v.optional(v.string())
-	}),
+	createAccountSchema,
 	async ({ accountType, accountId, name, password, teamId }) => {
 		requireAdmin();
 		const resolvedTeamId = accountType === 'team' ? (teamId ?? null) : null;
@@ -42,12 +35,7 @@ export const createAccount = form(
 );
 
 export const updateAccount = form(
-	v.object({
-		userId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		name: v.pipe(v.string(), v.trim(), v.minLength(1, '表示名は必須です')),
-		accountType: accountTypeSchema,
-		teamId: v.optional(v.string())
-	}),
+	updateAccountSchema,
 	async ({ userId, name, accountType, teamId }) => {
 		requireAdmin();
 		const { locals, request } = getRequestEvent();
@@ -77,28 +65,22 @@ export const updateAccount = form(
 	}
 );
 
-export const resetPassword = form(
-	v.object({
-		userId: v.pipe(v.string(), v.trim(), v.minLength(1)),
-		password: v.pipe(v.string(), v.minLength(1, 'パスワードは必須です'))
-	}),
-	async ({ userId, password }) => {
-		requireAdmin();
-		const { locals, request } = getRequestEvent();
-		try {
-			await locals.auth.api.setUserPassword({
-				headers: request.headers,
-				body: { userId, newPassword: password }
-			});
-			return { message: 'パスワードを更新しました。' };
-		} catch (err) {
-			error(400, apiErrorMessage(err, 'パスワード更新に失敗しました。'));
-		}
+export const resetPassword = form(resetPasswordSchema, async ({ userId, password }) => {
+	requireAdmin();
+	const { locals, request } = getRequestEvent();
+	try {
+		await locals.auth.api.setUserPassword({
+			headers: request.headers,
+			body: { userId, newPassword: password }
+		});
+		return { message: 'パスワードを更新しました。' };
+	} catch (err) {
+		error(400, apiErrorMessage(err, 'パスワード更新に失敗しました。'));
 	}
-);
+});
 
 export const deleteAccount = command(
-	v.object({ userId: v.pipe(v.string(), v.trim(), v.minLength(1)) }),
+	v.object({ userId: v.pipe(v.string(), v.trim(), v.nonEmpty()) }),
 	async ({ userId }) => {
 		requireAdmin();
 		const { locals, request } = getRequestEvent();

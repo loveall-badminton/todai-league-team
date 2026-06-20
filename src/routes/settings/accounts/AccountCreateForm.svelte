@@ -4,44 +4,30 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import type { FormField, FormActionResult } from '$lib/types/forms';
+	import type { FormInstance } from '$lib/types/forms';
+	import { createAccountSchema } from './accounts.schema';
 
-	/* eslint-disable svelte/no-unused-props -- method/action used via {...form} spread */
 	let {
 		form,
 		accountTypeItems,
 		teamItems
 	}: {
-		form: {
-			method: 'POST';
-			action: string;
-			fields: {
-				accountType: FormField<string | undefined>;
-				accountId: FormField<string | undefined>;
-				name: FormField<string | undefined>;
-				password: FormField<string | undefined>;
-				teamId: FormField<string | undefined>;
-			};
-			result: FormActionResult | undefined;
-		};
+		form: FormInstance<typeof createAccountSchema>;
 		accountTypeItems: SelectItem[];
 		teamItems: SelectItem[];
 	} = $props();
-	/* eslint-enable svelte/no-unused-props */
+
+	$effect(() => {
+		form.fields.accountType.set('participant');
+	});
 </script>
 
-<h2 class="mb-4 font-semibold text-zinc-950">アカウント発行</h2>
 <FormToast result={form.result} />
 <form {...form} class="space-y-4">
 	<div class="grid gap-4 sm:grid-cols-2">
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">種別</span>
-			<AppSelect
-				{...form.fields.accountType.as('select')}
-				items={accountTypeItems}
-				onValueChange={(v: string) =>
-					form.fields.accountType.set(v as 'participant' | 'team' | 'admin')}
-			/>
+			<AppSelect {...form.fields.accountType.as('select')} items={accountTypeItems} />
 		</label>
 		{#if form.fields.accountType.value() === 'team'}
 			<label class="grid gap-1">

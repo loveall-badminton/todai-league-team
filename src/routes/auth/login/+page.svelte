@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
 	import Footer from '../../footer.svelte';
 	import type { PageProps } from './$types';
 	import { signIn } from './login.remote';
+	import SignInForm from './SignInForm.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -23,28 +22,7 @@
 	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
 		<PageHeader title="ログイン" />
 
-		<form {...signIn} class="mt-6 space-y-4">
-			<input
-				{...signIn.fields.redirectTo.as('hidden', signIn.result?.redirectTo ?? data.redirectTo)}
-			/>
-
-			<label class="grid gap-1.5">
-				<span class="text-sm font-medium text-zinc-700">ID</span>
-				<AppInput
-					type="text"
-					autocomplete="username"
-					{...signIn.fields.accountId.as('text')}
-					required
-				/>
-			</label>
-
-			<label class="grid gap-1.5">
-				<span class="text-sm font-medium text-zinc-700">パスワード</span>
-				<AppInput {...signIn.fields.password.as('password')} required />
-			</label>
-
-			<AppButton type="submit" class="w-full" size="lg">ログイン</AppButton>
-		</form>
+		<SignInForm form={signIn} redirectTo={signIn.result?.redirectTo ?? data.redirectTo} />
 
 		{#if data.showBootstrap}
 			<a

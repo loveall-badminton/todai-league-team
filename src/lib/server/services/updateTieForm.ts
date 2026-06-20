@@ -1,3 +1,4 @@
+import { updateTieFormFields } from '$lib/domain/tieFormSchema';
 import {
 	assignOfficiatingTeams,
 	updateTieSchedule
@@ -6,25 +7,9 @@ import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { emptyToNull, uniqueNonEmpty, venueOrNull } from '$lib/utils/validation';
 import * as v from 'valibot';
 
-export const updateTieFormFields = {
-	tieCode: v.pipe(v.string(), v.trim(), v.minLength(1)),
-	scheduledStartAt: v.optional(v.string()),
-	venue: v.optional(v.string()),
-	courtBlockCode: v.optional(v.string()),
-	lineupDueAt: v.optional(v.string()),
-	operationNote: v.optional(v.string()),
-	scheduleChanged: v.optional(v.string()),
-	assignedTeamIds: v.optional(
-		v.union([
-			v.array(v.string()),
-			v.pipe(
-				v.literal(''),
-				v.transform(() => [] as string[])
-			)
-		])
-	),
-	officiatingNote: v.optional(v.string())
-} as const;
+export { updateTieFormFields };
+
+export const updateTieFormSchema = v.object(updateTieFormFields);
 
 export type UpdateTieFormValues = {
 	[K in keyof typeof updateTieFormFields]: v.InferOutput<(typeof updateTieFormFields)[K]>;

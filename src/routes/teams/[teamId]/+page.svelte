@@ -2,19 +2,16 @@
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
-	import { onMount } from 'svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import AppTextarea from '$lib/components/AppTextarea.svelte';
 	import Card from '$lib/components/Card.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
-	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
+	import TeamEditForm from './TeamEditForm.svelte';
+	import PlayerCreateForm from './PlayerCreateForm.svelte';
+	import PlayerBulkCreateForm from './PlayerBulkCreateForm.svelte';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
 	import { ArrowLeft } from '@lucide/svelte';
@@ -47,18 +44,6 @@
 
 	let players = $derived([...data.players]);
 
-	onMount(() => {
-		updateTeam.fields.set({
-			name: data.team.name,
-			shortName: data.team.shortName ?? '',
-			groupCode: data.team.groupCode ?? '',
-			status: data.team.status
-		});
-		createPlayer.fields.set({ name: '', gender: 'unknown' });
-		bulkCreatePlayers.fields.set({ namesText: '', gender: 'unknown' });
-	});
-
-	// Add player tab state
 	let addTab = $state<'single' | 'bulk'>('single');
 	const bulkCreatePlayersForm = bulkCreatePlayers.enhance(async (form) => {
 		try {
@@ -111,7 +96,7 @@
 
 <!-- Team edit form -->
 <Card>
-	<div class="mb-4 flex items-center justify-between">
+	{#snippet header()}
 		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
 		<ConfirmDialog
 			onConfirm={async () => {
@@ -125,55 +110,8 @@
 			confirmVariant="danger"
 			confirmLabel="削除する"
 		/>
-	</div>
-	<form {...updateTeam} class="space-y-4">
-		<FormToast result={updateTeam.result} />
-		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			<div class="lg:col-span-1">
-				<label class="block">
-					<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
-					<AppInput {...updateTeam.fields.name.as('text', data.team.name)} required class="mt-1" />
-				</label>
-			</div>
-			<div>
-				<label class="block">
-					<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
-					<AppInput
-						{...updateTeam.fields.shortName.as('text', data.team.shortName ?? '')}
-						class="mt-1"
-					/>
-				</label>
-			</div>
-			<div>
-				<label class="block">
-					<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
-					<AppSelect
-						{...updateTeam.fields.groupCode.as('select', data.team.groupCode ?? '')}
-						items={groupCodeItems}
-						placeholder="未割当"
-						class="mt-1"
-						onValueChange={(v) => updateTeam.fields.groupCode.set(v as '' | 'A' | 'B')}
-					/>
-				</label>
-			</div>
-		</div>
-		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			<div>
-				<label class="block">
-					<span class="text-xs font-medium tracking-wide text-zinc-500">状態</span>
-					<AppSelect
-						{...updateTeam.fields.status.as('select', data.team.status)}
-						items={statusItems}
-						class="mt-1"
-						onValueChange={(v) => updateTeam.fields.status.set(v as 'active' | 'withdrawn')}
-					/>
-				</label>
-			</div>
-			<div class="flex items-end">
-				<AppButton type="submit">保存</AppButton>
-			</div>
-		</div>
-	</form>
+	{/snippet}
+	<TeamEditForm form={updateTeam} team={data.team} {groupCodeItems} {statusItems} />
 </Card>
 
 <!-- Players section -->
@@ -200,52 +138,9 @@
 		/>
 
 		{#if addTab === 'single'}
-			<form {...createPlayer} class="flex flex-wrap items-end gap-3">
-				<FormToast result={createPlayer.result} />
-				<div class="min-w-36 flex-1">
-					<label class="block">
-						<span class="text-xs font-medium text-zinc-500">氏名 *</span>
-						<AppInput
-							{...createPlayer.fields.name.as('text')}
-							required
-							placeholder="例: 山田太郎"
-							class="mt-1"
-						/>
-					</label>
-				</div>
-				<div class="w-28">
-					<label class="block">
-						<span class="text-xs font-medium text-zinc-500">性別</span>
-						<AppSelect
-							{...createPlayer.fields.gender.as('select', 'unknown')}
-							items={genderItems}
-							class="mt-1"
-							onValueChange={(v) =>
-								createPlayer.fields.gender.set(v as 'unknown' | 'male' | 'female')}
-						/>
-					</label>
-				</div>
-				<AppButton type="submit">追加</AppButton>
-			</form>
+			<PlayerCreateForm form={createPlayer} {genderItems} />
 		{:else if addTab === 'bulk'}
-			<form {...bulkCreatePlayersForm} class="space-y-3">
-				<FormToast result={bulkCreatePlayers.result} />
-				<label class="block">
-					<span class="text-xs font-medium text-zinc-500">選手名（1行に1人）</span>
-					<AppTextarea
-						{...bulkCreatePlayers.fields.namesText.as('text')}
-						rows={8}
-						placeholder="山田太郎
-鈴木花子
-田中一郎"
-						class="mt-1 font-mono text-sm"
-					/>
-				</label>
-				<input {...bulkCreatePlayers.fields.gender.as('hidden', 'unknown')} />
-				<AppButton type="submit" disabled={bulkCreatePlayers.pending > 0}>
-					{bulkCreatePlayers.pending > 0 ? '登録中…' : '一括登録'}
-				</AppButton>
-			</form>
+			<PlayerBulkCreateForm form={bulkCreatePlayers} enhancedForm={bulkCreatePlayersForm} />
 		{/if}
 	</div>
 

@@ -8,7 +8,6 @@
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { GripVertical } from '@lucide/svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
@@ -24,6 +23,7 @@
 	} from './group.remote';
 	import GroupTeamsCard from './GroupTeamsCard.svelte';
 	import GroupTiebreakerSection from './GroupTiebreakerSection.svelte';
+	import ManualRankForm from './ManualRankForm.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -43,16 +43,6 @@
 	let groupTeamItems = $derived([
 		{ value: '', label: '選択' },
 		...data.groupTeams.map((t) => ({ value: t.id, label: t.name }))
-	]);
-
-	let allPlayerItems = $derived([
-		{ value: '', label: '選択' },
-		...data.groupTeams.flatMap((team) =>
-			(data.groupTeamPlayers.find((r) => r.teamId === team.id)?.players ?? []).map((player) => ({
-				value: player.id,
-				label: `${team.name} / ${player.name}`
-			}))
-		)
 	]);
 
 	// Round-robin matrix helpers
@@ -110,25 +100,11 @@
 		{/if}
 	</td>
 	<td class="px-4 py-2.5">
-		<form {...rankForm} class="flex items-center gap-2">
-			<input {...rankForm.fields.teamId.as('hidden', row.teamId)} />
-			<AppInput
-				type="number"
-				{...rankForm.fields.manualRank.as('text', String(row.manualRank ?? row.rank ?? ''))}
-				min="1"
-				class="w-14 px-2 py-1.5 tabular-nums"
-			/>
-			<AppInput
-				{...rankForm.fields.reason.as('text')}
-				placeholder="理由"
-				class="w-24 px-2 py-1.5"
-			/>
-			<button
-				class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-			>
-				保存
-			</button>
-		</form>
+		<ManualRankForm
+			form={rankForm}
+			teamId={row.teamId}
+			manualRank={row.manualRank ?? row.rank ?? 0}
+		/>
 	</td>
 {/snippet}
 
@@ -195,7 +171,7 @@
 	createTiebreakerForm={createTiebreaker}
 	rankingTiebreakers={data.rankingTiebreakers}
 	{groupTeamItems}
-	{allPlayerItems}
+	groupTeamPlayers={data.groupTeamPlayers}
 	onSyncTiebreaker={(matchId) => run(() => syncTiebreaker({ matchId }))}
 	{teamName}
 />
