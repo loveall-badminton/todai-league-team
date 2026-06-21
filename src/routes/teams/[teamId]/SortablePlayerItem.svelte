@@ -59,7 +59,7 @@
 			<!-- Drag handle -->
 			<div
 				{@attach sortable.attachHandle}
-				class="shrink-0 cursor-grab text-zinc-300 hover:text-zinc-500"
+				class="shrink-0 cursor-grab text-zinc-300 hover:text-muted-foreground"
 			>
 				<GripVertical class="h-4 w-4" />
 			</div>
@@ -77,12 +77,12 @@
 					title={genderLabel(player.gender)}
 				></span>
 				<div class="min-w-0 flex-1">
-					<p class="text-sm font-medium text-zinc-950">{player.name}</p>
+					<p class="text-sm font-medium text-default">{player.name}</p>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
 					{#if player.status === 'inactive'}
 						<span
-							class="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500"
+							class="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-muted-foreground"
 							>不可</span
 						>
 					{:else}
@@ -115,19 +115,19 @@
 				<div class="flex flex-wrap gap-3">
 					<div class="min-w-32 flex-1">
 						<label class="block">
-							<span class="text-xs font-medium text-zinc-500">氏名 *</span>
+							<span class="text-xs font-medium text-muted-foreground">氏名 *</span>
 							<AppInput name="name" value={player.name} required class="mt-1" />
 						</label>
 					</div>
 					<div class="w-28">
 						<label class="block">
-							<span class="text-xs font-medium text-zinc-500">性別</span>
+							<span class="text-xs font-medium text-muted-foreground">性別</span>
 							<AppSelect name="gender" bind:value={editGender} items={genderItems} class="mt-1" />
 						</label>
 					</div>
 					<div class="w-24">
 						<label class="block">
-							<span class="text-xs font-medium text-zinc-500">状態</span>
+							<span class="text-xs font-medium text-muted-foreground">状態</span>
 							<AppSelect name="status" bind:value={editStatus} items={statusItems} class="mt-1" />
 						</label>
 					</div>

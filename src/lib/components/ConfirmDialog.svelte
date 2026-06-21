@@ -62,9 +62,8 @@
 
 	const triggerVariants = {
 		primary: 'rounded-xl bg-zinc-950 font-medium text-white hover:bg-zinc-800',
-		secondary:
-			'rounded-xl border border-zinc-200 bg-white font-medium text-zinc-700 hover:bg-zinc-50',
-		ghost: 'font-medium text-zinc-700 hover:text-zinc-950',
+		secondary: 'rounded-xl border border-border bg-white font-medium text-zinc-700 hover:bg-muted',
+		ghost: 'font-medium text-zinc-700 hover:text-default',
 		danger: 'rounded-xl bg-red-600 font-bold text-white shadow-sm hover:bg-red-700',
 		success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
 		warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',
@@ -98,13 +97,15 @@
 		<Dialog.Content
 			class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
 		>
-			<Dialog.Title class="text-base font-semibold text-zinc-950">{title}</Dialog.Title>
+			<Dialog.Title class="text-base font-semibold text-default">{title}</Dialog.Title>
 			{#if description}
-				<Dialog.Description class="mt-2 text-sm text-zinc-500">{description}</Dialog.Description>
+				<Dialog.Description class="mt-2 text-sm text-muted-foreground"
+					>{description}</Dialog.Description
+				>
 			{/if}
 			<div class="mt-6 flex justify-end gap-2">
 				<Dialog.Close
-					class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+					class="rounded-xl border border-border px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-muted"
 				>
 					キャンセル
 				</Dialog.Close>

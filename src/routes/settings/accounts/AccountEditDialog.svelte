@@ -1,29 +1,43 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import AppInput from '$lib/components/AppInput.svelte';
+	import AppSelect from '$lib/components/AppSelect.svelte';
+	import Badge from '$lib/components/Badge.svelte';
+	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
+	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import { type Component } from 'svelte';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
-	import AccountEditDialogInner from './AccountEditDialogInner.svelte';
+	import { updateAccount, resetPassword } from './accounts.remote';
+	import {
+		accountTypeValue,
+		accountTypeBadgeColor,
+		accountTypeLabel,
+		accountTypeIcon
+	} from './accounts.helpers';
 
 	let {
 		open = $bindable(false),
 		editAccount,
 		accountTypeItems,
-		accountTypeValue,
-		accountTypeBadgeColor,
-		accountTypeLabel,
-		accountTypeIcon: AcctIcon,
 		teamItems
 	}: {
 		open: boolean;
 		editAccount: ManagedAccount | null;
 		accountTypeItems: SelectItem[];
-		accountTypeValue: (account: ManagedAccount) => string;
-		accountTypeBadgeColor: (value: string) => 'red' | 'blue' | 'zinc';
-		accountTypeLabel: (value: string) => string;
-		accountTypeIcon: (value: string) => Component;
 		teamItems: SelectItem[];
 	} = $props();
+
+	$effect(() => {
+		if (!editAccount) return;
+		updateAccount?.fields.set({
+			userId: editAccount.id,
+			name: editAccount.name,
+			accountType: accountTypeValue(editAccount) as 'admin' | 'participant' | 'team',
+			teamId: editAccount.profile?.teamId ?? ''
+		});
+		resetPassword?.fields.set({ userId: editAccount.id, password: '' });
+	});
 </script>
 
 <Dialog.Root bind:open>
@@ -34,15 +48,81 @@
 		>
 			{#if editAccount}
 				{#key editAccount.id}
-					<AccountEditDialogInner
-						{editAccount}
-						{accountTypeItems}
-						{accountTypeValue}
-						{accountTypeBadgeColor}
-						{accountTypeLabel}
-						accountTypeIcon={AcctIcon}
-						{teamItems}
-					/>
+					{@const acctType = accountTypeValue(editAccount)}
+					{@const Icon = accountTypeIcon(acctType)}
+
+					<div class="mb-5 flex items-start justify-between gap-3">
+						<div class="flex items-center gap-3">
+							<div
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-muted-emphasis"
+							>
+								<Icon class="h-4 w-4" />
+							</div>
+							<div>
+								<div class="flex flex-wrap items-center gap-2">
+									<span class="font-mono text-sm font-semibold text-default">
+										{editAccount.accountId}
+									</span>
+									<Badge color={accountTypeBadgeColor(acctType)}>
+										{accountTypeLabel(acctType)}
+									</Badge>
+								</div>
+								<p class="text-xs text-muted-foreground">{editAccount.name}</p>
+							</div>
+						</div>
+						<DialogCloseButton class="shrink-0" />
+					</div>
+
+					<div class="space-y-3">
+						<h3 class="text-xs font-semibold tracking-wide text-muted">アカウント情報</h3>
+						<FormToast result={updateAccount.result} />
+						<form {...updateAccount} class="space-y-3">
+							<input {...updateAccount.fields.userId.as('hidden', editAccount.id)} />
+							<label class="grid gap-1">
+								<span class="text-xs font-medium text-muted-emphasis">表示名</span>
+								<AppInput {...updateAccount.fields.name.as('text')} required />
+							</label>
+							<div class={`grid gap-3 ${acctType === 'team' ? 'sm:grid-cols-2' : ''}`}>
+								<label class="grid gap-1">
+									<span class="text-xs font-medium text-muted-emphasis">種別</span>
+									<AppSelect
+										{...updateAccount.fields.accountType.as('select')}
+										items={accountTypeItems}
+									/>
+								</label>
+								{#if acctType === 'team'}
+									<label class="grid gap-1">
+										<span class="text-xs font-medium text-muted-emphasis">チーム</span>
+										<AppSelect {...updateAccount.fields.teamId.as('select')} items={teamItems} />
+									</label>
+								{/if}
+							</div>
+							<div class="flex justify-end pt-1">
+								<AppButton type="submit">保存</AppButton>
+							</div>
+						</form>
+					</div>
+
+					<div class="my-5 border-t border-border-subtle"></div>
+
+					<div class="space-y-3">
+						<h3 class="text-xs font-semibold tracking-wide text-muted">パスワード変更</h3>
+						<FormToast result={resetPassword.result} />
+						<form {...resetPassword} class="space-y-3">
+							<input {...resetPassword.fields.userId.as('hidden', editAccount.id)} />
+							<label class="grid gap-1">
+								<span class="text-xs font-medium text-muted-emphasis">新しいパスワード</span>
+								<AppInput
+									{...resetPassword.fields.password.as('password')}
+									autocomplete="new-password"
+									required
+								/>
+							</label>
+							<div class="flex justify-end pt-1">
+								<AppButton type="submit">変更</AppButton>
+							</div>
+						</form>
+					</div>
 				{/key}
 			{/if}
 		</Dialog.Content>

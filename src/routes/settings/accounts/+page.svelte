@@ -7,11 +7,17 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { Pencil, ShieldCheck, UserRound, UsersRound } from '@lucide/svelte';
+	import { Pencil } from '@lucide/svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import { deleteAccount } from './accounts.remote';
+	import {
+		accountTypeValue,
+		accountTypeBadgeColor,
+		accountTypeIcon,
+		accountTypeLabel
+	} from './accounts.helpers';
 	import AccountCreateForm from './AccountCreateForm.svelte';
 	import AccountEditDialog from './AccountEditDialog.svelte';
 
@@ -25,29 +31,6 @@
 	let teamItems = $derived(
 		data.teams.map((team): SelectItem => ({ value: team.id, label: team.name }))
 	);
-
-	function accountTypeValue(account: PageProps['data']['accounts'][number]) {
-		if (account.profile?.accountType) return account.profile.accountType;
-		return account.role === 'admin' ? 'admin' : 'participant';
-	}
-
-	function accountTypeLabel(value: string) {
-		if (value === 'admin') return '運営';
-		if (value === 'team') return 'チーム';
-		return '一般参加者';
-	}
-
-	function accountTypeBadgeColor(value: string): 'red' | 'blue' | 'zinc' {
-		if (value === 'admin') return 'red';
-		if (value === 'team') return 'blue';
-		return 'zinc';
-	}
-
-	function accountTypeIcon(value: string) {
-		if (value === 'admin') return ShieldCheck;
-		if (value === 'team') return UsersRound;
-		return UserRound;
-	}
 
 	function teamName(teamId: string | null | undefined) {
 		return data.teams.find((team) => team.id === teamId)?.name ?? '';
@@ -75,7 +58,7 @@
 
 <Card>
 	{#snippet header()}
-		<h2 class="font-semibold text-zinc-950">アカウント発行</h2>
+		<h2 class="font-semibold text-default">アカウント発行</h2>
 	{/snippet}
 	<AccountCreateForm {accountTypeItems} {teamItems} />
 </Card>
@@ -83,8 +66,10 @@
 <section class="space-y-4">
 	<div class="flex flex-wrap items-end justify-between gap-3">
 		<div>
-			<h2 class="font-semibold text-zinc-950">発行済みアカウント</h2>
-			<p class="mt-1 text-sm text-zinc-500">ログインID、権限、チーム紐づけを一覧で確認できます。</p>
+			<h2 class="font-semibold text-default">発行済みアカウント</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				ログインID、権限、チーム紐づけを一覧で確認できます。
+			</p>
 		</div>
 	</div>
 
@@ -92,7 +77,9 @@
 		<Card class="overflow-hidden" flush>
 			<table class="w-full text-sm">
 				<thead>
-					<tr class="border-b border-zinc-100 bg-zinc-50 text-xs font-medium text-zinc-500">
+					<tr
+						class="border-b border-border-subtle bg-zinc-50 text-xs font-medium text-muted-foreground"
+					>
 						<th class="px-4 py-2.5 text-left font-medium">アカウント</th>
 						<th class="hidden px-4 py-2.5 text-left font-medium sm:table-cell">種別</th>
 						<th class="hidden px-4 py-2.5 text-left font-medium md:table-cell">チーム</th>
@@ -107,15 +94,15 @@
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-2.5">
 									<div
-										class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500"
+										class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-muted-foreground"
 									>
 										<AccountIcon class="h-3.5 w-3.5" />
 									</div>
 									<div class="min-w-0">
-										<p class="truncate font-mono text-sm font-semibold text-zinc-950">
+										<p class="truncate font-mono text-sm font-semibold text-default">
 											{account.accountId}
 										</p>
-										<p class="truncate text-xs text-zinc-500">{account.name}</p>
+										<p class="truncate text-xs text-muted-foreground">{account.name}</p>
 									</div>
 								</div>
 							</td>
@@ -125,7 +112,8 @@
 								</Badge>
 							</td>
 							<td class="hidden px-4 py-3 md:table-cell">
-								<span class="text-xs text-zinc-600">{teamName(account.profile?.teamId) || '—'}</span
+								<span class="text-xs text-muted-emphasis"
+									>{teamName(account.profile?.teamId) || '—'}</span
 								>
 							</td>
 							<td class="px-4 py-3">
@@ -166,13 +154,4 @@
 	{/if}
 </section>
 
-<AccountEditDialog
-	bind:open={editOpen}
-	{editAccount}
-	{accountTypeItems}
-	{accountTypeValue}
-	{accountTypeBadgeColor}
-	{accountTypeLabel}
-	{accountTypeIcon}
-	{teamItems}
-/>
+<AccountEditDialog bind:open={editOpen} {editAccount} {accountTypeItems} {teamItems} />

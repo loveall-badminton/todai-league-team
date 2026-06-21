@@ -121,7 +121,7 @@
 
 {#snippet headerActions()}
 	<div class="flex items-center gap-3">
-		<div class="flex items-center gap-2 text-xs text-zinc-400">
+		<div class="flex items-center gap-2 text-xs text-muted">
 			<span class="flex items-center gap-1.5">
 				<span class="relative flex size-2">
 					{#if (activeTies.current?.ties.length ?? 0) > 0}

@@ -32,7 +32,7 @@
 	onclick={copy}
 	title="クリップボードにコピー"
 	class={cn(
-		'inline-flex items-center justify-center rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600',
+		'inline-flex items-center justify-center rounded-md p-1.5 text-muted transition-colors hover:bg-zinc-100 hover:text-muted-emphasis',
 		copied && 'text-green-500 hover:text-green-500',
 		className
 	)}

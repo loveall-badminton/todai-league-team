@@ -17,11 +17,11 @@
 	<p class="animate-pulse text-6xl font-bold text-zinc-300">
 		{page.status}
 	</p>
-	<p class="mt-4 text-lg font-semibold text-zinc-950">
+	<p class="mt-4 text-lg font-semibold text-default">
 		{statusCodeToMessage[page.status] || 'エラーが発生しました'}
 	</p>
 	{#if page.error?.message && page.error.message !== 'Not found'}
-		<p class="mt-2 text-sm text-zinc-500">{page.error.message}</p>
+		<p class="mt-2 text-sm text-muted-foreground">{page.error.message}</p>
 	{/if}
 	<AppButton href={resolve('/')} class="mt-8">ホームへ戻る</AppButton>
 </div>

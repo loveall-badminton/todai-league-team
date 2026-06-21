@@ -6,22 +6,24 @@
 		children,
 		header,
 		flush = false,
-		class: className = ''
+		class: className = '',
+		innerClass: innerClassName = ''
 	}: {
 		children: Snippet;
 		header?: Snippet;
 		flush?: boolean;
 		class?: string;
+		innerClass?: string;
 	} = $props();
 </script>
 
-<div class={cn('rounded-2xl border border-zinc-200 bg-white', className)}>
+<div class={cn('rounded-2xl border border-border bg-white', className)}>
 	{#if header}
-		<div class="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+		<div class="flex items-center justify-between border-b border-border-subtle px-5 py-4">
 			{@render header()}
 		</div>
 	{/if}
-	<div class={cn(!flush && 'p-5')}>
+	<div class={cn(!flush && 'p-5', innerClassName)}>
 		{@render children()}
 	</div>
 </div>

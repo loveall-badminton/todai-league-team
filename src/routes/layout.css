@@ -22,6 +22,13 @@
 	--color-court-b: var(--color-cyan-500);
 	--color-court-b-bg: var(--color-cyan-50);
 
+	--color-muted: var(--color-zinc-400);
+	--color-muted-foreground: var(--color-zinc-500);
+	--color-muted-emphasis: var(--color-zinc-600);
+	--color-default: var(--color-zinc-950);
+	--color-border: var(--color-zinc-200);
+	--color-border-subtle: var(--color-zinc-100);
+
 	--radius-element: 0.75rem;
 	--radius-container: 1rem;
 }

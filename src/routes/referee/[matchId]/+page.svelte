@@ -153,16 +153,17 @@
 		class={cn(
 			serviceActive && ['border-2', accent === 'pink' ? 'border-pink-500' : 'border-cyan-500']
 		)}
+		innerClass="flex flex-col h-full"
 	>
-		<p class="text-sm font-medium text-zinc-500">{name}</p>
+		<p class="text-sm font-medium text-muted-foreground grow">{name}</p>
 		{#if teamName}
-			<p class="text-xs text-zinc-400">{teamName}</p>
+			<p class="text-xs text-muted">{teamName}</p>
 		{/if}
 		<p class="mt-1 text-5xl leading-none font-bold tabular-nums sm:text-7xl">{score}</p>
 		<div class="mt-4">
 			<LongPressButton
 				class={cn(
-					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-zinc-400',
+					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
 					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 				)}
 				disabled={localState.status !== 'playing' || isLocked}
@@ -181,8 +182,8 @@
 
 <div class="grid gap-4">
 	<!-- Header -->
-	<div class="text-center text-xs text-zinc-400">
-		第{localState.currentGameNo}ゲーム · セットカウント {localState.gamesWon[leftSide]}–{localState
+	<div class="text-center text-xs text-muted">
+		第{localState.currentGameNo}ゲーム · ゲームカウント {localState.gamesWon[leftSide]}–{localState
 			.gamesWon[rightSide]}
 	</div>
 
@@ -227,7 +228,7 @@
 				class="grid gap-3 sm:grid-cols-2"
 			>
 				<div class="grid gap-1">
-					<span class="text-xs font-medium text-zinc-500">1st サーバー</span>
+					<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 					<AppSelect
 						name="initialServerPlayerId"
 						value={localState.service?.serverPlayerId ?? ''}
@@ -236,7 +237,7 @@
 					/>
 				</div>
 				<div class="grid gap-1">
-					<span class="text-xs font-medium text-zinc-500">1st レシーバー</span>
+					<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
 					<AppSelect
 						name="initialReceiverPlayerId"
 						value={localState.service?.receiverPlayerId ?? ''}
@@ -294,12 +295,12 @@
 	<Card>
 		<div class="grid grid-cols-2 gap-2">
 			<AppButton
-				class="flex flex-col col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+				class="flex flex-col col-span-2 w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
 				type="button"
 				disabled={!lastUndoableEvent || isLocked}
 				onclick={() => run(() => undo({}))}
 			>
-				<span class="block text-xs text-zinc-400">取り消し</span>
+				<span class="block text-xs text-muted">取り消し</span>
 				<span class="block leading-tight wrap-break-word">
 					{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
 				</span>
@@ -337,13 +338,7 @@
 	</Card>
 
 	<!-- Scoresheet -->
-	<RefereeScoresheet
-		events={data.events}
-		games={localState.games}
-		{sideAPlayers}
-		{sideBPlayers}
-		players={data.players}
-	/>
+	<RefereeScoresheet events={data.events} games={localState.games} players={data.players} />
 
 	<!-- Advanced controls -->
 	{#if !isLocked}

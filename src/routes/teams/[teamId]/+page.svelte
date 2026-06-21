@@ -17,15 +17,6 @@
 	import { reorderPlayers, deletePlayer, deleteTeam } from './team.remote';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 
-	const groupCodeItems = [
-		{ value: '', label: '未割当' },
-		{ value: 'A', label: 'Aリーグ' },
-		{ value: 'B', label: 'Bリーグ' }
-	];
-	const statusItems = [
-		{ value: 'active', label: '出場' },
-		{ value: 'withdrawn', label: '棄権' }
-	];
 	const genderItems = [
 		{ value: 'unknown', label: '未設定' },
 		{ value: 'male', label: '男性' },
@@ -68,7 +59,7 @@
 <header>
 	<a
 		href={resolve('/teams')}
-		class="mb-2 inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-950"
+		class="mb-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-default"
 	>
 		<ArrowLeft class="size-3" /> チーム一覧
 	</a>
@@ -78,7 +69,7 @@
 <!-- Team edit form -->
 <Card>
 	{#snippet header()}
-		<h2 class="text-base font-semibold text-zinc-950">チーム情報</h2>
+		<h2 class="text-base font-semibold text-default">チーム情報</h2>
 		<ConfirmDialog
 			onConfirm={async () => {
 				await deleteTeam();
@@ -92,15 +83,15 @@
 			confirmLabel="削除する"
 		/>
 	{/snippet}
-	<TeamEditForm team={data.team} {groupCodeItems} {statusItems} />
+	<TeamEditForm team={data.team} />
 </Card>
 
 <!-- Players section -->
 <Card class="overflow-hidden" flush>
 	{#snippet header()}
-		<h2 class="text-base font-semibold text-zinc-950">
+		<h2 class="text-base font-semibold text-default">
 			選手
-			<span class="ml-1.5 text-sm font-normal text-zinc-400">{players.length}名</span>
+			<span class="ml-1.5 text-sm font-normal text-muted">{players.length}名</span>
 		</h2>
 		{#if players.length > 0}
 			<CopyButton text={players.map((p) => p.name).join('\n')} />
@@ -108,7 +99,7 @@
 	{/snippet}
 
 	<!-- Add player form -->
-	<div class="border-b border-zinc-100 bg-zinc-50 px-4 py-4">
+	<div class="border-b border-border-subtle bg-zinc-50 px-4 py-4">
 		<AppTabs
 			bind:value={addTab}
 			items={[
@@ -128,7 +119,7 @@
 	<!-- Player list -->
 	{#if players.length === 0}
 		<div class="p-8 text-center">
-			<p class="text-sm text-zinc-400">選手はまだ登録されていません</p>
+			<p class="text-sm text-muted">選手はまだ登録されていません</p>
 		</div>
 	{:else}
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>

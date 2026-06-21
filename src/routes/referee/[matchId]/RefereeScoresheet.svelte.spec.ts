@@ -79,7 +79,7 @@ function rallyWonEvent(
 describe('RefereeScoresheet.svelte — empty state', () => {
 	it('shows「得点データがありません」when events is empty', async () => {
 		render(RefereeScoresheet, {
-			props: { events: [], games: [], sideAPlayers: [], sideBPlayers: [], players: [] }
+			props: { events: [], games: [], players: [] }
 		});
 		await expect.element(page.getByText('得点データがありません')).toBeInTheDocument();
 	});
@@ -97,8 +97,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1')],
 				games: [],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -114,8 +112,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1')],
 				games: [],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -131,8 +127,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1')],
 				games: [],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -152,8 +146,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 					rallyWonEvent('A', 2, 0, 's1', 's1')
 				],
 				games: [],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -172,8 +164,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1')],
 				games,
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -191,8 +181,6 @@ describe('RefereeScoresheet.svelte — game section', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1')],
 				games,
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -227,8 +215,6 @@ describe('RefereeScoresheet.svelte — multi-game', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1'), gameStartedEvent],
 				games: [makeGameState(1, 21, 15, 'A')],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});
@@ -265,8 +251,6 @@ describe('RefereeScoresheet.svelte — undo filtering', () => {
 			props: {
 				events: [matchStartedEvent('s1', 'r1'), rally, undoEvent],
 				games: [],
-				sideAPlayers: [sA],
-				sideBPlayers: [rB],
 				players: [sA, rB]
 			}
 		});

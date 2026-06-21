@@ -11,6 +11,6 @@
 	} = $props();
 </script>
 
-<h2 class={cn('text-xs font-semibold tracking-wider text-zinc-400', className)}>
+<h2 class={cn('text-xs font-semibold tracking-wider text-muted', className)}>
 	{@render children?.()}
 </h2>

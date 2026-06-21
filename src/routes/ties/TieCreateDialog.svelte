@@ -54,20 +54,20 @@
 			class="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
 		>
 			<div class="mb-5 flex items-center justify-between">
-				<Dialog.Title class="text-base font-semibold text-zinc-950">対戦を作成</Dialog.Title>
+				<Dialog.Title class="text-base font-semibold text-default">対戦を作成</Dialog.Title>
 				<DialogCloseButton />
 			</div>
 
 			<form {...create} class="space-y-4">
 				<div class="grid gap-3 sm:grid-cols-2">
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600"
+						<span class="text-xs font-medium text-muted-emphasis"
 							>コード <span class="text-red-500">*</span></span
 						>
 						<AppInput {...create.fields.tieCode.as('text')} placeholder="A-1" required />
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600"
+						<span class="text-xs font-medium text-muted-emphasis"
 							>得点ルール <span class="text-red-500">*</span></span
 						>
 						<AppSelect
@@ -83,7 +83,7 @@
 
 				<div class="grid gap-3 sm:grid-cols-3">
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600">リーグ</span>
+						<span class="text-xs font-medium text-muted-emphasis">リーグ</span>
 						<AppSelect
 							{...create.fields.groupCode.as('select')}
 							items={groupCodeItems}
@@ -91,18 +91,18 @@
 						/>
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600">フェーズ</span>
+						<span class="text-xs font-medium text-muted-emphasis">フェーズ</span>
 						<AppSelect {...create.fields.phase.as('select')} items={phaseItems} />
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600">予定時刻</span>
+						<span class="text-xs font-medium text-muted-emphasis">予定時刻</span>
 						<AppInput {...create.fields.scheduledStartAt.as('time')} />
 					</div>
 				</div>
 
 				<div class="grid gap-3 sm:grid-cols-2">
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600">A側チーム</span>
+						<span class="text-xs font-medium text-muted-emphasis">A側チーム</span>
 						<AppSelect
 							{...create.fields.teamAId.as('select')}
 							items={[
@@ -116,7 +116,7 @@
 						/>
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-medium text-zinc-600">B側チーム</span>
+						<span class="text-xs font-medium text-muted-emphasis">B側チーム</span>
 						<AppSelect
 							{...create.fields.teamBId.as('select')}
 							items={[
@@ -132,13 +132,13 @@
 				</div>
 
 				<div class="space-y-1">
-					<span class="text-xs font-medium text-zinc-600">体育館・コート</span>
+					<span class="text-xs font-medium text-muted-emphasis">体育館・コート</span>
 					<CourtPicker />
 				</div>
 
 				<div class="flex justify-end gap-2 pt-1">
 					<Dialog.Close
-						class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+						class="rounded-xl border border-border px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
 					>
 						キャンセル
 					</Dialog.Close>

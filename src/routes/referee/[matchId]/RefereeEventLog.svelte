@@ -37,15 +37,15 @@
 </script>
 
 <Card>
-	<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">イベントログ</h2>
+	<h2 class="mb-3 text-xs font-medium tracking-wide text-muted">イベントログ</h2>
 	<div class="max-h-72 space-y-1.5 overflow-auto">
 		{#each reversedEvents as event (event.id)}
 			<div
 				class="grid grid-cols-[3rem_1fr_auto] items-center gap-3 rounded-xl bg-zinc-50 px-3 py-2 text-sm"
 			>
-				<span class="text-zinc-400 tabular-nums">#{event.seqNo}</span>
+				<span class="text-muted tabular-nums">#{event.seqNo}</span>
 				<span class="text-zinc-700">{eventLabel(event.eventType)}</span>
-				<span class="font-medium text-zinc-500 tabular-nums">
+				<span class="font-medium text-muted-foreground tabular-nums">
 					{event.scoreAAfter ?? '-'}–{event.scoreBAfter ?? '-'}
 				</span>
 			</div>

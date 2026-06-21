@@ -11,27 +11,23 @@
 	let {
 		events,
 		games,
-		sideAPlayers,
-		sideBPlayers,
 		players
 	}: {
 		events: EventRow[];
 		games: GameState[];
-		sideAPlayers: MatchPlayer[];
-		sideBPlayers: MatchPlayer[];
 		players: MatchPlayer[];
 	} = $props();
 
 	let scoresheetByGame = $derived(buildScoresheetByGame(events, games, players));
+	let aPlayers = $derived(players.filter((p) => p.side === 'A'));
+	let bPlayers = $derived(players.filter((p) => p.side === 'B'));
 </script>
 
 <Card class="overflow-hidden">
 	{#each scoresheetByGame as game, gi (gi)}
-		{@const aPlayers = sideAPlayers}
-		{@const bPlayers = sideBPlayers}
-		<div class={cn(gi > 0 && 'border-t border-zinc-200')}>
+		<div class={cn(gi > 0 && 'border-t border-border')}>
 			<div class="mb-3 flex items-center justify-between">
-				<p class="text-xs font-medium tracking-wide text-zinc-400">第{game.gameNo}ゲーム</p>
+				<p class="text-xs font-medium tracking-wide text-muted">第{game.gameNo}ゲーム</p>
 				{#if game.winnerSide}
 					<span
 						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
@@ -47,9 +43,9 @@
 					<tbody>
 						{#each aPlayers as player (player.id)}
 							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
-							<tr class={cn('w-fit border-b border-zinc-100')}>
+							<tr class={cn('w-fit border-b border-border-subtle')}>
 								<td
-									class="sticky left-0 z-10 border-r border-zinc-200 bg-pink-50 px-2 py-1.5 font-medium whitespace-nowrap text-pink-800"
+									class="sticky left-0 z-10 border-r border-border bg-pink-50 px-2 py-1.5 font-medium whitespace-nowrap text-pink-800"
 									style="min-width: 5rem; max-width: 7rem;"
 								>
 									<div class="flex items-center gap-1 truncate">
@@ -62,7 +58,7 @@
 											{#if run.serverPlayerId === player.id}
 												{#each run.scores as entry, si (ri + '-' + si)}
 													<div
-														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-pink-700 tabular-nums"
+														class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-pink-700 tabular-nums"
 													>
 														{entry.scoreA}
 													</div>
@@ -73,7 +69,7 @@
 											{:else}
 												<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 												{#each run.scores as _entry, si (ri + '-' + si)}
-													<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
+													<div class="min-w-7 border-r border-border-subtle px-1 py-1.5"></div>
 												{/each}
 												{#if ri < game.serviceRuns.length - 1}
 													<div class="flex items-center border-r-2 border-zinc-300"></div>
@@ -92,7 +88,7 @@
 					<tbody>
 						<tr>
 							<td
-								class="sticky left-0 z-10 border-y-2 border-zinc-400 bg-zinc-100 px-2 py-0.5 text-center text-[10px] font-medium tracking-wider text-zinc-400"
+								class="sticky left-0 z-10 border-y-2 border-zinc-400 bg-zinc-100 px-2 py-0.5 text-center text-[10px] font-medium tracking-wider text-muted"
 							>
 								—
 							</td>
@@ -115,9 +111,9 @@
 					<tbody>
 						{#each bPlayers as player (player.id)}
 							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
-							<tr class={cn('w-fit border-b border-zinc-100')}>
+							<tr class={cn('w-fit border-b border-border-subtle')}>
 								<td
-									class="sticky left-0 z-10 border-r border-zinc-200 bg-cyan-50 px-2 py-1.5 font-medium whitespace-nowrap text-cyan-800"
+									class="sticky left-0 z-10 border-r border-border bg-cyan-50 px-2 py-1.5 font-medium whitespace-nowrap text-cyan-800"
 									style="min-width: 5rem; max-width: 7rem;"
 								>
 									<div class="flex items-center gap-1 truncate">
@@ -130,7 +126,7 @@
 											{#if run.serverPlayerId === player.id}
 												{#each run.scores as entry (entry.scoreA + '-' + entry.scoreB + '-' + entry.isServiceOver)}
 													<div
-														class="flex min-w-7 items-center justify-center border-r border-zinc-100 px-1 py-1.5 font-medium text-cyan-700 tabular-nums"
+														class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-cyan-700 tabular-nums"
 													>
 														{entry.scoreB}
 													</div>
@@ -140,7 +136,7 @@
 												{/if}
 											{:else}
 												{#each run.scores as _entry (_entry.scoreA + '-' + _entry.scoreB)}
-													<div class="min-w-7 border-r border-zinc-100 px-1 py-1.5"></div>
+													<div class="min-w-7 border-r border-border-subtle px-1 py-1.5"></div>
 												{/each}
 												{#if ri < game.serviceRuns.length - 1}
 													<div class="flex items-center border-r-2 border-zinc-300"></div>
@@ -158,12 +154,12 @@
 				</table>
 			</div>
 
-			<div class="mt-2 flex items-center gap-4 text-[10px] text-zinc-400">
+			<div class="mt-2 flex items-center gap-4 text-[10px] text-muted">
 				<span>太線 ＝ サービスオーバー</span>
 				<span>数字 ＝ サーバー側得点</span>
 			</div>
 		</div>
 	{:else}
-		<div class="px-5 py-8 text-center text-sm text-zinc-400">得点データがありません</div>
+		<div class="px-5 py-8 text-center text-sm text-muted">得点データがありません</div>
 	{/each}
 </Card>

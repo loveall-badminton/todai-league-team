@@ -56,26 +56,26 @@
 <!-- Playing ties -->
 <Card>
 	<div class="mb-3 flex items-center justify-between">
-		<h2 class="text-base font-semibold text-zinc-950">進行中の対戦</h2>
+		<h2 class="text-base font-semibold text-default">進行中の対戦</h2>
 		<Badge color="emerald">{playing.length}</Badge>
 	</div>
 	<div class="space-y-2">
 		{#each playing as tie (tie.id)}
 			<a
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
-				class="flex items-center justify-between rounded-xl border border-zinc-200 p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
+				class="flex items-center justify-between rounded-xl border border-border p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
 			>
 				<div class="min-w-0">
-					<p class="text-sm font-semibold text-zinc-950">{tie.tieCode}</p>
-					<p class="truncate text-xs text-zinc-500">
+					<p class="text-sm font-semibold text-default">{tie.tieCode}</p>
+					<p class="truncate text-xs text-muted-foreground">
 						{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 					</p>
 				</div>
 				<StatusBadge status={tie.status} />
 			</a>
 		{:else}
-			<div class="rounded-xl border border-dashed border-zinc-200 p-6 text-center">
-				<p class="text-sm text-zinc-400">進行中の対戦はありません</p>
+			<div class="rounded-xl border border-dashed border-border p-6 text-center">
+				<p class="text-sm text-muted">進行中の対戦はありません</p>
 			</div>
 		{/each}
 	</div>
@@ -84,8 +84,8 @@
 <!-- Recent ties list -->
 <Card flush>
 	{#snippet header()}
-		<h2 class="text-base font-semibold text-zinc-950">団体戦カード</h2>
-		<a href={resolve('/ties')} class="text-xs font-medium text-zinc-500 hover:text-zinc-950">
+		<h2 class="text-base font-semibold text-default">団体戦カード</h2>
+		<a href={resolve('/ties')} class="text-xs font-medium text-muted-foreground hover:text-default">
 			すべて見る <ArrowRight class="inline size-3" />
 		</a>
 	{/snippet}
@@ -96,20 +96,20 @@
 				class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
 			>
 				<div class="w-16 flex-none">
-					<span class="text-sm font-semibold text-zinc-950">{tie.tieCode}</span>
+					<span class="text-sm font-semibold text-default">{tie.tieCode}</span>
 				</div>
 				<div class="min-w-0 flex-1">
 					<p class="truncate text-sm text-zinc-700">
-						{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
+						{tie.teamAName ?? '未定'} <span class="text-muted">vs</span>
 						{tie.teamBName ?? '未定'}
 					</p>
-					<p class="text-xs text-zinc-400">{phaseLabel(tie.phase)}</p>
+					<p class="text-xs text-muted">{phaseLabel(tie.phase)}</p>
 				</div>
 				<StatusBadge status={tie.status} />
 			</a>
 		{:else}
 			<div class="px-4 py-8 text-center">
-				<p class="text-sm text-zinc-400">対戦はまだありません</p>
+				<p class="text-sm text-muted">対戦はまだありません</p>
 			</div>
 		{/each}
 	</div>

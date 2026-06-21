@@ -11,7 +11,7 @@ import {
 	upsertAuthProfile
 } from '$lib/server/auth/accountManagement';
 import { normalizeAccountId } from '$lib/server/auth/accountIds';
-import { apiErrorMessage } from '$lib/server/errors';
+import { actionErrorMessage } from '$lib/server/errors';
 
 export const createAccount = form(
 	createAccountSchema,
@@ -29,7 +29,7 @@ export const createAccount = form(
 			});
 			return { message: 'アカウントを発行しました。' };
 		} catch (err) {
-			error(400, apiErrorMessage(err, 'アカウント発行に失敗しました。'));
+			error(400, actionErrorMessage(err, 'アカウント発行に失敗しました。'));
 		}
 	}
 );
@@ -60,7 +60,7 @@ export const updateAccount = form(
 			invalidateAuthProfile(userId);
 			return { message: 'アカウントを更新しました。' };
 		} catch (err) {
-			error(400, apiErrorMessage(err, 'アカウント更新に失敗しました。'));
+			error(400, actionErrorMessage(err, 'アカウント更新に失敗しました。'));
 		}
 	}
 );
@@ -75,7 +75,7 @@ export const resetPassword = form(resetPasswordSchema, async ({ userId, password
 		});
 		return { message: 'パスワードを更新しました。' };
 	} catch (err) {
-		error(400, apiErrorMessage(err, 'パスワード更新に失敗しました。'));
+		error(400, actionErrorMessage(err, 'パスワード更新に失敗しました。'));
 	}
 });
 
@@ -93,7 +93,7 @@ export const deleteAccount = command(
 			await deleteAuthProfile(userId);
 			invalidateAuthProfile(userId);
 		} catch (err) {
-			error(400, apiErrorMessage(err, 'アカウント削除に失敗しました。'));
+			error(400, actionErrorMessage(err, 'アカウント削除に失敗しました。'));
 		}
 	}
 );

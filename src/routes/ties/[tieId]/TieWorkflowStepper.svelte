@@ -34,7 +34,7 @@
 							? 'bg-zinc-900 text-white'
 							: isCurrent
 								? 'bg-zinc-900 text-white ring-4 ring-zinc-200'
-								: 'border-2 border-zinc-200 text-zinc-400'
+								: 'border-2 border-border text-muted'
 					)}
 				>
 					{#if isComplete}<Check class="size-4" />{:else}{stepNum}{/if}
@@ -49,13 +49,13 @@
 			<p
 				class={cn(
 					'text-xs font-medium',
-					isCurrent ? 'text-zinc-950' : isComplete ? 'text-zinc-500' : 'text-zinc-300'
+					isCurrent ? 'text-default' : isComplete ? 'text-muted-foreground' : 'text-zinc-300'
 				)}
 			>
 				{step.label}
 			</p>
 			{#if isCurrent}
-				<p class="text-[10px] text-zinc-500">{step.desc}</p>
+				<p class="text-[10px] text-muted-foreground">{step.desc}</p>
 			{/if}
 		</div>
 	{/each}

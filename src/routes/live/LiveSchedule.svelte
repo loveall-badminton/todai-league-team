@@ -39,7 +39,7 @@
 			{#each grouped! as group (group.phase)}
 				<Card class="overflow-hidden" flush>
 					{#snippet header()}
-						<h3 class="text-xs font-semibold tracking-wide text-zinc-500">
+						<h3 class="text-xs font-semibold tracking-wide text-muted-foreground">
 							{phaseLabel(group.phase)}
 						</h3>
 					{/snippet}
@@ -50,7 +50,7 @@
 								<span class="mt-0.5 h-2 w-2 shrink-0 rounded-full {statusDot(tie.status)}"></span>
 								<div class="min-w-0 flex-1">
 									{#if timeStr}
-										<p class="text-[10px] font-medium text-zinc-400 tabular-nums">{timeStr}</p>
+										<p class="text-[10px] font-medium text-muted tabular-nums">{timeStr}</p>
 									{/if}
 									<p class="truncate text-sm font-medium text-zinc-900">
 										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
@@ -60,7 +60,7 @@
 									<span
 										class="shrink-0 text-sm font-bold tabular-nums {tie.status === 'playing'
 											? 'text-emerald-700'
-											: 'text-zinc-600'}"
+											: 'text-muted-emphasis'}"
 									>
 										{tie.teamScoreA}–{tie.teamScoreB}
 									</span>

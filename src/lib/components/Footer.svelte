@@ -8,7 +8,7 @@
 
 <footer
 	class={cn(
-		'border-t border-zinc-200 bg-white px-4 py-5 text-center text-xs font-medium text-zinc-500',
+		'border-t border-border bg-white px-4 py-5 text-center text-xs font-medium text-muted-foreground',
 		className
 	)}
 >

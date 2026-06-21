@@ -101,8 +101,8 @@
 
 <!-- Standings + round-robin matrix (merged) -->
 {#snippet standingsExtraHead()}
-	<th class="w-20 px-4 py-2 text-left text-xs font-medium text-zinc-400">状態</th>
-	<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-zinc-400">手動順位</th>
+	<th class="w-20 px-4 py-2 text-left text-xs font-medium text-muted">状態</th>
+	<th class="min-w-48 px-4 py-2 text-left text-xs font-medium text-muted">手動順位</th>
 {/snippet}
 
 {#snippet standingsExtraCell(row: (typeof groupPage.standings)[number])}
@@ -112,7 +112,7 @@
 		{:else if row.manualRank}
 			<Badge>手動</Badge>
 		{:else}
-			<span class="text-xs text-zinc-500">{row.headToHeadSummary ?? '自動判定'}</span>
+			<span class="text-xs text-muted-foreground">{row.headToHeadSummary ?? '自動判定'}</span>
 		{/if}
 	</td>
 	<td class="px-4 py-2.5">
@@ -158,19 +158,19 @@
 					{@const tie = allTies.find((t) => t.id === String(draggable.id))}
 					{#if tie}
 						<div
-							class="overflow-hidden rounded-xl border border-zinc-200 bg-white opacity-95 shadow-xl"
+							class="overflow-hidden rounded-xl border border-border bg-white opacity-95 shadow-xl"
 						>
 							<div class="flex items-stretch">
 								<div
-									class="flex shrink-0 cursor-grabbing items-center border-r border-zinc-100 px-3 text-zinc-400"
+									class="flex shrink-0 cursor-grabbing items-center border-r border-border-subtle px-3 text-muted"
 								>
 									<GripVertical class="h-4 w-4" />
 								</div>
 								<div class="flex flex-1 items-center px-4 py-3">
 									<div class="flex min-w-0 flex-col gap-0.5">
-										<span class="font-semibold text-zinc-950">{tie.tieCode}</span>
-										<p class="truncate text-sm text-zinc-600">
-											{tie.teamAName ?? '未定'} <span class="text-zinc-400">vs</span>
+										<span class="font-semibold text-default">{tie.tieCode}</span>
+										<p class="truncate text-sm text-muted-emphasis">
+											{tie.teamAName ?? '未定'} <span class="text-muted">vs</span>
 											{tie.teamBName ?? '未定'}
 										</p>
 									</div>

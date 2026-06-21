@@ -44,20 +44,20 @@
 >
 	<Select.Trigger
 		class={cn(
-			'flex w-full min-w-0 items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50',
+			'flex w-full min-w-0 items-center justify-between rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-950 disabled:opacity-50',
 			className
 		)}
 	>
 		<Select.Value class="min-w-0 flex-1 text-left">
-			<span class={cn('block truncate', value.length > 0 ? 'text-zinc-900' : 'text-zinc-400')}>
+			<span class={cn('block truncate', value.length > 0 ? 'text-zinc-900' : 'text-muted')}>
 				{displayLabel}
 			</span>
 		</Select.Value>
-		<ChevronDown class="ml-2 h-4 w-4 shrink-0 text-zinc-400" />
+		<ChevronDown class="ml-2 h-4 w-4 shrink-0 text-muted" />
 	</Select.Trigger>
 	<Select.Portal>
 		<Select.Content
-			class="z-50 min-w-32 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-md"
+			class="z-50 min-w-32 overflow-hidden rounded-xl border border-border bg-white shadow-md"
 			sideOffset={4}
 		>
 			<Select.Viewport class="max-h-64 p-1">
@@ -66,12 +66,12 @@
 						value={item.value}
 						label={item.label}
 						disabled={item.disabled}
-						class="relative flex cursor-default items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-disabled:opacity-50 data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-zinc-950"
+						class="relative flex cursor-default items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-disabled:opacity-50 data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-default"
 					>
 						{#snippet children({ selected })}
 							<span class="min-w-0 flex-1 truncate">{item.label}</span>
 							{#if selected}
-								<Check class="h-4 w-4 shrink-0 text-zinc-950" />
+								<Check class="h-4 w-4 shrink-0 text-default" />
 							{/if}
 						{/snippet}
 					</Select.Item>

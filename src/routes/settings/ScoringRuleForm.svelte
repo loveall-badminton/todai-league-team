@@ -39,11 +39,11 @@
 
 	<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 		<div class="space-y-1">
-			<p class="font-mono text-xs text-zinc-500">{rule.code}</p>
+			<p class="font-mono text-xs text-muted-foreground">{rule.code}</p>
 			<AppInput
 				{...ruleForm.fields.name.as('text')}
 				required
-				class="w-auto rounded-xl border border-zinc-200 bg-white px-3 py-1.5 font-semibold focus:ring-2 focus:ring-zinc-950"
+				class="w-auto rounded-xl border border-border bg-white px-3 py-1.5 font-semibold focus:ring-2 focus:ring-zinc-950"
 			/>
 		</div>
 		<AppButton type="submit">保存</AppButton>
@@ -51,27 +51,27 @@
 
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">最大ゲーム</span>
+			<span class="text-xs font-medium text-muted-emphasis">最大ゲーム</span>
 			<AppInput type="number" {...ruleForm.fields.maxGames.as('text')} min="1" />
 		</div>
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">必要ゲーム</span>
+			<span class="text-xs font-medium text-muted-emphasis">必要ゲーム</span>
 			<AppInput type="number" {...ruleForm.fields.gamesToWin.as('text')} min="1" />
 		</div>
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">勝利点</span>
+			<span class="text-xs font-medium text-muted-emphasis">勝利点</span>
 			<AppInput type="number" {...ruleForm.fields.pointsToWin.as('text')} min="1" />
 		</div>
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">デュース差</span>
+			<span class="text-xs font-medium text-muted-emphasis">デュース差</span>
 			<AppInput type="number" {...ruleForm.fields.winBy.as('text')} min="1" />
 		</div>
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">上限点</span>
+			<span class="text-xs font-medium text-muted-emphasis">上限点</span>
 			<AppInput type="number" {...ruleForm.fields.maxPoints.as('text')} min="1" />
 		</div>
 		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-600">インターバル</span>
+			<span class="text-xs font-medium text-muted-emphasis">インターバル</span>
 			<AppInput type="number" {...ruleForm.fields.midGameIntervalPoint.as('text')} min="1" />
 		</div>
 	</div>

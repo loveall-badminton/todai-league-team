@@ -97,7 +97,7 @@
 		{@const itemField = lineup.fields.items[index]}
 		<div class="px-5 py-4">
 			<input {...itemField.rubberCode.as('hidden', rubber.code)} />
-			<p class="mb-2.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
+			<p class="mb-2.5 text-xs font-medium text-muted-foreground">{rubberLabel(rubber.code)}</p>
 			<div class="grid grid-cols-2 gap-2">
 				{#each [1, 2] as order (order)}
 					{@const typedOrder = order as 1 | 2}
@@ -107,7 +107,7 @@
 						...slotPlayers.map((p) => ({ value: p.id, label: p.name }))
 					]}
 					<div>
-						<span class="mb-1 block text-xs text-zinc-400">
+						<span class="mb-1 block text-xs text-muted">
 							{slotLabel(rubber.discipline, typedOrder)}
 						</span>
 						{#if typedOrder === 1}

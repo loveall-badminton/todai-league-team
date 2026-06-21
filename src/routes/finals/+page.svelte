@@ -96,14 +96,14 @@
 		</AppButton>
 	</div>
 	{#if semifinalsHint || finalsHint}
-		<p class="text-xs text-zinc-400">{semifinalsHint ?? finalsHint}</p>
+		<p class="text-xs text-muted">{semifinalsHint ?? finalsHint}</p>
 	{/if}
 </div>
 
 {#if finalsData.current === null}
 	<div class="grid gap-2 sm:grid-cols-2">
 		{#each [0, 1, 2, 3, 4] as i (i)}
-			<div class="animate-pulse space-y-2 rounded-xl border border-zinc-100 bg-white p-4">
+			<div class="animate-pulse space-y-2 rounded-xl border border-border-subtle bg-white p-4">
 				<div class="h-2.5 w-24 rounded-full bg-zinc-200"></div>
 				<div class="flex items-center justify-between gap-2">
 					<div class="h-4 w-36 rounded-full bg-zinc-200"></div>
@@ -123,22 +123,22 @@
 
 	{#if semis.length > 0}
 		<section class="space-y-2">
-			<h2 class="text-xs font-semibold tracking-wider text-zinc-500">準決勝 / 5位決定戦</h2>
+			<h2 class="text-xs font-semibold tracking-wider text-muted-foreground">準決勝 / 5位決定戦</h2>
 			<div class="grid gap-2 sm:grid-cols-2">
 				{#each semis as tie (tie.id)}
 					<a
 						href={resolve('/ties/[tieId]', { tieId: tie.id })}
-						class="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 hover:border-zinc-400"
+						class="flex items-center justify-between rounded-xl border border-border bg-white p-4 hover:border-zinc-400"
 					>
 						<div class="min-w-0">
-							<p class="text-xs text-zinc-500">{phaseLabel(tie.phase)} · {tie.tieCode}</p>
+							<p class="text-xs text-muted-foreground">{phaseLabel(tie.phase)} · {tie.tieCode}</p>
 							<p class="mt-0.5 truncate font-medium text-zinc-900">
 								{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 							</p>
-							<p class="text-xs text-zinc-500">{tieStatusLabel(tie.status)}</p>
+							<p class="text-xs text-muted-foreground">{tieStatusLabel(tie.status)}</p>
 						</div>
 						<div class="ml-4 shrink-0 text-right">
-							<p class="text-2xl font-bold text-zinc-950 tabular-nums">
+							<p class="text-2xl font-bold text-default tabular-nums">
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</p>
 						</div>
@@ -150,22 +150,22 @@
 
 	{#if finals.length > 0}
 		<section class="space-y-2">
-			<h2 class="text-xs font-semibold tracking-wider text-zinc-500">決勝 / 3位決定戦</h2>
+			<h2 class="text-xs font-semibold tracking-wider text-muted-foreground">決勝 / 3位決定戦</h2>
 			<div class="grid gap-2 sm:grid-cols-2">
 				{#each finals as tie (tie.id)}
 					<a
 						href={resolve('/ties/[tieId]', { tieId: tie.id })}
-						class="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 hover:border-zinc-400"
+						class="flex items-center justify-between rounded-xl border border-border bg-white p-4 hover:border-zinc-400"
 					>
 						<div class="min-w-0">
-							<p class="text-xs text-zinc-500">{phaseLabel(tie.phase)} · {tie.tieCode}</p>
+							<p class="text-xs text-muted-foreground">{phaseLabel(tie.phase)} · {tie.tieCode}</p>
 							<p class="mt-0.5 truncate font-medium text-zinc-900">
 								{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 							</p>
-							<p class="text-xs text-zinc-500">{tieStatusLabel(tie.status)}</p>
+							<p class="text-xs text-muted-foreground">{tieStatusLabel(tie.status)}</p>
 						</div>
 						<div class="ml-4 shrink-0 text-right">
-							<p class="text-2xl font-bold text-zinc-950 tabular-nums">
+							<p class="text-2xl font-bold text-default tabular-nums">
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</p>
 						</div>

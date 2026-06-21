@@ -45,18 +45,18 @@
 		aria-invalid={ariaInvalid}
 		class={cn(
 			'flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 disabled:opacity-50',
-			invalid ? 'border-red-400 focus:ring-red-500' : 'border-zinc-200 focus:ring-zinc-950',
+			invalid ? 'border-red-400 focus:ring-red-500' : 'border-border focus:ring-zinc-950',
 			className
 		)}
 	>
 		<Select.Value>
-			<span class={value ? 'text-zinc-900' : 'text-zinc-400'}>{selectedLabel}</span>
+			<span class={value ? 'text-zinc-900' : 'text-muted'}>{selectedLabel}</span>
 		</Select.Value>
-		<ChevronDown class="h-4 w-4 shrink-0 text-zinc-400" />
+		<ChevronDown class="h-4 w-4 shrink-0 text-muted" />
 	</Select.Trigger>
 	<Select.Portal>
 		<Select.Content
-			class="z-50 min-w-32 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-md"
+			class="z-50 min-w-32 overflow-hidden rounded-xl border border-border bg-white shadow-md"
 			sideOffset={4}
 		>
 			<Select.Viewport class="p-1">
@@ -64,7 +64,7 @@
 					<Select.Item
 						value={item.value}
 						label={item.label}
-						class="relative flex cursor-default items-center rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-zinc-950"
+						class="relative flex cursor-default items-center rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-default"
 					>
 						{item.label}
 					</Select.Item>

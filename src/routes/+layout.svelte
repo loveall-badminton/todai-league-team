@@ -18,7 +18,7 @@
 		ClipboardList
 	} from '@lucide/svelte';
 	import type { AccountType } from '$lib/server/auth/accountManagement';
-	import Footer from './footer.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 	import Logout from './logout.svelte';
 	import { Toaster } from 'svelte-sonner';
 
@@ -77,12 +77,12 @@
 {:else}
 	<!-- Mobile header -->
 	<header
-		class="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 lg:hidden"
+		class="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-white px-4 py-3 lg:hidden"
 	>
-		<span class="text-base font-bold text-zinc-950">東大リーグ団体戦</span>
+		<span class="text-base font-bold text-default">東大リーグ団体戦</span>
 		<button
 			type="button"
-			class="rounded-lg p-1.5 text-zinc-600 hover:bg-zinc-100"
+			class="rounded-lg p-1.5 text-muted-emphasis hover:bg-zinc-100"
 			onclick={() => (drawerOpen = true)}
 			aria-label="メニューを開く"
 		>
@@ -103,11 +103,11 @@
 			? 'translate-x-0'
 			: '-translate-x-full'}"
 	>
-		<div class="flex items-center justify-between border-b border-zinc-200 px-4 py-4">
-			<span class="text-base font-bold text-zinc-950">メニュー</span>
+		<div class="flex items-center justify-between border-b border-border px-4 py-4">
+			<span class="text-base font-bold text-default">メニュー</span>
 			<button
 				type="button"
-				class="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100"
+				class="rounded-lg p-1.5 text-muted-foreground hover:bg-zinc-100"
 				onclick={closeDrawer}
 				aria-label="メニューを閉じる"
 			>
@@ -138,10 +138,10 @@
 	<div class="flex min-h-screen min-w-0 bg-zinc-50 lg:min-h-screen">
 		<!-- Desktop sidebar -->
 		<aside
-			class="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-zinc-200 bg-white lg:flex"
+			class="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-border bg-white lg:flex"
 		>
-			<div class="border-b border-zinc-200 px-4 py-5">
-				<span class="block text-sm leading-tight font-bold text-zinc-950">メニュー</span>
+			<div class="border-b border-border px-4 py-5">
+				<span class="block text-sm leading-tight font-bold text-default">メニュー</span>
 			</div>
 			<nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
 				{#each visibleNavItems as item (item.path)}
@@ -163,7 +163,7 @@
 		</aside>
 
 		<!-- Main content -->
-		<div class="flex min-w-0 flex-1 flex-col text-zinc-950 lg:ml-52">
+		<div class="flex min-w-0 flex-1 flex-col text-default lg:ml-52">
 			<main class="min-w-0 flex-1 px-4 py-6 sm:px-6">
 				<div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4">
 					{@render children()}

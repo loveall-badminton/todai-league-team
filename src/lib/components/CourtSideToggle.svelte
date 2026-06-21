@@ -44,12 +44,12 @@
 					<ArrowLeft class="inline size-3" /> 左コート
 				</p>
 				{#if leftPlayers && leftPlayers.length > 0}
-					<p class="text-sm leading-snug font-semibold text-zinc-950">
+					<p class="text-sm leading-snug font-semibold text-default">
 						{leftPlayers.join(' / ')}
 					</p>
 				{/if}
 				{#if leftTeamName}
-					<p class="truncate text-xs text-zinc-500">{leftTeamName}</p>
+					<p class="truncate text-xs text-muted-foreground">{leftTeamName}</p>
 				{/if}
 			</div>
 
@@ -68,12 +68,12 @@
 					右コート <ArrowRight class="inline size-3" />
 				</p>
 				{#if rightPlayers && rightPlayers.length > 0}
-					<p class="text-sm leading-snug font-semibold text-zinc-950">
+					<p class="text-sm leading-snug font-semibold text-default">
 						{rightPlayers.join(' / ')}
 					</p>
 				{/if}
 				{#if rightTeamName}
-					<p class="w-full truncate text-xs text-zinc-500">{rightTeamName}</p>
+					<p class="w-full truncate text-xs text-muted-foreground">{rightTeamName}</p>
 				{/if}
 			</div>
 		</div>

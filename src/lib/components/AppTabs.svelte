@@ -33,13 +33,13 @@
 					'shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors',
 					value === item.value
 						? 'bg-zinc-900 text-white'
-						: 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400',
+						: 'border border-border bg-white text-muted-emphasis hover:border-zinc-400',
 					triggerClass
 				)}
 			>
 				{item.label}
 				{#if item.count !== undefined}
-					<span class={cn('ml-1', value === item.value ? 'text-zinc-300' : 'text-zinc-400')}>
+					<span class={cn('ml-1', value === item.value ? 'text-zinc-300' : 'text-muted')}>
 						{item.count}
 					</span>
 				{/if}

@@ -4,7 +4,7 @@
 	import InlineMessage from '$lib/components/InlineMessage.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
-	import Footer from '../../footer.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 	import type { PageProps } from './$types';
 	import { createAdmin } from './bootstrap.remote';
 	import AuthBootstrapForm from './AuthBootstrapForm.svelte';
@@ -22,7 +22,7 @@
 </svelte:head>
 
 <div class="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10">
-	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
+	<section class="w-full max-w-sm rounded-lg border border-border bg-white p-6">
 		<PageHeader title="初回管理者作成" />
 
 		{#if data.hasUsers}

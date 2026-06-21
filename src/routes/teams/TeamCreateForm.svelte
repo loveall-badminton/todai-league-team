@@ -22,7 +22,7 @@
 	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 		<div class="lg:col-span-2">
 			<label class="block">
-				<span class="text-xs font-medium tracking-wide text-zinc-500">チーム名 *</span>
+				<span class="text-xs font-medium tracking-wide text-muted-foreground">チーム名 *</span>
 				<AppInput
 					{...create.fields.name.as('text')}
 					required
@@ -33,13 +33,13 @@
 		</div>
 		<div>
 			<label class="block">
-				<span class="text-xs font-medium tracking-wide text-zinc-500">略称</span>
+				<span class="text-xs font-medium tracking-wide text-muted-foreground">略称</span>
 				<AppInput {...create.fields.shortName.as('text')} placeholder="例: 東大" class="mt-1" />
 			</label>
 		</div>
 		<div>
 			<label class="block">
-				<span class="text-xs font-medium tracking-wide text-zinc-500">リーグ</span>
+				<span class="text-xs font-medium tracking-wide text-muted-foreground">リーグ</span>
 				<AppSelect
 					{...create.fields.groupCode.as('select')}
 					items={groupCodeItems}

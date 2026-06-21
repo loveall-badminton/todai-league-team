@@ -82,7 +82,7 @@
 <!-- Header -->
 <header>
 	<a
-		class="text-sm text-zinc-500 hover:text-zinc-700 flex items-center"
+		class="text-sm text-muted-foreground hover:text-zinc-700 flex items-center"
 		href={resolve('/ties/[tieId]', { tieId: data.tie.id })}
 	>
 		<ArrowLeft class="size-3" />
@@ -102,8 +102,8 @@
 <!-- Locked/revealed: read-only display -->
 {#if isLocked}
 	<Card class="overflow-hidden">
-		<div class="border-b border-zinc-100 px-5 py-4">
-			<p class="text-sm text-zinc-500">
+		<div class="border-b border-border-subtle px-5 py-4">
+			<p class="text-sm text-muted-foreground">
 				{status === 'revealed'
 					? 'オーダーが公開されました。'
 					: 'オーダーは承認済みです。変更する場合は運営にお問い合わせください。'}
@@ -113,12 +113,12 @@
 			{#each RUBBER_DEFINITIONS as rubber (rubber.code)}
 				{@const item = data.items.find((i: Item) => i.rubberCode === rubber.code)}
 				<div class="grid grid-cols-[8rem_1fr] gap-3 px-5 py-3.5">
-					<p class="pt-0.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
+					<p class="pt-0.5 text-xs font-medium text-muted-foreground">{rubberLabel(rubber.code)}</p>
 					<div class="space-y-0.5">
 						{#if item?.player1Id}
 							<p class="text-sm">{playerName(item.player1Id)}</p>
 						{:else}
-							<p class="text-sm text-zinc-400">未入力</p>
+							<p class="text-sm text-muted">未入力</p>
 						{/if}
 						{#if item?.player2Id}
 							<p class="text-sm">{playerName(item.player2Id)}</p>
@@ -136,8 +136,8 @@
 	{/if}
 
 	{#if data.players.length === 0}
-		<div class="rounded-2xl border border-zinc-200 bg-white p-8 text-center">
-			<p class="text-sm text-zinc-400">選手が登録されていません</p>
+		<div class="rounded-2xl border border-border bg-white p-8 text-center">
+			<p class="text-sm text-muted">選手が登録されていません</p>
 		</div>
 	{:else}
 		<Card class="overflow-hidden">

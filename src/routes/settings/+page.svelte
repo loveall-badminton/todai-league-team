@@ -28,7 +28,7 @@
 <!-- League settings -->
 <Card>
 	{#snippet header()}
-		<h2 class="font-semibold text-zinc-950">運営設定</h2>
+		<h2 class="font-semibold text-default">運営設定</h2>
 	{/snippet}
 	<LeagueSettingsForm settings={data.settings} {scoringRuleItems} {lineupRevealItems} />
 </Card>
@@ -37,8 +37,8 @@
 <Card>
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="font-semibold text-zinc-950">ユーザー管理</h2>
-			<p class="mt-1 text-sm text-zinc-500">運営、一般参加者、チーム用のIDを管理します。</p>
+			<h2 class="font-semibold text-default">ユーザー管理</h2>
+			<p class="mt-1 text-sm text-muted-foreground">運営、一般参加者、チーム用のIDを管理します。</p>
 		</div>
 		<AppButton variant="secondary" href={resolve('/settings/accounts')}>開く</AppButton>
 	</div>
@@ -46,7 +46,7 @@
 
 <!-- Scoring rules -->
 <section class="space-y-3">
-	<h2 class="font-semibold text-zinc-950">得点ルール</h2>
+	<h2 class="font-semibold text-default">得点ルール</h2>
 	{#each data.scoringRules as rule (rule.id)}
 		<Card>
 			<ScoringRuleForm {rule} />

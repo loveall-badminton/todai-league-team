@@ -32,7 +32,7 @@
 	<AppInput {...form.fields.reason.as('text')} placeholder="理由" class="w-24 px-2 py-1.5" />
 	<button
 		type="submit"
-		class="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+		class="rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
 	>
 		保存
 	</button>

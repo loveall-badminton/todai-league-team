@@ -20,11 +20,11 @@
 <header class={cn('flex flex-wrap items-start justify-between gap-4', className)}>
 	<div class="min-w-0 space-y-1">
 		{#if eyebrow}
-			<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{eyebrow}</p>
+			<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">{eyebrow}</p>
 		{/if}
-		<h1 class="text-2xl font-semibold tracking-tight text-zinc-950">{title}</h1>
+		<h1 class="text-2xl font-semibold tracking-tight text-default">{title}</h1>
 		{#if description}
-			<p class="text-sm text-zinc-500">{description}</p>
+			<p class="text-sm text-muted-foreground">{description}</p>
 		{/if}
 	</div>
 

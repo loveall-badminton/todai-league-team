@@ -92,7 +92,7 @@
 
 <Card flush class="overflow-hidden">
 	{#snippet header()}
-		<h2 class="text-xs font-medium tracking-tight text-zinc-400">高度な操作</h2>
+		<h2 class="text-xs font-medium tracking-tight text-muted">高度な操作</h2>
 	{/snippet}
 	<div class="divide-y divide-zinc-100">
 		<CollapsibleSection title="スコア訂正">

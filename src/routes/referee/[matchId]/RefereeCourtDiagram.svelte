@@ -38,48 +38,50 @@
 {#snippet playerCell(playerId: string, accent: 'pink' | 'cyan', hasBorderBottom: boolean)}
 	{@const isServer = service?.serverPlayerId === playerId}
 	{@const isReceiver = service?.receiverPlayerId === playerId}
-	{@const player = players.find((p) => p.id === playerId)}
 	<div
 		class="flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center
-		{hasBorderBottom ? 'border-b border-zinc-100' : ''}
+		{hasBorderBottom ? 'border-b border-border-subtle' : ''}
 		{isServer ? (accent === 'pink' ? 'bg-pink-50' : 'bg-cyan-50') : isReceiver ? 'bg-zinc-50' : ''}"
 	>
 		{#if isServer}
-			<span class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
+			<span class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
 				>サーバー</span
 			>
 		{:else if isReceiver}
-			<span
-				class={cn('text-xs text-zinc-400', accent === 'pink' ? 'text-pink-500' : 'text-cyan-500')}
+			<span class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
 				>レシーバー</span
 			>
 		{:else}
 			<span class="text-xs text-zinc-300">—</span>
 		{/if}
 		<p class="text-sm leading-tight font-medium text-zinc-800">{playerName(playerId)}</p>
-		{#if player?.teamName}
-			<p class="text-[10px] text-zinc-400">{player.teamName}</p>
-		{/if}
 	</div>
 {/snippet}
 
 {#if service}
 	<Card>
 		<div class="mb-1 grid grid-cols-[1fr_2rem_1fr]">
-			<p
-				class="text-center text-xs font-semibold {leftAccent === 'pink'
-					? 'text-pink-600'
-					: 'text-cyan-600'}"
-			>
-				左
+			<p class="text-center text-xs">
+				<span class={cn('font-semibold', leftAccent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
+					>左</span
+				>
+				{#if leftSidePlayers[0].teamName}
+					<span class="text-muted-emphasis">
+						{leftSidePlayers[0].teamName}
+					</span>
+				{/if}
 			</p>
 			<div></div>
-			<p
-				class="text-center text-xs font-semibold {rightAccent === 'pink'
-					? 'text-pink-600'
-					: 'text-cyan-600'}"
-			>
-				右
+			<p class="text-center text-xs">
+				<span
+					class={cn('font-semibold', rightAccent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
+					>右</span
+				>
+				{#if rightSidePlayers[0].teamName}
+					<span class="text-muted-emphasis">
+						{leftSidePlayers[0].teamName}
+					</span>
+				{/if}
 			</p>
 		</div>
 
@@ -94,7 +96,7 @@
 					class="col-start-2 row-span-2 row-start-1 flex items-center justify-center border-x-2 border-zinc-400 bg-zinc-100"
 				>
 					<span
-						class="text-[10px] font-medium tracking-widest text-zinc-400"
+						class="text-[10px] font-medium tracking-widest text-muted"
 						style="writing-mode: vertical-rl">ネット</span
 					>
 				</div>
@@ -119,7 +121,7 @@
 				{/if}
 				<div class="flex items-center justify-center border-x-2 border-zinc-400 bg-zinc-100">
 					<span
-						class="text-[10px] font-medium tracking-widest text-zinc-400"
+						class="text-[10px] font-medium tracking-widest text-muted"
 						style="writing-mode: vertical-rl">NET</span
 					>
 				</div>

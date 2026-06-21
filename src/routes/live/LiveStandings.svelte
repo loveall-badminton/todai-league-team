@@ -29,8 +29,8 @@
 		<div class="h-3 w-16 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-4 xl:grid-cols-2">
 			{#each [0, 1] as i (i)}
-				<div class="animate-pulse overflow-hidden rounded-2xl border border-zinc-100 bg-white">
-					<div class="border-b border-zinc-100 px-4 py-3">
+				<div class="animate-pulse overflow-hidden rounded-2xl border border-border-subtle bg-white">
+					<div class="border-b border-border-subtle px-4 py-3">
 						<div class="h-4 w-16 rounded-full bg-zinc-200"></div>
 					</div>
 					<div class="space-y-3 px-4 py-3">
@@ -54,7 +54,7 @@
 				{@const teams = groupTeams(group.rows, query.current!.teams)}
 				<Card class="overflow-hidden" flush>
 					{#snippet header()}
-						<h3 class="text-sm font-semibold text-zinc-950">{group.label}</h3>
+						<h3 class="text-sm font-semibold text-default">{group.label}</h3>
 					{/snippet}
 					<GroupStandingsTable standings={group.rows} ties={group.ties} {teams} />
 				</Card>

@@ -17,7 +17,7 @@
 	<FormToast result={createPlayer.result} />
 	<div class="min-w-36 flex-1">
 		<label class="block">
-			<span class="text-xs font-medium text-zinc-500">氏名 *</span>
+			<span class="text-xs font-medium text-muted-foreground">氏名 *</span>
 			<AppInput
 				{...createPlayer.fields.name.as('text')}
 				required
@@ -28,7 +28,7 @@
 	</div>
 	<div class="w-28">
 		<label class="block">
-			<span class="text-xs font-medium text-zinc-500">性別</span>
+			<span class="text-xs font-medium text-muted-foreground">性別</span>
 			<AppSelect {...createPlayer.fields.gender.as('select')} items={genderItems} class="mt-1" />
 		</label>
 	</div>

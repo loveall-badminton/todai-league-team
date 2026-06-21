@@ -26,7 +26,7 @@
 <form {...enhancedForm} class="space-y-3">
 	<FormToast result={bulkCreatePlayers.result} />
 	<label class="block">
-		<span class="text-xs font-medium text-zinc-500">選手名（1行に1人）</span>
+		<span class="text-xs font-medium text-muted-foreground">選手名（1行に1人）</span>
 		<AppTextarea
 			{...bulkCreatePlayers.fields.namesText.as('text')}
 			rows={8}

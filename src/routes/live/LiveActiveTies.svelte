@@ -51,7 +51,7 @@
 						? 'font-extrabold text-emerald-700'
 						: isPlaying
 							? 'font-bold text-emerald-700'
-							: 'font-bold text-zinc-600'
+							: 'font-bold text-muted-emphasis'
 				)}
 			>
 				{rubber.gamesScore}
@@ -62,7 +62,7 @@
 						'text-[10px] tabular-nums',
 						isPlaying && g.gameNo === rubber.gameDetails.length
 							? 'font-medium text-emerald-500'
-							: 'text-zinc-400'
+							: 'text-muted'
 					)}
 				>
 					{g.scoreA}–{g.scoreB}
@@ -70,7 +70,7 @@
 			{/each}
 		</div>
 	{:else}
-		<span class="text-center text-xs text-zinc-400">{rubberStatusLabel(rubber.status)}</span>
+		<span class="text-center text-xs text-muted">{rubberStatusLabel(rubber.status)}</span>
 	{/if}
 {/snippet}
 
@@ -79,7 +79,7 @@
 		<div class="h-3 w-16 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-4 md:grid-cols-2">
 			{#each [0, 1] as i (i)}
-				<div class="animate-pulse overflow-hidden rounded-2xl border border-zinc-100 bg-white">
+				<div class="animate-pulse overflow-hidden rounded-2xl border border-border-subtle bg-white">
 					<div class="space-y-2 px-5 pt-4 pb-3">
 						<div class="h-2.5 w-24 rounded-full bg-zinc-200"></div>
 						<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -88,7 +88,7 @@
 							<div class="ml-auto h-5 w-20 rounded-full bg-zinc-200"></div>
 						</div>
 					</div>
-					<div class="space-y-2.5 border-t border-zinc-100 px-5 py-3">
+					<div class="space-y-2.5 border-t border-border-subtle px-5 py-3">
 						{#each [0, 1, 2, 3] as j (j)}
 							<div class="h-3 rounded-full bg-zinc-100" style="width: {60 + j * 8}%"></div>
 						{/each}
@@ -109,10 +109,10 @@
 					<div class="px-5 pt-4 pb-3">
 						<div class="flex items-start justify-between gap-2">
 							<div class="min-w-0">
-								<p class="text-xs font-medium text-zinc-400">
+								<p class="text-xs font-medium text-muted">
 									{phaseLabel(tie.phase)} · {tie.tieCode}
 								</p>
-								<p class="mt-0.5 text-[11px] text-zinc-400">
+								<p class="mt-0.5 text-[11px] text-muted">
 									コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
 								</p>
 							</div>
@@ -128,7 +128,7 @@
 						</div>
 					</div>
 					{#if tieRubbers.length > 0}
-						<div class="border-t border-zinc-100">
+						<div class="border-t border-border-subtle">
 							{#each tieRubbers as rubber (rubber.id)}
 								{@const isPlaying = rubber.status === 'playing'}
 								{@const isExpanded = expandedRubberId === rubber.id}
@@ -142,7 +142,7 @@
 											{/each}
 										</div>
 									{:else}
-										<span class="text-zinc-400">—</span>
+										<span class="text-muted">—</span>
 									{/if}
 								{/snippet}
 								<button
@@ -152,7 +152,7 @@
 										: ''}"
 									onclick={() => toggleRubber(rubber.id)}
 								>
-									<span class="w-10 shrink-0 font-medium text-zinc-400"
+									<span class="w-10 shrink-0 font-medium text-muted"
 										>{rubberLabel(rubber.code)}</span
 									>
 									<div class="min-w-0 flex-1">
@@ -176,9 +176,9 @@
 										data-state={isExpanded ? 'open' : 'closed'}
 									>
 										<div class="overflow-hidden">
-											<div class="border-b border-zinc-100 bg-zinc-50 px-5 py-3">
+											<div class="border-b border-border-subtle bg-zinc-50 px-5 py-3">
 												<div class="mb-2 flex items-end justify-between gap-3">
-													<span class="text-xs font-semibold tracking-wide text-zinc-400">
+													<span class="text-xs font-semibold tracking-wide text-muted">
 														スコア推移
 													</span>
 													{#if currentScore}
@@ -196,7 +196,7 @@
 														nameB={tie.teamBName ?? 'B'}
 													/>
 												{:else}
-													<p class="py-4 text-center text-xs text-zinc-400">
+													<p class="py-4 text-center text-xs text-muted">
 														スコアデータがありません
 													</p>
 												{/if}

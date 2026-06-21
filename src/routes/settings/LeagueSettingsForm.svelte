@@ -89,7 +89,7 @@
 		</div>
 	</div>
 
-	<div class="flex justify-end border-t border-zinc-100 pt-4">
+	<div class="flex justify-end border-t border-border-subtle pt-4">
 		<AppButton type="submit">保存</AppButton>
 	</div>
 </form>

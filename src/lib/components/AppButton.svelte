@@ -21,8 +21,8 @@
 			variant: {
 				primary: 'rounded-xl bg-zinc-950 font-medium text-white hover:bg-zinc-800',
 				secondary:
-					'rounded-xl border border-zinc-200 bg-white font-medium text-zinc-700 hover:bg-zinc-50',
-				ghost: 'font-medium text-zinc-700 hover:text-zinc-950',
+					'rounded-xl border border-border bg-white font-medium text-zinc-700 hover:bg-muted',
+				ghost: 'font-medium text-zinc-700 hover:text-default',
 				danger: 'rounded-xl bg-red-600 font-bold text-white shadow-sm hover:bg-red-700',
 				success: 'rounded-xl bg-emerald-700 font-medium text-white hover:bg-emerald-800',
 				warning: 'rounded-xl bg-amber-100 font-medium text-amber-800 hover:bg-amber-200',

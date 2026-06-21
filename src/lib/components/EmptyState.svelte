@@ -5,7 +5,7 @@
 </script>
 
 <div
-	class="rounded-xl border border-dashed border-zinc-300 bg-white py-12 text-center text-sm text-zinc-500"
+	class="rounded-xl border border-dashed border-zinc-300 bg-white py-12 text-center text-sm text-muted-foreground"
 >
 	{#if children}
 		{@render children()}

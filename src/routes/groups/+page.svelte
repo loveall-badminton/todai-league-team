@@ -21,7 +21,7 @@
 <div class="grid gap-4 sm:grid-cols-2">
 	{#each groups as group (group.code)}
 		<a
-			class="group block rounded-2xl border border-zinc-200 bg-white p-6 transition-colors hover:border-zinc-400"
+			class="group block rounded-2xl border border-border bg-white p-6 transition-colors hover:border-zinc-400"
 			href={resolve('/groups/[groupCode]', { groupCode: group.code })}
 		>
 			<div class="flex items-start">
@@ -29,18 +29,18 @@
 			</div>
 
 			<div class="mt-5 grid grid-cols-2 gap-3">
-				<div class="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
-					<p class="text-xs font-medium text-zinc-500">チーム</p>
+				<div class="rounded-xl border border-border-subtle bg-zinc-50 px-4 py-3">
+					<p class="text-xs font-medium text-muted-foreground">チーム</p>
 					<p class="mt-0.5 text-2xl font-semibold tabular-nums">{group.teams.length}</p>
 				</div>
-				<div class="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
-					<p class="text-xs font-medium text-zinc-500">対戦数</p>
+				<div class="rounded-xl border border-border-subtle bg-zinc-50 px-4 py-3">
+					<p class="text-xs font-medium text-muted-foreground">対戦数</p>
 					<p class="mt-0.5 text-2xl font-semibold tabular-nums">{group.ties.length}</p>
 				</div>
 			</div>
 
 			<p
-				class="mt-4 flex items-center gap-1 text-sm font-medium text-zinc-500 group-hover:text-zinc-700"
+				class="mt-4 flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-zinc-700"
 			>
 				詳細を開く
 				<ChevronRight class="size-4 transition-transform group-hover:translate-x-0.5" />

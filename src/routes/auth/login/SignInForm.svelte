@@ -11,7 +11,7 @@
 </script>
 
 <form {...signIn} class="mt-6 space-y-4">
-	<input {...signIn.fields.redirectTo.as('hidden', '')} />
+	<input {...signIn.fields.redirectTo.as('hidden', redirectTo)} />
 
 	<label class="grid gap-1.5">
 		<span class="text-sm font-medium text-zinc-700">ID</span>

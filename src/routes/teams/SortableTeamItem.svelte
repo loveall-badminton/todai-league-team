@@ -25,7 +25,7 @@
 	<!-- Drag handle -->
 	<div
 		{@attach sortable.attachHandle}
-		class="flex w-6 shrink-0 cursor-grab items-center py-3.5 text-zinc-300 hover:text-zinc-500"
+		class="flex w-6 shrink-0 cursor-grab items-center py-3.5 text-zinc-300 hover:text-muted-foreground"
 	>
 		<GripVertical class="h-4 w-4" />
 	</div>
@@ -37,9 +37,9 @@
 	>
 		<!-- Name + shortName -->
 		<div class="min-w-0 flex-1 lg:flex-none">
-			<p class="truncate text-sm font-semibold text-zinc-950">{team.name}</p>
+			<p class="truncate text-sm font-semibold text-default">{team.name}</p>
 			{#if team.shortName}
-				<p class="text-xs text-zinc-400">{team.shortName}</p>
+				<p class="text-xs text-muted">{team.shortName}</p>
 			{/if}
 		</div>
 
@@ -75,7 +75,7 @@
 
 		<!-- Mobile: player count -->
 		<div class="ml-auto text-right lg:hidden">
-			<span class="text-xs text-zinc-400">{team.playerCount}名</span>
+			<span class="text-xs text-muted">{team.playerCount}名</span>
 		</div>
 	</a>
 </div>

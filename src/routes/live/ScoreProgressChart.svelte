@@ -250,5 +250,5 @@
 		</div>
 	</div>
 {:else}
-	<p class="py-6 text-center text-sm text-zinc-400">まだラリーがありません</p>
+	<p class="py-6 text-center text-sm text-muted">まだラリーがありません</p>
 {/if}

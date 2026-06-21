@@ -11,13 +11,13 @@ import {
 	ties
 } from '$lib/server/db/schema';
 
-export type GameScore = { gameNo: number; scoreA: number; scoreB: number };
+export type LiveGameScore = { gameNo: number; scoreA: number; scoreB: number };
 
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
 	matchStatus: typeof matches.$inferSelect.status | null;
 	gamesScore: string | null; // games won: "1-0"
 	pointScore: string | null; // current game points: "4-3"
-	gameDetails: GameScore[]; // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
+	gameDetails: LiveGameScore[]; // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
 	sideAPlayers: string | null;
 	sideBPlayers: string | null;
 };
@@ -62,7 +62,7 @@ export async function getPublicRubbersForTie(
 					.from(matches)
 					.where(inArray(matches.id, matchIds))
 			: Promise.resolve([]),
-		fetchGameScores(matchIds)
+		fetchLiveGameScores(matchIds)
 	]);
 
 	if (!revealed) {
@@ -112,7 +112,7 @@ export async function getPublicRubbersForTie(
 	});
 }
 
-async function fetchGameScores(matchIds: string[]): Promise<PublicGameScoreInput[]> {
+async function fetchLiveGameScores(matchIds: string[]): Promise<PublicGameScoreInput[]> {
 	if (matchIds.length === 0) return [];
 	const db = getRequestDb();
 
@@ -207,14 +207,14 @@ function rubberStatusForMatch(
 function scoreFor(
 	match: PublicMatchInput | null,
 	gameScores: PublicGameScoreInput[]
-): { gamesScore: string | null; pointScore: string | null; gameDetails: GameScore[] } {
+): { gamesScore: string | null; pointScore: string | null; gameDetails: LiveGameScore[] } {
 	if (!match) return { gamesScore: null, pointScore: null, gameDetails: [] };
 
 	const matchGames = gameScores
 		.filter((g) => g.matchId === match.id)
 		.sort((a, b) => a.gameNo - b.gameNo);
 
-	const gameDetails: GameScore[] = [];
+	const gameDetails: LiveGameScore[] = [];
 
 	// Completed games (before current game number)
 	for (const g of matchGames) {
@@ -240,11 +240,11 @@ function scoreFor(
 		});
 	} else if (isEnded) {
 		// Use last event's score for the final game, fall back to matches table
-		const finalGameScore = matchGames.find((g) => g.gameNo === match.currentGameNo);
+		const finalLiveGameScore = matchGames.find((g) => g.gameNo === match.currentGameNo);
 		gameDetails.push({
 			gameNo: match.currentGameNo,
-			scoreA: finalGameScore?.scoreA ?? match.currentScoreA,
-			scoreB: finalGameScore?.scoreB ?? match.currentScoreB
+			scoreA: finalLiveGameScore?.scoreA ?? match.currentScoreA,
+			scoreB: finalLiveGameScore?.scoreB ?? match.currentScoreB
 		});
 	}
 

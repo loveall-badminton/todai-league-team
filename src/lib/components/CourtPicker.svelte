@@ -58,9 +58,9 @@
 			{/each}
 		</div>
 	{:else if venue}
-		<p class="text-xs text-zinc-400">コートなし</p>
+		<p class="text-xs text-muted">コートなし</p>
 	{:else}
-		<p class="text-xs text-zinc-400">体育館を選ぶとコートが表示されます</p>
+		<p class="text-xs text-muted">体育館を選ぶとコートが表示されます</p>
 	{/if}
 
 	<input type="hidden" name="courtBlockCode" data-testid="court-block-input" value={jsonValue} />

@@ -71,7 +71,7 @@
 <!-- Creation form (inline) -->
 {#if showForm}
 	<Card>
-		<h2 class="mb-4 text-base font-semibold text-zinc-950">チーム追加</h2>
+		<h2 class="mb-4 text-base font-semibold text-default">チーム追加</h2>
 		<TeamCreateForm {groupCodeItems} onCancel={() => (showForm = false)} />
 	</Card>
 {/if}
@@ -80,7 +80,7 @@
 <Card class="overflow-hidden" flush>
 	{#if teams.length === 0}
 		<div class="p-10 text-center">
-			<p class="text-sm text-zinc-400">チームはまだ登録されていません</p>
+			<p class="text-sm text-muted">チームはまだ登録されていません</p>
 			<AppButton type="button" variant="ghost" onclick={() => (showForm = true)}>
 				最初のチームを追加する
 			</AppButton>

@@ -106,7 +106,7 @@
 	<div class="space-y-5">
 		<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
 			<div class="grid gap-1 lg:col-span-6">
-				<span class="text-xs font-medium text-zinc-500">種目</span>
+				<span class="text-xs font-medium text-muted-foreground">種目</span>
 				<AppSelect
 					{...createTiebreaker.fields.discipline.as('select')}
 					items={disciplineItems}
@@ -117,7 +117,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側チーム</span>
+				<span class="text-xs font-medium text-muted-foreground">A側チーム</span>
 				<AppSelect
 					{...createTiebreaker.fields.teamAId.as('select')}
 					items={groupTeamItems}
@@ -128,7 +128,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側選手1</span>
+				<span class="text-xs font-medium text-muted-foreground">A側選手1</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerA1Id.as('select')}
 					items={playerA1Items}
@@ -137,7 +137,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">A側選手2</span>
+				<span class="text-xs font-medium text-muted-foreground">A側選手2</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerA2Id.as('select')}
 					items={playerA2Items}
@@ -146,7 +146,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側チーム</span>
+				<span class="text-xs font-medium text-muted-foreground">B側チーム</span>
 				<AppSelect
 					{...createTiebreaker.fields.teamBId.as('select')}
 					items={groupTeamItems}
@@ -158,7 +158,7 @@
 			</div>
 
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側選手1</span>
+				<span class="text-xs font-medium text-muted-foreground">B側選手1</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerB1Id.as('select')}
 					items={playerB1Items}
@@ -167,7 +167,7 @@
 				/>
 			</div>
 			<div class="grid gap-1">
-				<span class="text-xs font-medium text-zinc-500">B側選手2</span>
+				<span class="text-xs font-medium text-muted-foreground">B側選手2</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerB2Id.as('select')}
 					items={playerB2Items}
@@ -176,7 +176,7 @@
 				/>
 			</div>
 			<div class="grid gap-1 lg:col-span-6">
-				<span class="text-xs font-medium text-zinc-500">理由</span>
+				<span class="text-xs font-medium text-muted-foreground">理由</span>
 				<AppInput
 					{...createTiebreaker.fields.reason.as('text')}
 					placeholder="順位未確定のため"
@@ -190,14 +190,14 @@
 		<FormToast result={createTiebreaker.result} />
 
 		{#if rankingTiebreakers.length > 0}
-			<div class="space-y-2 border-t border-zinc-100 pt-2">
+			<div class="space-y-2 border-t border-border-subtle pt-2">
 				{#each rankingTiebreakers as item (item.id)}
 					<div
-						class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm"
+						class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3 text-sm"
 					>
 						<div class="space-y-0.5">
 							<p class="font-medium">{item.reason}</p>
-							<p class="text-xs text-zinc-500">
+							<p class="text-xs text-muted-foreground">
 								{tiebreakerStatusLabel(item.status)}
 								{#if item.winnerTeamId}
 									/ 勝者: {teamName(item.winnerTeamId)}
@@ -229,7 +229,7 @@
 				{/each}
 			</div>
 		{:else}
-			<p class="text-sm text-zinc-500">作成済みの順位決定再試合はありません。</p>
+			<p class="text-sm text-muted-foreground">作成済みの順位決定再試合はありません。</p>
 		{/if}
 	</div>
 </Card>

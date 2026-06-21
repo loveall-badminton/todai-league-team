@@ -48,7 +48,7 @@
 			{ variant: 'subtle', color: 'red', class: 'bg-red-100 text-red-800' },
 			{ variant: 'subtle', color: 'sky', class: 'bg-sky-100 text-sky-700' },
 			{ variant: 'subtle', color: 'rose', class: 'bg-rose-50 text-rose-700' },
-			{ variant: 'outline', color: 'zinc', class: 'border-zinc-300 text-zinc-600' },
+			{ variant: 'outline', color: 'zinc', class: 'border-zinc-300 text-muted-emphasis' },
 			{ variant: 'outline', color: 'amber', class: 'border-amber-300 text-amber-700' },
 			{ variant: 'outline', color: 'emerald', class: 'border-emerald-300 text-emerald-700' },
 			{ variant: 'outline', color: 'red', class: 'border-red-300 text-red-700' },

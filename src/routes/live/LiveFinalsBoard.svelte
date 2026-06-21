@@ -14,7 +14,7 @@
 		<div class="h-3 w-28 animate-pulse rounded-full bg-zinc-200"></div>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each [0, 1, 2] as i (i)}
-				<div class="animate-pulse space-y-2 rounded-2xl border border-zinc-100 bg-white p-4">
+				<div class="animate-pulse space-y-2 rounded-2xl border border-border-subtle bg-white p-4">
 					<div class="h-2.5 w-16 rounded-full bg-zinc-200"></div>
 					<div class="flex items-baseline justify-between gap-2">
 						<div class="h-4 w-32 rounded-full bg-zinc-200"></div>
@@ -32,7 +32,7 @@
 			{#each query.current.finalsBoard as tie (tie.id)}
 				<Card class={cn(tie.status === 'playing' ? 'border-emerald-200' : '')} flush>
 					<div class="p-4">
-						<p class="text-xs font-medium text-zinc-400">{phaseLabel(tie.phase)}</p>
+						<p class="text-xs font-medium text-muted">{phaseLabel(tie.phase)}</p>
 						<div class="mt-1.5 flex items-baseline justify-between gap-2">
 							<p class="min-w-0 truncate text-sm font-semibold">
 								{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
@@ -45,7 +45,7 @@
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</span>
 						</div>
-						<p class="mt-0.5 text-xs text-zinc-400">{tieStatusLabel(tie.status)}</p>
+						<p class="mt-0.5 text-xs text-muted">{tieStatusLabel(tie.status)}</p>
 					</div>
 				</Card>
 			{/each}
