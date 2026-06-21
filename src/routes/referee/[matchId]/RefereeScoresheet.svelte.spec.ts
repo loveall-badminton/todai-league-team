@@ -83,13 +83,6 @@ describe('RefereeScoresheet.svelte — empty state', () => {
 		});
 		await expect.element(page.getByText('得点データがありません')).toBeInTheDocument();
 	});
-
-	it('shows「スコアシート」heading', async () => {
-		render(RefereeScoresheet, {
-			props: { events: [], games: [], sideAPlayers: [], sideBPlayers: [], players: [] }
-		});
-		await expect.element(page.getByText('スコアシート')).toBeInTheDocument();
-	});
 });
 
 // ─── game rendering ───────────────────────────────────────────────────────────

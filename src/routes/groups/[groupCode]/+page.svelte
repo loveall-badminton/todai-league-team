@@ -19,9 +19,6 @@
 		generateRoundRobin,
 		getGroupPageData,
 		getGroupRealtimeData,
-		setManualRank,
-		createTiebreaker,
-		syncTiebreaker,
 		reorder,
 		updateTie
 	} from './group.remote';
@@ -109,7 +106,6 @@
 {/snippet}
 
 {#snippet standingsExtraCell(row: (typeof groupPage.standings)[number])}
-	{@const rankForm = setManualRank.for(row.teamId)}
 	<td class="px-4 py-2.5">
 		{#if row.requiresTiebreaker}
 			<Badge color="amber">再試合必要</Badge>
@@ -120,11 +116,7 @@
 		{/if}
 	</td>
 	<td class="px-4 py-2.5">
-		<ManualRankForm
-			form={rankForm}
-			teamId={row.teamId}
-			manualRank={row.manualRank ?? row.rank ?? 0}
-		/>
+		<ManualRankForm teamId={row.teamId} manualRank={row.manualRank ?? row.rank ?? 0} />
 	</td>
 {/snippet}
 
@@ -193,10 +185,8 @@
 </section>
 
 <GroupTiebreakerSection
-	createTiebreakerForm={createTiebreaker}
 	rankingTiebreakers={groupPage.rankingTiebreakers}
 	{groupTeamItems}
 	groupTeamPlayers={groupStatic.groupTeamPlayers}
-	onSyncTiebreaker={(matchId) => run(() => syncTiebreaker({ matchId }))}
 	{teamName}
 />

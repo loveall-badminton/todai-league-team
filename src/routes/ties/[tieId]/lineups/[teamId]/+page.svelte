@@ -7,7 +7,6 @@
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
-	import { lineup } from './lineup.remote';
 	import {
 		lineupStatusBadgeClass,
 		filteredPlayers as _filteredPlayers,
@@ -18,7 +17,6 @@
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import {
-		clearLocalLineupDraft,
 		lineupDraftItemsFromFormData,
 		loadLocalLineupDraft,
 		saveLocalLineupDraft,
@@ -40,19 +38,6 @@
 
 	const statusBadgeClass = lineupStatusBadgeClass;
 	let draftItems = $state(initialDraftItems());
-
-	const lineupForm = lineup.enhance(async (form) => {
-		try {
-			if (await form.submit()) {
-				clearLocalLineupDraft(data.tie.id, data.team.id);
-				toastResult(form.result);
-			} else {
-				toastIssues(form);
-			}
-		} catch (error) {
-			toastError(error);
-		}
-	});
 
 	function filteredPlayers(discipline: string, order: 1 | 2): Player[] {
 		return _filteredPlayers(discipline, order, data.players);
@@ -79,49 +64,6 @@
 		saveLocalLineupDraft(data.tie.id, data.team.id, items);
 		draftItems = items;
 		toast.success('下書きをこの端末に保存しました');
-	}
-
-	function toastResult(result: { message?: string; warnings?: string[] } | undefined) {
-		if (!result?.message) {
-			toast.success('オーダーを提出しました');
-			return;
-		}
-
-		if (result.warnings?.length) {
-			toast.warning(result.message, { description: result.warnings.join('\n') });
-			return;
-		}
-
-		toast.success(result.message);
-	}
-
-	function toastIssues(form: { fields: { allIssues: () => { message: string }[] | undefined } }) {
-		const issues = (form.fields.allIssues() ?? []).map((issue) => issue.message);
-		if (issues.length === 0) {
-			toast.error('送信内容に問題があります');
-			return;
-		}
-
-		toast.error(issues[0], { description: issues.slice(1).join('\n') || undefined });
-	}
-
-	function toastError(error: unknown) {
-		const message = errorMessage(error);
-		const [title, ...details] = message.split('\n');
-		toast.error(title || 'エラーが発生しました', { description: details.join('\n') || undefined });
-	}
-
-	function errorMessage(error: unknown) {
-		if (error instanceof Error && error.message) return error.message;
-		if (typeof error === 'object' && error && 'body' in error) {
-			const body = (error as { body?: { message?: unknown } }).body;
-			if (typeof body?.message === 'string') return body.message;
-		}
-		if (typeof error === 'object' && error && 'message' in error) {
-			const message = (error as { message?: unknown }).message;
-			if (typeof message === 'string') return message;
-		}
-		return 'エラーが発生しました';
 	}
 
 	onMount(() => {
@@ -200,14 +142,14 @@
 	{:else}
 		<Card class="overflow-hidden">
 			<LineupForm
-				rawForm={lineup}
-				enhancedForm={lineupForm}
 				rubberDefinitions={RUBBER_DEFINITIONS}
 				{draftValue}
 				{filteredPlayers}
 				{slotLabel}
 				{rubberLabel}
 				onSaveDraft={saveLocalDraft}
+				tieId={data.tie.id}
+				teamId={data.team.id}
 			/>
 		</Card>
 	{/if}

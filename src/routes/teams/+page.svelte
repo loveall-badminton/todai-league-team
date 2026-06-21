@@ -8,7 +8,7 @@
 	import type { PageProps } from './$types';
 	import SortableTeamItem from './SortableTeamItem.svelte';
 	import TeamCreateForm from './TeamCreateForm.svelte';
-	import { create, importTeams, reorder } from './teams.remote';
+	import { importTeams, reorder } from './teams.remote';
 
 	const groupCodeItems = [
 		{ value: '', label: '未割当' },
@@ -72,7 +72,7 @@
 {#if showForm}
 	<Card>
 		<h2 class="mb-4 text-base font-semibold text-zinc-950">チーム追加</h2>
-		<TeamCreateForm form={create} {groupCodeItems} onCancel={() => (showForm = false)} />
+		<TeamCreateForm {groupCodeItems} onCancel={() => (showForm = false)} />
 	</Card>
 {/if}
 

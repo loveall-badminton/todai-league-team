@@ -4,35 +4,39 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import type { FormInstance } from '$lib/types/forms';
-	import { createAccountSchema } from './accounts.schema';
+	import { onMount } from 'svelte';
+	import { createAccount } from './accounts.remote';
 
 	let {
-		form,
 		accountTypeItems,
 		teamItems
 	}: {
-		form: FormInstance<typeof createAccountSchema>;
 		accountTypeItems: SelectItem[];
 		teamItems: SelectItem[];
 	} = $props();
 
-	$effect(() => {
-		form.fields.accountType.set('participant');
+	onMount(() => {
+		createAccount.fields.set({
+			accountType: 'participant',
+			accountId: '',
+			name: '',
+			password: '',
+			teamId: ''
+		});
 	});
 </script>
 
-<FormToast result={form.result} />
-<form {...form} class="space-y-4">
+<FormToast result={createAccount.result} />
+<form {...createAccount} class="space-y-4">
 	<div class="grid gap-4 sm:grid-cols-2">
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">種別</span>
-			<AppSelect {...form.fields.accountType.as('select')} items={accountTypeItems} />
+			<AppSelect {...createAccount.fields.accountType.as('select')} items={accountTypeItems} />
 		</label>
-		{#if form.fields.accountType.value() === 'team'}
+		{#if createAccount.fields.accountType.value() === 'team'}
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">チーム</span>
-				<AppSelect {...form.fields.teamId.as('select')} items={teamItems} required />
+				<AppSelect {...createAccount.fields.teamId.as('select')} items={teamItems} required />
 			</label>
 		{/if}
 	</div>
@@ -40,15 +44,19 @@
 	<div class="grid gap-4 sm:grid-cols-3">
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">ID</span>
-			<AppInput {...form.fields.accountId.as('text')} autocomplete="username" required />
+			<AppInput {...createAccount.fields.accountId.as('text')} autocomplete="username" required />
 		</label>
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">表示名</span>
-			<AppInput {...form.fields.name.as('text')} required />
+			<AppInput {...createAccount.fields.name.as('text')} required />
 		</label>
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">パスワード</span>
-			<AppInput {...form.fields.password.as('password')} autocomplete="new-password" required />
+			<AppInput
+				{...createAccount.fields.password.as('password')}
+				autocomplete="new-password"
+				required
+			/>
 		</label>
 	</div>
 

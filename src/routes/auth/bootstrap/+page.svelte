@@ -29,7 +29,7 @@
 			<InlineMessage>初回管理者は作成済みです。</InlineMessage>
 			<AppButton href={resolve('/auth/login')} class="mt-5 w-full" size="lg">ログインへ</AppButton>
 		{:else}
-			<AuthBootstrapForm form={createAdmin} />
+			<AuthBootstrapForm />
 		{/if}
 		<Footer class="mt-4 pb-0" />
 	</section>

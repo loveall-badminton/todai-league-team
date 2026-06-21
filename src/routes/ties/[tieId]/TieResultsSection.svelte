@@ -5,19 +5,16 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import type { RubberRow } from '$lib/types/entities';
+	import { confirmMatch, unconfirmMatch } from './tie.remote';
 
 	let {
 		rubbers,
 		teamAName,
-		teamBName,
-		onConfirmMatch,
-		onUnconfirmMatch
+		teamBName
 	}: {
 		rubbers: RubberRow[];
 		teamAName: string;
 		teamBName: string;
-		onConfirmMatch: (matchId: string) => void;
-		onUnconfirmMatch: (matchId: string) => void;
 	} = $props();
 
 	import { rubberStatusLabel } from '$lib/domain/tokyoLeagueLabels';
@@ -51,7 +48,9 @@
 			{/if}
 			{#if row.matchId && row.matchStatus === 'confirmed'}
 				<ConfirmDialog
-					onConfirm={() => onUnconfirmMatch(row.matchId!)}
+					onConfirm={async () => {
+						await unconfirmMatch({ matchId: row.matchId! });
+					}}
 					triggerLabel="承認解除"
 					triggerClass="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
 					title="試合結果の承認を解除しますか？"
@@ -62,7 +61,9 @@
 				/>
 			{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
 				<ConfirmDialog
-					onConfirm={() => onConfirmMatch(row.matchId!)}
+					onConfirm={async () => {
+						await confirmMatch({ matchId: row.matchId! });
+					}}
 					triggerLabel="運営承認"
 					triggerClass="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
 					title="試合結果を運営承認しますか？"

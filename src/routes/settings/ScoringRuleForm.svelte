@@ -2,8 +2,7 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
-	import type { ScopedForm } from '$lib/types/forms';
-	import { updateScoringRuleSchema } from './settings.schema';
+	import { updateScoringRule } from './settings.remote';
 
 	type Rule = {
 		id: string;
@@ -17,8 +16,9 @@
 		midGameIntervalPoint: number;
 	};
 
-	let { rule, ruleForm }: { rule: Rule; ruleForm: ScopedForm<typeof updateScoringRuleSchema> } =
-		$props();
+	let { rule }: { rule: Rule } = $props();
+
+	const ruleForm = $derived(updateScoringRule.for(rule.id));
 
 	$effect(() => {
 		ruleForm.fields.set({

@@ -26,13 +26,10 @@
 </script>
 
 <Card class="overflow-hidden">
-	<div class="border-b border-zinc-100 px-5 py-3">
-		<h2 class="text-sm font-medium text-zinc-700">スコアシート</h2>
-	</div>
 	{#each scoresheetByGame as game, gi (gi)}
 		{@const aPlayers = sideAPlayers}
 		{@const bPlayers = sideBPlayers}
-		<div class="px-3 py-4 {gi > 0 ? 'border-t border-zinc-200' : ''}">
+		<div class={cn(gi > 0 && 'border-t border-zinc-200')}>
 			<div class="mb-3 flex items-center justify-between">
 				<p class="text-xs font-medium tracking-wide text-zinc-400">第{game.gameNo}ゲーム</p>
 				{#if game.winnerSide}

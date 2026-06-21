@@ -11,7 +11,7 @@
 	import type { SelectItem } from '$lib/types/ui';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
-	import { createAccount, deleteAccount, resetPassword, updateAccount } from './accounts.remote';
+	import { deleteAccount } from './accounts.remote';
 	import AccountCreateForm from './AccountCreateForm.svelte';
 	import AccountEditDialog from './AccountEditDialog.svelte';
 
@@ -25,16 +25,6 @@
 	let teamItems = $derived(
 		data.teams.map((team): SelectItem => ({ value: team.id, label: team.name }))
 	);
-
-	$effect(() => {
-		createAccount.fields.set({
-			accountType: 'participant',
-			accountId: '',
-			name: '',
-			password: '',
-			teamId: data.teams[0]?.id ?? ''
-		});
-	});
 
 	function accountTypeValue(account: PageProps['data']['accounts'][number]) {
 		if (account.profile?.accountType) return account.profile.accountType;
@@ -87,7 +77,7 @@
 	{#snippet header()}
 		<h2 class="font-semibold text-zinc-950">アカウント発行</h2>
 	{/snippet}
-	<AccountCreateForm form={createAccount} {accountTypeItems} {teamItems} />
+	<AccountCreateForm {accountTypeItems} {teamItems} />
 </Card>
 
 <section class="space-y-4">
@@ -179,8 +169,6 @@
 <AccountEditDialog
 	bind:open={editOpen}
 	{editAccount}
-	{updateAccount}
-	{resetPassword}
 	{accountTypeItems}
 	{accountTypeValue}
 	{accountTypeBadgeColor}

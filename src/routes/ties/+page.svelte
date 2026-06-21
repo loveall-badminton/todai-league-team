@@ -6,7 +6,6 @@
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { GripVertical, Plus } from '@lucide/svelte';
-	import { onMount } from 'svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
@@ -15,7 +14,7 @@
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { shouldRefreshTiesPage, type RealtimeUpdate } from '$lib/realtime/updates';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
-	import { create, getTiesData, getTiesPageData, reorder, updateTie } from './ties.remote';
+	import { getTiesData, getTiesPageData, reorder, updateTie } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
 	import * as v from 'valibot';
 	import TieCreateDialog from './TieCreateDialog.svelte';
@@ -30,23 +29,6 @@
 	});
 
 	let dialogOpen = $state(false);
-
-	onMount(() => {
-		create.fields.set({
-			tieCode: '',
-			scoringRuleId: tiesPage.scoringRules[0]?.id ?? '',
-			groupCode: '',
-			phase: 'semifinal',
-			scheduledStartAt: '',
-			teamAId: '',
-			teamBId: '',
-			roundLabel: '',
-			venue: '',
-			courtBlockCode: '',
-			lineupDueAt: '',
-			lineupDuePolicy: ''
-		});
-	});
 
 	let allTies = $derived(tiesData.ties);
 	let hasActive = $derived(tiesData.ties.some((t) => t.status === 'playing'));
@@ -132,7 +114,7 @@
 
 <PageHeader title="対戦管理" actions={headerActions} />
 
-<TieCreateDialog bind:open={dialogOpen} {create} data={tiesPage} />
+<TieCreateDialog bind:open={dialogOpen} data={tiesPage} />
 
 <AppTabs value={filter} items={tabItems} onValueChange={setFilter} />
 

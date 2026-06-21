@@ -4,7 +4,6 @@
 	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import type { PageProps } from './$types';
-	import { updateScoringRule, updateSettings } from './settings.remote';
 	import LeagueSettingsForm from './LeagueSettingsForm.svelte';
 	import ScoringRuleForm from './ScoringRuleForm.svelte';
 
@@ -31,12 +30,7 @@
 	{#snippet header()}
 		<h2 class="font-semibold text-zinc-950">運営設定</h2>
 	{/snippet}
-	<LeagueSettingsForm
-		form={updateSettings}
-		settings={data.settings}
-		{scoringRuleItems}
-		{lineupRevealItems}
-	/>
+	<LeagueSettingsForm settings={data.settings} {scoringRuleItems} {lineupRevealItems} />
 </Card>
 
 <!-- Accounts -->
@@ -55,7 +49,7 @@
 	<h2 class="font-semibold text-zinc-950">得点ルール</h2>
 	{#each data.scoringRules as rule (rule.id)}
 		<Card>
-			<ScoringRuleForm {rule} ruleForm={updateScoringRule.for(rule.id)} />
+			<ScoringRuleForm {rule} />
 		</Card>
 	{/each}
 </section>

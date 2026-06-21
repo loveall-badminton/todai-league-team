@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "LAUNCH_EDITOR=zed vite dev",
 		"clean:cf": "rm -rf .svelte-kit/cloudflare .svelte-kit/output",
 		"gen": "pnpm run clean:cf && wrangler types",
 		"gen:check": "pnpm run clean:cf && wrangler types --check",

@@ -22,7 +22,7 @@
 	<section class="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6">
 		<PageHeader title="ログイン" />
 
-		<SignInForm form={signIn} redirectTo={signIn.result?.redirectTo ?? data.redirectTo} />
+		<SignInForm redirectTo={signIn.result?.redirectTo ?? data.redirectTo} />
 
 		{#if data.showBootstrap}
 			<a

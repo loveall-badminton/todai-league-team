@@ -13,16 +13,8 @@
 	import PlayerCreateForm from './PlayerCreateForm.svelte';
 	import PlayerBulkCreateForm from './PlayerBulkCreateForm.svelte';
 	import type { PageProps } from './$types';
-	import { toast } from 'svelte-sonner';
 	import { ArrowLeft } from '@lucide/svelte';
-	import {
-		updateTeam,
-		createPlayer,
-		bulkCreatePlayers,
-		reorderPlayers,
-		deletePlayer,
-		deleteTeam
-	} from './team.remote';
+	import { reorderPlayers, deletePlayer, deleteTeam } from './team.remote';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 
 	const groupCodeItems = [
@@ -45,17 +37,6 @@
 	let players = $derived([...data.players]);
 
 	let addTab = $state<'single' | 'bulk'>('single');
-	const bulkCreatePlayersForm = bulkCreatePlayers.enhance(async (form) => {
-		try {
-			if (await form.submit()) {
-				toast.success(form.result?.message ?? '選手を一括登録しました');
-				bulkCreatePlayers.fields.set({ namesText: '', gender: 'unknown' });
-				await invalidateAll();
-			}
-		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '一括登録に失敗しました');
-		}
-	});
 
 	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
 		() => players,
@@ -111,7 +92,7 @@
 			confirmLabel="削除する"
 		/>
 	{/snippet}
-	<TeamEditForm form={updateTeam} team={data.team} {groupCodeItems} {statusItems} />
+	<TeamEditForm team={data.team} {groupCodeItems} {statusItems} />
 </Card>
 
 <!-- Players section -->
@@ -138,9 +119,9 @@
 		/>
 
 		{#if addTab === 'single'}
-			<PlayerCreateForm form={createPlayer} {genderItems} />
+			<PlayerCreateForm {genderItems} />
 		{:else if addTab === 'bulk'}
-			<PlayerBulkCreateForm form={bulkCreatePlayers} enhancedForm={bulkCreatePlayersForm} />
+			<PlayerBulkCreateForm />
 		{/if}
 	</div>
 

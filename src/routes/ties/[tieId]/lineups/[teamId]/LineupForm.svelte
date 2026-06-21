@@ -1,32 +1,86 @@
 <script lang="ts">
+	import { toast } from 'svelte-sonner';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
-	import type { FormInstance } from '$lib/types/forms';
-	import { submitLineupSchema } from './lineup.schema';
 	import type { SelectItem } from '$lib/types/ui';
 	import type { RubberCode } from '$lib/domain/tokyoLeague';
+	import { lineup } from './lineup.remote';
+	import { clearLocalLineupDraft } from '../lineupDraftStorage';
 
 	type RubberDef = { code: RubberCode; discipline: string };
 
 	let {
-		rawForm,
-		enhancedForm,
 		rubberDefinitions,
 		draftValue,
 		filteredPlayers,
 		slotLabel,
 		rubberLabel,
-		onSaveDraft
+		onSaveDraft,
+		tieId,
+		teamId
 	}: {
-		rawForm: FormInstance<typeof submitLineupSchema>;
-		enhancedForm: Pick<FormInstance<typeof submitLineupSchema>, 'method' | 'action'>;
 		rubberDefinitions: readonly RubberDef[];
 		draftValue: (code: RubberCode, order: 1 | 2) => string;
 		filteredPlayers: (discipline: string, order: 1 | 2) => { id: string; name: string }[];
 		slotLabel: (discipline: string, order: 1 | 2) => string;
 		rubberLabel: (code: RubberCode) => string;
 		onSaveDraft: (e: MouseEvent) => void;
+		tieId: string;
+		teamId: string;
 	} = $props();
+
+	const enhancedForm = lineup.enhance(async (form) => {
+		try {
+			if (await form.submit()) {
+				clearLocalLineupDraft(tieId, teamId);
+				toastResult(form.result);
+			} else {
+				toastIssues(form);
+			}
+		} catch (error) {
+			toastError(error);
+		}
+	});
+
+	function toastResult(result: { message?: string; warnings?: string[] } | undefined) {
+		if (!result?.message) {
+			toast.success('オーダーを提出しました');
+			return;
+		}
+		if (result.warnings?.length) {
+			toast.warning(result.message, { description: result.warnings.join('\n') });
+			return;
+		}
+		toast.success(result.message);
+	}
+
+	function toastIssues(form: { fields: { allIssues: () => { message: string }[] | undefined } }) {
+		const issues = (form.fields.allIssues() ?? []).map((issue) => issue.message);
+		if (issues.length === 0) {
+			toast.error('送信内容に問題があります');
+			return;
+		}
+		toast.error(issues[0], { description: issues.slice(1).join('\n') || undefined });
+	}
+
+	function toastError(error: unknown) {
+		const message = errorMessage(error);
+		const [title, ...details] = message.split('\n');
+		toast.error(title || 'エラーが発生しました', { description: details.join('\n') || undefined });
+	}
+
+	function errorMessage(error: unknown) {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'object' && error && 'body' in error) {
+			const body = (error as { body?: { message?: unknown } }).body;
+			if (typeof body?.message === 'string') return body.message;
+		}
+		if (typeof error === 'object' && error && 'message' in error) {
+			const message = (error as { message?: unknown }).message;
+			if (typeof message === 'string') return message;
+		}
+		return 'エラーが発生しました';
+	}
 
 	$effect(() => {
 		const items = rubberDefinitions.map((rubber) => ({
@@ -34,13 +88,13 @@
 			player1Id: draftValue(rubber.code, 1),
 			player2Id: draftValue(rubber.code, 2)
 		}));
-		rawForm.fields.set({ items });
+		lineup.fields.set({ items });
 	});
 </script>
 
 <form {...enhancedForm} class="divide-y divide-zinc-100">
 	{#each rubberDefinitions as rubber, index (rubber.code)}
-		{@const itemField = rawForm.fields.items[index]}
+		{@const itemField = lineup.fields.items[index]}
 		<div class="px-5 py-4">
 			<input {...itemField.rubberCode.as('hidden', rubber.code)} />
 			<p class="mb-2.5 text-xs font-medium text-zinc-500">{rubberLabel(rubber.code)}</p>
@@ -78,14 +132,14 @@
 	<div class="flex justify-end gap-2 px-5 py-4">
 		<AppButton
 			type="button"
-			disabled={rawForm.pending > 0}
+			disabled={lineup.pending > 0}
 			onclick={onSaveDraft}
 			variant="secondary"
 		>
 			下書き保存
 		</AppButton>
-		<AppButton type="submit" disabled={rawForm.pending > 0}>
-			{rawForm.pending > 0 ? '送信中…' : '提出する'}
+		<AppButton type="submit" disabled={lineup.pending > 0}>
+			{lineup.pending > 0 ? '送信中…' : '提出する'}
 		</AppButton>
 	</div>
 </form>

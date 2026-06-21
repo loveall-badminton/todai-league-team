@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
 	import Card from '$lib/components/Card.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import type { FormInstance } from '$lib/types/forms';
-	import { createTiebreakerSchema } from './group.schema';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { createTiebreaker, syncTiebreaker } from './group.remote';
 
 	type TiebreakerDiscipline = 'MD' | 'XD' | 'WD';
 	type PlayerForSelection = {
@@ -41,14 +41,11 @@
 	}
 
 	let {
-		createTiebreakerForm,
 		rankingTiebreakers,
 		groupTeamItems,
 		groupTeamPlayers,
-		onSyncTiebreaker,
 		teamName
 	}: {
-		createTiebreakerForm: FormInstance<typeof createTiebreakerSchema>;
 		rankingTiebreakers: {
 			id: string;
 			reason: string;
@@ -58,12 +55,11 @@
 		}[];
 		groupTeamItems: SelectItem[];
 		groupTeamPlayers: { teamId: string; players: PlayerForSelection[] }[];
-		onSyncTiebreaker: (matchId: string) => Promise<unknown>;
 		teamName: (id: string | null) => string;
 	} = $props();
 
-	let teamAId = $derived(createTiebreakerForm.fields.teamAId.value() ?? '');
-	let teamBId = $derived(createTiebreakerForm.fields.teamBId.value() ?? '');
+	let teamAId = $derived(createTiebreaker.fields.teamAId.value() ?? '');
+	let teamBId = $derived(createTiebreaker.fields.teamBId.value() ?? '');
 	const disciplineItems: SelectItem[] = [
 		{ value: 'MD', label: '男子ダブルス' },
 		{ value: 'XD', label: 'ミックスダブルス' },
@@ -108,11 +104,11 @@
 		<h2 class="font-semibold">順位決定再試合</h2>
 	{/snippet}
 	<div class="space-y-5">
-		<form {...createTiebreakerForm} class="grid gap-3 lg:grid-cols-6">
+		<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
 			<div class="grid gap-1 lg:col-span-6">
 				<span class="text-xs font-medium text-zinc-500">種目</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.discipline.as('select')}
+					{...createTiebreaker.fields.discipline.as('select')}
 					items={disciplineItems}
 					required
 					onValueChange={(value) => {
@@ -123,7 +119,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側チーム</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.teamAId.as('select')}
+					{...createTiebreaker.fields.teamAId.as('select')}
 					items={groupTeamItems}
 					required
 					onValueChange={(value) => {
@@ -134,7 +130,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側選手1</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerA1Id.as('select')}
+					{...createTiebreaker.fields.playerA1Id.as('select')}
 					items={playerA1Items}
 					required
 					disabled={playerADisabled}
@@ -143,7 +139,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">A側選手2</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerA2Id.as('select')}
+					{...createTiebreaker.fields.playerA2Id.as('select')}
 					items={playerA2Items}
 					required
 					disabled={playerADisabled}
@@ -152,7 +148,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">B側チーム</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.teamBId.as('select')}
+					{...createTiebreaker.fields.teamBId.as('select')}
 					items={groupTeamItems}
 					required
 					onValueChange={(value) => {
@@ -164,7 +160,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">B側選手1</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerB1Id.as('select')}
+					{...createTiebreaker.fields.playerB1Id.as('select')}
 					items={playerB1Items}
 					required
 					disabled={playerBDisabled}
@@ -173,7 +169,7 @@
 			<div class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">B側選手2</span>
 				<AppSelect
-					{...createTiebreakerForm.fields.playerB2Id.as('select')}
+					{...createTiebreaker.fields.playerB2Id.as('select')}
 					items={playerB2Items}
 					required
 					disabled={playerBDisabled}
@@ -182,7 +178,7 @@
 			<div class="grid gap-1 lg:col-span-6">
 				<span class="text-xs font-medium text-zinc-500">理由</span>
 				<AppInput
-					{...createTiebreakerForm.fields.reason.as('text')}
+					{...createTiebreaker.fields.reason.as('text')}
 					placeholder="順位未確定のため"
 					required
 				/>
@@ -191,7 +187,7 @@
 				<AppButton type="submit">再試合作成</AppButton>
 			</div>
 		</form>
-		<FormToast result={createTiebreakerForm.result} />
+		<FormToast result={createTiebreaker.result} />
 
 		{#if rankingTiebreakers.length > 0}
 			<div class="space-y-2 border-t border-zinc-100 pt-2">
@@ -220,7 +216,10 @@
 								<AppButton
 									variant="secondary"
 									size="sm"
-									onclick={() => onSyncTiebreaker(item.matchId!)}
+									onclick={async () => {
+										await syncTiebreaker({ matchId: item.matchId! });
+										await invalidateAll();
+									}}
 								>
 									同期
 								</AppButton>

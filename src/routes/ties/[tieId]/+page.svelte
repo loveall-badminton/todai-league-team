@@ -21,7 +21,6 @@
 	import { toast } from 'svelte-sonner';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import {
-		confirmMatch,
 		confirmTie,
 		deleteTie,
 		getLiveRubbers,
@@ -30,7 +29,6 @@
 		lockLineup,
 		revealLineups,
 		startTie,
-		unconfirmMatch,
 		unlockLineup,
 		unrevealLineups,
 		updateTie
@@ -368,8 +366,6 @@
 		rubbers={rubbers.map(toRubberRow)}
 		teamAName={teamName(tie.teamAId)}
 		teamBName={teamName(tie.teamBId)}
-		onConfirmMatch={(matchId) => run(() => confirmMatch({ matchId }))}
-		onUnconfirmMatch={(matchId) => run(() => unconfirmMatch({ matchId }))}
 	/>
 {/if}
 

@@ -1,17 +1,14 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { hasScoreUpdate, matchChannel } from '$lib/realtime/channels';
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
-	import { matchStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { cn } from '$lib/utils/cn';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -28,6 +25,7 @@
 		playerOptions
 	} from './refereeUtils';
 	import * as v from 'valibot';
+	import AppSelect from '$lib/components/AppSelect.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -41,11 +39,6 @@
 
 	let currentGame = $derived(
 		localState.games.find((game) => game.gameNo === localState.currentGameNo)
-	);
-	let canEditService = $derived(
-		localState.status === 'playing' &&
-			(currentGame?.score.A ?? 0) === 0 &&
-			(currentGame?.score.B ?? 0) === 0
 	);
 
 	let isLocked = $derived(localState.status === 'confirmed');
@@ -70,10 +63,6 @@
 	let sideBPlayers = $derived(data.players.filter((player) => player.side === 'B'));
 	let sideAName = $derived(data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A');
 	let sideBName = $derived(data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B');
-
-	function playerName(id: string | null | undefined): string {
-		return data.players.find((player) => player.id === id)?.name ?? '-';
-	}
 
 	let allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);
 	let bFirstPlayerItems = $derived([
@@ -192,22 +181,10 @@
 
 <div class="grid gap-4">
 	<!-- Header -->
-	<Card>
-		<PageHeader
-			title={`${leftSideName} vs ${rightSideName}`}
-			description={`${data.match.court?.name ?? 'コート未設定'} · ゲーム ${localState.currentGameNo} · ${matchStatusLabel(
-				localState.status
-			)}`}
-		/>
-		<div class="mt-2 flex items-center justify-between gap-3">
-			<div class="text-right">
-				<p class="text-xs text-zinc-400">ゲーム数</p>
-				<p class="text-2xl font-bold tabular-nums">
-					{localState.gamesWon[leftSide]} – {localState.gamesWon[rightSide]}
-				</p>
-			</div>
-		</div>
-	</Card>
+	<div class="text-center text-xs text-zinc-400">
+		第{localState.currentGameNo}ゲーム · セットカウント {localState.gamesWon[leftSide]}–{localState
+			.gamesWon[rightSide]}
+	</div>
 
 	<!-- Start game form -->
 	{#if localState.status === 'scheduled' || localState.status === 'interval'}
@@ -302,50 +279,6 @@
 	<!-- Change-of-ends -->
 	<CourtSideToggle ontoggle={doChangeEnds} />
 
-	<!-- Service info -->
-	<Card>
-		<div class="mb-3 flex items-center justify-between">
-			<h2 class="text-xs font-medium tracking-wide text-zinc-400">サービス情報</h2>
-			{#if canEditService}
-				<button
-					type="button"
-					class="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-					onclick={() => run(() => undo({}))}
-				>
-					サービス設定を修正
-				</button>
-			{/if}
-		</div>
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-			<div>
-				<p class="text-xs text-zinc-500">サーバー</p>
-				<p class="mt-0.5 font-medium">{playerName(localState.service?.serverPlayerId)}</p>
-			</div>
-			<div>
-				<p class="text-xs text-zinc-500">レシーバー</p>
-				<p class="mt-0.5 font-medium">{playerName(localState.service?.receiverPlayerId)}</p>
-			</div>
-			<div class="col-span-2 sm:col-span-1">
-				<p class="text-xs text-zinc-500">サービスコート</p>
-				<p class="mt-0.5 font-medium">
-					{#if localState.service}
-						{localState.service?.servingSide === 'A'
-							? sideAName
-							: localState.service?.servingSide === 'B'
-								? sideBName
-								: '-'}が{localState.service?.serviceCourt == 'right'
-							? '右'
-							: localState.service?.serviceCourt == 'left'
-								? '左'
-								: '-'}からサーブ
-					{:else}
-						-
-					{/if}
-				</p>
-			</div>
-		</div>
-	</Card>
-
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
 		service={localState.service}
@@ -359,10 +292,9 @@
 
 	<!-- Controls -->
 	<Card>
-		<h2 class="mb-3 text-xs font-medium tracking-wide text-zinc-400">操作</h2>
-		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+		<div class="grid grid-cols-2 gap-2">
 			<AppButton
-				class="col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 sm:col-span-1"
+				class="flex flex-col col-span-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
 				type="button"
 				disabled={!lastUndoableEvent || isLocked}
 				onclick={() => run(() => undo({}))}
@@ -395,6 +327,7 @@
 				triggerLabel="結果確定"
 				triggerVariant="primary"
 				triggerFullWidth
+				triggerClass="col-span-2"
 				disabled={!isTerminal || isLocked}
 				title="結果を確定しますか？"
 				description="確定後は通常の審判操作では変更できません。スコアと勝者を確認してください。"
@@ -421,7 +354,6 @@
 			service={localState.service}
 			players={data.players}
 			currentGameNo={localState.currentGameNo}
-			onRun={run}
 		/>
 	{/if}
 

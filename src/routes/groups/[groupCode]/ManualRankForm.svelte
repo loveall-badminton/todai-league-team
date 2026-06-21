@@ -1,17 +1,16 @@
 <script lang="ts">
 	import AppInput from '$lib/components/AppInput.svelte';
-	import type { ScopedForm } from '$lib/types/forms';
-	import { setManualRankSchema } from './group.schema';
+	import { setManualRank } from './group.remote';
 
 	let {
-		form,
 		teamId,
 		manualRank
 	}: {
-		form: ScopedForm<typeof setManualRankSchema>;
 		teamId: string;
 		manualRank: number;
 	} = $props();
+
+	const form = $derived(setManualRank.for(teamId));
 
 	$effect(() => {
 		form.fields.set({

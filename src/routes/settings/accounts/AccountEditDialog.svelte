@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
-	import type { FormInstance } from '$lib/types/forms';
-	import { updateAccountSchema, resetPasswordSchema } from './accounts.schema';
 	import type { SelectItem } from '$lib/types/ui';
 	import { type Component } from 'svelte';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
@@ -10,8 +8,6 @@
 	let {
 		open = $bindable(false),
 		editAccount,
-		updateAccount,
-		resetPassword,
 		accountTypeItems,
 		accountTypeValue,
 		accountTypeBadgeColor,
@@ -21,8 +17,6 @@
 	}: {
 		open: boolean;
 		editAccount: ManagedAccount | null;
-		updateAccount: FormInstance<typeof updateAccountSchema>;
-		resetPassword: FormInstance<typeof resetPasswordSchema>;
 		accountTypeItems: SelectItem[];
 		accountTypeValue: (account: ManagedAccount) => string;
 		accountTypeBadgeColor: (value: string) => 'red' | 'blue' | 'zinc';
@@ -42,8 +36,6 @@
 				{#key editAccount.id}
 					<AccountEditDialogInner
 						{editAccount}
-						{updateAccount}
-						{resetPassword}
 						{accountTypeItems}
 						{accountTypeValue}
 						{accountTypeBadgeColor}

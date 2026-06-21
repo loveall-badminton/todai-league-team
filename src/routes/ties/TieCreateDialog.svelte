@@ -6,19 +6,32 @@
 	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import { Dialog } from 'bits-ui';
 	import type { EntityOption } from '$lib/types/entities';
-	import type { FormInstance } from '$lib/types/forms';
-	import { createTieSchema } from './ties.schema';
+	import { onMount } from 'svelte';
+	import { create } from './ties.remote';
 
 	type DialogData = {
 		scoringRules: { id: string; name?: string; code: string }[];
 		teams: EntityOption[];
 	};
 
-	let {
-		open = $bindable(false),
-		create,
-		data
-	}: { open: boolean; create: FormInstance<typeof createTieSchema>; data: DialogData } = $props();
+	let { open = $bindable(false), data }: { open: boolean; data: DialogData } = $props();
+
+	onMount(() => {
+		create.fields.set({
+			tieCode: '',
+			scoringRuleId: data.scoringRules[0]?.id ?? '',
+			groupCode: '',
+			phase: 'semifinal',
+			scheduledStartAt: '',
+			teamAId: '',
+			teamBId: '',
+			roundLabel: '',
+			venue: '',
+			courtBlockCode: '',
+			lineupDueAt: '',
+			lineupDuePolicy: ''
+		});
+	});
 
 	const groupCodeItems = [
 		{ value: '', label: '決勝トーナメント' },

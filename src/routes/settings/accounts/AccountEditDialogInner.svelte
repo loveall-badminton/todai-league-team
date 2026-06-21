@@ -5,16 +5,13 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
-	import type { FormInstance } from '$lib/types/forms';
-	import { updateAccountSchema, resetPasswordSchema } from './accounts.schema';
 	import type { SelectItem } from '$lib/types/ui';
 	import type { Component } from 'svelte';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
+	import { updateAccount, resetPassword } from './accounts.remote';
 
 	let {
 		editAccount,
-		updateAccount,
-		resetPassword,
 		accountTypeItems,
 		accountTypeValue,
 		accountTypeBadgeColor,
@@ -23,8 +20,6 @@
 		teamItems
 	}: {
 		editAccount: ManagedAccount;
-		updateAccount: FormInstance<typeof updateAccountSchema>;
-		resetPassword: FormInstance<typeof resetPasswordSchema>;
 		accountTypeItems: SelectItem[];
 		accountTypeValue: (account: ManagedAccount) => string;
 		accountTypeBadgeColor: (value: string) => 'red' | 'blue' | 'zinc';

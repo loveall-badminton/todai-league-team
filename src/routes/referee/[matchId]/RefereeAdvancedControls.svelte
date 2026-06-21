@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import type { GameState, LetCalledInput, ServiceState, MatchPlayer } from '$lib/domain/types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -6,6 +7,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { toast } from 'svelte-sonner';
 	import { correction, cutoff, letCalled, forfeit, retire } from './referee.remote';
 
 	let {
@@ -14,8 +16,7 @@
 		sideBName,
 		service,
 		players,
-		currentGameNo,
-		onRun
+		currentGameNo
 	}: {
 		currentGame: GameState | undefined;
 		sideAName: string;
@@ -23,8 +24,16 @@
 		service: ServiceState | null | undefined;
 		players: MatchPlayer[];
 		currentGameNo: number;
-		onRun: (fn: () => Promise<unknown>) => Promise<void>;
 	} = $props();
+
+	async function run(fn: () => Promise<unknown>) {
+		try {
+			await fn();
+			await invalidateAll();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
+		}
+	}
 
 	let correctionFormEl = $state<HTMLFormElement>();
 	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
@@ -65,7 +74,7 @@
 		if (!correctionFormEl) return;
 		if (!correctionFormEl.reportValidity()) return;
 		const fd = new FormData(correctionFormEl);
-		await onRun(() =>
+		await run(() =>
 			correction({
 				gameNo: currentGameNo,
 				scoreA: Number(fd.get('scoreA')),
@@ -81,10 +90,10 @@
 	}
 </script>
 
-<Card class="overflow-hidden">
-	<h2 class="border-b border-zinc-100 px-5 py-3 text-xs font-medium tracking-wide text-zinc-400">
-		高度な操作
-	</h2>
+<Card flush class="overflow-hidden">
+	{#snippet header()}
+		<h2 class="text-xs font-medium tracking-tight text-zinc-400">高度な操作</h2>
+	{/snippet}
 	<div class="divide-y divide-zinc-100">
 		<CollapsibleSection title="スコア訂正">
 			<form
@@ -156,8 +165,7 @@
 				<AppSelect name="letReason" bind:value={letReason} items={letReasonItems} />
 				<AppInput name="letNote" bind:value={letNote} placeholder="メモ" />
 				<ConfirmDialog
-					onConfirm={() =>
-						onRun(() => letCalled({ reason: letReason, note: letNote || undefined }))}
+					onConfirm={() => run(() => letCalled({ reason: letReason, note: letNote || undefined }))}
 					triggerLabel="記録する"
 					triggerVariant="primary"
 					triggerFullWidth
@@ -172,7 +180,7 @@
 		<CollapsibleSection title="棄権">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					onConfirm={() => onRun(() => forfeit({ side: 'A' }))}
+					onConfirm={() => run(() => forfeit({ side: 'A' }))}
 					triggerLabel="{sideAName} 棄権"
 					triggerVariant="danger"
 					title="{sideAName}を棄権にしますか？"
@@ -181,7 +189,7 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					onConfirm={() => onRun(() => forfeit({ side: 'B' }))}
+					onConfirm={() => run(() => forfeit({ side: 'B' }))}
 					triggerLabel="{sideBName} 棄権"
 					triggerVariant="danger"
 					title="{sideBName}を棄権にしますか？"
@@ -195,7 +203,7 @@
 		<CollapsibleSection title="リタイア">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					onConfirm={() => onRun(() => retire({ side: 'A' }))}
+					onConfirm={() => run(() => retire({ side: 'A' }))}
 					triggerLabel="{sideAName} リタイア"
 					triggerVariant="danger"
 					title="{sideAName}をリタイアにしますか？"
@@ -204,7 +212,7 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					onConfirm={() => onRun(() => retire({ side: 'B' }))}
+					onConfirm={() => run(() => retire({ side: 'B' }))}
 					triggerLabel="{sideBName} リタイア"
 					triggerVariant="danger"
 					title="{sideBName}をリタイアにしますか？"
@@ -217,7 +225,7 @@
 
 		<CollapsibleSection title="打ち切り">
 			<ConfirmDialog
-				onConfirm={() => onRun(() => cutoff())}
+				onConfirm={() => run(() => cutoff())}
 				triggerLabel="打ち切りにする"
 				triggerVariant="danger"
 				triggerFullWidth
