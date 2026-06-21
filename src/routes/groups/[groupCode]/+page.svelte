@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
@@ -19,17 +20,21 @@
 		generateRoundRobin,
 		getGroupPageData,
 		getGroupRealtimeData,
-		reorder,
-		updateTie
+		reorder
 	} from './group.remote';
 	import GroupTeamsCard from './GroupTeamsCard.svelte';
 	import GroupTiebreakerSection from './GroupTiebreakerSection.svelte';
 	import ManualRankForm from './ManualRankForm.svelte';
 
-	const groupStaticQuery = getGroupPageData();
-	let groupStatic = $derived(await groupStaticQuery);
-	const groupPageQuery = getGroupRealtimeData();
-	let groupPage = $derived(await groupPageQuery);
+	const groupCode = page.params.groupCode!;
+	const groupStaticQuery = getGroupPageData(groupCode);
+	const groupPageQuery = getGroupRealtimeData(groupCode);
+	const [initialGroupStatic, initialGroupPage] = await Promise.all([
+		groupStaticQuery,
+		groupPageQuery
+	]);
+	let groupStatic = $derived(groupStaticQuery.current ?? initialGroupStatic);
+	let groupPage = $derived(groupPageQuery.current ?? initialGroupPage);
 
 	let allTies = $derived(groupPage.ties);
 
@@ -145,12 +150,7 @@
 		<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 			<div class="space-y-2">
 				{#each allTies as tie, index (tie.id)}
-					<SortableTieItem
-						{tie}
-						{index}
-						teams={groupStatic.allTeams}
-						tieForm={updateTie.for(tie.id)}
-					/>
+					<SortableTieItem {tie} {index} teams={groupStatic.allTeams} />
 				{/each}
 			</div>
 			<DragOverlay dropAnimation={null}>

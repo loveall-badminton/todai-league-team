@@ -65,8 +65,13 @@ export function loadLocalLineupDraft(tieId: string, teamId: string): LocalLineup
 	);
 }
 
-export function saveLocalLineupDraft(tieId: string, teamId: string, items: LocalLineupDraft) {
-	saveJsonToLocalStorage(storageKey(tieId, teamId), localLineupDraftSchema, items);
+export function saveLocalLineupDraft(
+	tieId: string,
+	teamId: string,
+	items: { rubberCode: string; player1Id: string | null; player2Id: string | null }[]
+) {
+	const validated = v.parse(localLineupDraftSchema, items);
+	saveJsonToLocalStorage(storageKey(tieId, teamId), localLineupDraftSchema, validated);
 }
 
 export function clearLocalLineupDraft(tieId: string, teamId: string) {

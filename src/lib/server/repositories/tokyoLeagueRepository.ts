@@ -384,6 +384,11 @@ export async function getTieWithRubbers(tieId: string) {
 	};
 }
 
+export async function findTieByCode(tieCode: string) {
+	const db = getRequestDb();
+	return db.query.ties.findFirst({ where: eq(ties.tieCode, tieCode) });
+}
+
 function summarizeTieSummaries(
 	tieRows: Pick<Tie, 'id' | 'teamAId' | 'teamBId'>[],
 	rubberRows: Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[]

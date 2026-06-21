@@ -12,6 +12,12 @@ export const updateTieFormFields = {
 		v.union([
 			v.array(v.string()),
 			v.pipe(
+				v.string(),
+				v.trim(),
+				v.nonEmpty(),
+				v.transform((value) => [value])
+			),
+			v.pipe(
 				v.literal(''),
 				v.transform(() => [] as string[])
 			)

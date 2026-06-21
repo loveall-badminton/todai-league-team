@@ -14,15 +14,16 @@
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { shouldRefreshTiesPage, type RealtimeUpdate } from '$lib/realtime/updates';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
-	import { getTiesData, getTiesPageData, reorder, updateTie } from './ties.remote';
+	import { getTiesData, getTiesPageData, reorder } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
 	import * as v from 'valibot';
 	import TieCreateDialog from './TieCreateDialog.svelte';
 
-	const tiesPageQuery = getTiesPageData();
-	let tiesPage = $derived(await tiesPageQuery);
 	const tiesQuery = getTiesData();
-	let tiesData = $derived(await tiesQuery);
+	const tiesPageQuery = getTiesPageData();
+	const [initialTiesPage, initialTiesData] = await Promise.all([tiesPageQuery, tiesQuery]);
+	let tiesPage = $derived(tiesPageQuery.current ?? initialTiesPage);
+	let tiesData = $derived(tiesQuery.current ?? initialTiesData);
 
 	const tiesSearchParamsSchema = v.object({
 		filter: v.optional(v.picklist(VALID_TIE_FILTERS), 'all')
@@ -129,13 +130,7 @@
 	<DragDropProvider {onDragStart} {onDragOver} {onDragEnd}>
 		<div class="space-y-1.5">
 			{#each filteredTies as tie, index (tie.id)}
-				<SortableTieItem
-					{tie}
-					{index}
-					sortable={filter === 'all'}
-					teams={tiesPage.teams}
-					tieForm={updateTie.for(tie.id)}
-				/>
+				<SortableTieItem {tie} {index} sortable={filter === 'all'} teams={tiesPage.teams} />
 			{/each}
 		</div>
 		<DragOverlay dropAnimation={null}>

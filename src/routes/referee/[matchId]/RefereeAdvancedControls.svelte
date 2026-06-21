@@ -35,9 +35,16 @@
 		}
 	}
 
-	let correctionFormEl = $state<HTMLFormElement>();
 	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
 	let letNote = $state('');
+
+	let correctionScoreA = $state(0);
+	let correctionScoreB = $state(0);
+	let correctionReason = $state('');
+	let correctionServingSide = $state('');
+	let correctionServiceCourt = $state('');
+	let correctionServerPlayerId = $state('');
+	let correctionReceiverPlayerId = $state('');
 
 	let courtAssignmentsJson = $derived(
 		service?.discipline === 'doubles' ? JSON.stringify(service.courtAssignments) : ''
@@ -71,23 +78,32 @@
 	];
 
 	async function applyCorrectionFromForm() {
-		if (!correctionFormEl) return;
-		if (!correctionFormEl.reportValidity()) return;
-		const fd = new FormData(correctionFormEl);
+		if (!correctionReason) return;
 		await run(() =>
 			correction({
 				gameNo: currentGameNo,
-				scoreA: Number(fd.get('scoreA')),
-				scoreB: Number(fd.get('scoreB')),
-				reason: String(fd.get('reason') ?? ''),
-				servingSide: String(fd.get('servingSide') ?? '') || undefined,
-				serviceCourt: String(fd.get('serviceCourt') ?? '') || undefined,
-				serverPlayerId: String(fd.get('serverPlayerId') ?? '') || undefined,
-				receiverPlayerId: String(fd.get('receiverPlayerId') ?? '') || undefined,
-				courtAssignmentsJson: String(fd.get('courtAssignmentsJson') ?? '') || undefined
+				scoreA: correctionScoreA,
+				scoreB: correctionScoreB,
+				reason: correctionReason,
+				servingSide: correctionServingSide || undefined,
+				serviceCourt: correctionServiceCourt || undefined,
+				serverPlayerId: correctionServerPlayerId || undefined,
+				receiverPlayerId: correctionReceiverPlayerId || undefined,
+				courtAssignmentsJson: courtAssignmentsJson || undefined
 			})
 		);
 	}
+
+	$effect(() => {
+		if (!currentGame) return;
+		correctionScoreA = currentGame.score.A;
+		correctionScoreB = currentGame.score.B;
+		correctionReason = '';
+		correctionServingSide = service?.servingSide ?? '';
+		correctionServiceCourt = service?.serviceCourt ?? '';
+		correctionServerPlayerId = service?.serverPlayerId ?? '';
+		correctionReceiverPlayerId = service?.receiverPlayerId ?? '';
+	});
 </script>
 
 <Card flush class="overflow-hidden">
@@ -97,7 +113,6 @@
 	<div class="divide-y divide-zinc-100">
 		<CollapsibleSection title="スコア訂正">
 			<form
-				bind:this={correctionFormEl}
 				onsubmit={(e) => {
 					e.preventDefault();
 				}}
@@ -105,43 +120,41 @@
 			>
 				<div class="grid grid-cols-2 gap-2">
 					<AppInput
-						name="scoreA"
 						type="number"
-						placeholder="{sideAName} スコア"
-						value={currentGame?.score.A ?? 0}
+						placeholder={`${sideAName} スコア`}
+						bind:value={correctionScoreA}
 					/>
 					<AppInput
-						name="scoreB"
 						type="number"
-						placeholder="{sideBName} スコア"
-						value={currentGame?.score.B ?? 0}
+						placeholder={`${sideBName} スコア`}
+						bind:value={correctionScoreB}
 					/>
 				</div>
-				<AppInput name="reason" placeholder="訂正理由" required />
+				<AppInput placeholder="訂正理由" bind:value={correctionReason} required />
 				<CollapsibleSection title="サービス状態も訂正" class="rounded-xl bg-zinc-100 p-4">
 					<div class="grid gap-2">
 						<AppSelect
 							name="servingSide"
-							value={service?.servingSide ?? ''}
+							bind:value={correctionServingSide}
 							items={servingSideItems}
 						/>
 						<AppSelect
 							name="serviceCourt"
-							value={service?.serviceCourt ?? ''}
+							bind:value={correctionServiceCourt}
 							items={serviceCourtItems}
 						/>
 						<AppSelect
 							name="serverPlayerId"
-							value={service?.serverPlayerId ?? ''}
+							bind:value={correctionServerPlayerId}
 							items={allPlayerCorrectionItems}
 						/>
 						<AppSelect
 							name="receiverPlayerId"
-							value={service?.receiverPlayerId ?? ''}
+							bind:value={correctionReceiverPlayerId}
 							items={allReceiverCorrectionItems}
 						/>
 						{#if service?.discipline === 'doubles'}
-							<AppTextarea name="courtAssignmentsJson" class="min-h-20 font-mono text-xs"
+							<AppTextarea class="min-h-20 font-mono text-xs" readonly
 								>{courtAssignmentsJson}</AppTextarea
 							>
 						{/if}

@@ -6,7 +6,6 @@
 	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import { Dialog } from 'bits-ui';
 	import type { EntityOption } from '$lib/types/entities';
-	import { onMount } from 'svelte';
 	import { create } from './ties.remote';
 
 	type DialogData = {
@@ -15,23 +14,6 @@
 	};
 
 	let { open = $bindable(false), data }: { open: boolean; data: DialogData } = $props();
-
-	onMount(() => {
-		create.fields.set({
-			tieCode: '',
-			scoringRuleId: data.scoringRules[0]?.id ?? '',
-			groupCode: '',
-			phase: 'semifinal',
-			scheduledStartAt: '',
-			teamAId: '',
-			teamBId: '',
-			roundLabel: '',
-			venue: '',
-			courtBlockCode: '',
-			lineupDueAt: '',
-			lineupDuePolicy: ''
-		});
-	});
 
 	const groupCodeItems = [
 		{ value: '', label: '決勝トーナメント' },
@@ -64,14 +46,14 @@
 						<span class="text-xs font-medium text-muted-emphasis"
 							>コード <span class="text-red-500">*</span></span
 						>
-						<AppInput {...create.fields.tieCode.as('text')} placeholder="A-1" required />
+						<AppInput {...create.fields.tieCode.as('text', '')} placeholder="A-1" required />
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis"
 							>得点ルール <span class="text-red-500">*</span></span
 						>
 						<AppSelect
-							{...create.fields.scoringRuleId.as('select')}
+							{...create.fields.scoringRuleId.as('select', data.scoringRules[0]?.id ?? '')}
 							required
 							items={data.scoringRules.map((r: { id: string; name?: string; code: string }) => ({
 								value: r.id,
@@ -85,18 +67,18 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">リーグ</span>
 						<AppSelect
-							{...create.fields.groupCode.as('select')}
+							{...create.fields.groupCode.as('select', '')}
 							items={groupCodeItems}
 							placeholder="決勝トーナメント"
 						/>
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">フェーズ</span>
-						<AppSelect {...create.fields.phase.as('select')} items={phaseItems} />
+						<AppSelect {...create.fields.phase.as('select', 'semifinal')} items={phaseItems} />
 					</div>
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">予定時刻</span>
-						<AppInput {...create.fields.scheduledStartAt.as('time')} />
+						<AppInput {...create.fields.scheduledStartAt.as('time', '')} />
 					</div>
 				</div>
 
@@ -104,7 +86,7 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">A側チーム</span>
 						<AppSelect
-							{...create.fields.teamAId.as('select')}
+							{...create.fields.teamAId.as('select', '')}
 							items={[
 								{ value: '', label: '未定' },
 								...data.teams.map((t: EntityOption) => ({
@@ -118,7 +100,7 @@
 					<div class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">B側チーム</span>
 						<AppSelect
-							{...create.fields.teamBId.as('select')}
+							{...create.fields.teamBId.as('select', '')}
 							items={[
 								{ value: '', label: '未定' },
 								...data.teams.map((t: EntityOption) => ({

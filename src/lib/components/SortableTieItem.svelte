@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths';
 	import { ArrowRight, ChevronDown, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
-	import { Collapsible } from 'bits-ui';
 	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -14,15 +13,15 @@
 		tie,
 		index,
 		sortable: sortableEnabled = true,
-		teams = [] as EntityOption[],
-		tieForm
+		teams = []
 	}: {
 		tie: TieSummary;
 		index: number;
 		sortable?: boolean;
 		teams?: EntityOption[];
-		tieForm: Record<string, unknown>;
 	} = $props();
+
+	let open = $state(false);
 
 	const sortable = createSortable({
 		get id() {
@@ -42,7 +41,7 @@
 	class="overflow-hidden rounded-xl border border-zinc-200 bg-white
 		{sortable.isDragging ? 'opacity-40' : ''}"
 >
-	<Collapsible.Root>
+	<div>
 		<div class="flex items-stretch">
 			{#if sortableEnabled}
 				<div
@@ -53,7 +52,10 @@
 				</div>
 			{/if}
 
-			<Collapsible.Trigger
+			<button
+				type="button"
+				aria-expanded={open}
+				onclick={() => (open = !open)}
 				class="group/tie flex flex-1 items-center justify-between gap-3 px-4 py-3 text-left"
 			>
 				<div class="flex min-w-0 flex-col gap-0.5">
@@ -98,10 +100,10 @@
 						</div>
 					{/if}
 					<ChevronDown
-						class="size-4 text-zinc-400 transition-transform group-data-[state=open]/tie:rotate-180"
+						class="size-4 text-zinc-400 transition-transform {open ? 'rotate-180' : ''}"
 					/>
 				</div>
-			</Collapsible.Trigger>
+			</button>
 			<a
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
 				class="hidden shrink-0 items-center border-l border-zinc-100 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 sm:flex"
@@ -110,11 +112,9 @@
 			</a>
 		</div>
 
-		<Collapsible.Content>
+		{#if open}
 			<div class="border-t border-zinc-100 px-5 py-4">
-				<form {...tieForm} class="space-y-4">
-					<input type="hidden" name="id" value={tie.id} />
-					<TieEditForm {tie} {teams} />
+				<TieEditForm {tie} {teams} id={tie.id}>
 					<div class="flex items-center justify-between">
 						<AppButton variant="primary">保存</AppButton>
 						<a
@@ -124,8 +124,8 @@
 							詳細を開く <ArrowRight class="inline size-3" />
 						</a>
 					</div>
-				</form>
+				</TieEditForm>
 			</div>
-		</Collapsible.Content>
-	</Collapsible.Root>
+		{/if}
+	</div>
 </div>

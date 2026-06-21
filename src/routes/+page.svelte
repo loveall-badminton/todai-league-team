@@ -18,8 +18,7 @@
 
 	const playingQuery = getDashboardPlayingTies();
 	const recentTiesQuery = getDashboardRecentTies();
-	let playing = $derived(await playingQuery);
-	let recentTies = $derived(await recentTiesQuery);
+	let [playing, recentTies] = $derived(await Promise.all([playingQuery, recentTiesQuery]));
 
 	const handlePlayingUpdate = createRealtimeQueryFlow({
 		refresh: () => playingQuery.refresh(),

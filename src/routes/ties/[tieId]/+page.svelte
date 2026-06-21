@@ -1,5 +1,6 @@
 <script lang="ts">
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Badge from '$lib/components/Badge.svelte';
@@ -33,8 +34,7 @@
 		startTie,
 		unconfirmMatch,
 		unlockLineup,
-		unrevealLineups,
-		updateTie
+		unrevealLineups
 	} from './tie.remote';
 	import {
 		rubberStatusTextClass,
@@ -51,11 +51,16 @@
 		type RealtimeUpdate
 	} from '$lib/realtime/updates';
 
-	const liveRubbers = getLiveRubbers();
-	const tieHeaderQuery = getTieHeader();
-	const tieLineupsQuery = getTieLineups();
-	let tieHeader = $derived(await tieHeaderQuery);
-	let tieLineups = $derived(await tieLineupsQuery);
+	const tieId = page.params.tieId!;
+	const liveRubbers = getLiveRubbers(tieId);
+	const tieHeaderQuery = getTieHeader(tieId);
+	const tieLineupsQuery = getTieLineups(tieId);
+	const [initialTieHeader, initialTieLineups] = await Promise.all([
+		tieHeaderQuery,
+		tieLineupsQuery
+	]);
+	let tieHeader = $derived(tieHeaderQuery.current ?? initialTieHeader);
+	let tieLineups = $derived(tieLineupsQuery.current ?? initialTieLineups);
 	let tie = $derived(tieHeader.tie);
 	let rubbers = $derived(tieHeader.rubbers);
 	let teams = $derived(tieHeader.teams);
@@ -116,22 +121,8 @@
 	let currentStep = $derived(getCurrentWorkflowStep(tie.status));
 
 	let editing = $state(false);
-	let skipEffect = $state(true);
 
 	const rubberStatusBgClass = rubberStatusTextClass;
-
-	$effect(() => {
-		const msg = updateTie.result?.message;
-		if (skipEffect) {
-			skipEffect = false;
-			return;
-		}
-		if (msg) {
-			toast.success(msg);
-			editing = false;
-			void tieHeaderQuery.refresh();
-		}
-	});
 
 	type RefreshTarget = 'header' | 'lineups' | 'rubbers';
 
@@ -275,15 +266,22 @@
 	{/snippet}
 
 	{#if editing}
-		<form {...updateTie} class="space-y-4">
-			<TieEditForm {tie} {teams} />
+		<TieEditForm
+			{tie}
+			id={tie.id}
+			{teams}
+			onSaved={() => {
+				editing = false;
+				void tieHeaderQuery.refresh();
+			}}
+		>
 			<div class="flex items-center gap-3 pt-1">
 				<AppButton type="submit" variant="primary">保存</AppButton>
 				<AppButton type="button" variant="secondary" onclick={() => (editing = false)}>
 					キャンセル
 				</AppButton>
 			</div>
-		</form>
+		</TieEditForm>
 	{:else}
 		<dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
 			<div>

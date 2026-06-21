@@ -24,7 +24,9 @@
 		filteredPlayers: (discipline: string, order: 1 | 2) => { id: string; name: string }[];
 		slotLabel: (discipline: string, order: 1 | 2) => string;
 		rubberLabel: (code: RubberCode) => string;
-		onSaveDraft: (e: MouseEvent) => void;
+		onSaveDraft: (
+			items: { rubberCode: string; player1Id: string | null; player2Id: string | null }[]
+		) => void;
 		tieId: string;
 		teamId: string;
 	} = $props();
@@ -133,7 +135,17 @@
 		<AppButton
 			type="button"
 			disabled={lineup.pending > 0}
-			onclick={onSaveDraft}
+			onclick={() => {
+				const items = rubberDefinitions.map((rubber, index) => {
+					const item = lineup.fields.items[index];
+					return {
+						rubberCode: rubber.code,
+						player1Id: item.player1Id.value() || null,
+						player2Id: item.player2Id.value() || null
+					};
+				});
+				onSaveDraft(items);
+			}}
 			variant="secondary"
 		>
 			下書き保存

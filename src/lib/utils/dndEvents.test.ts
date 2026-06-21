@@ -17,7 +17,7 @@ type Item = { id: string; label: string };
  * onDragOver に渡すモックイベント。
  * source.index と target.index を持ち、isSortable が true を返す前提。
  */
-function makeDragOverEvent(sourceIndex: number, targetIndex: number) {
+function makeDragOverEvent(sourceIndex: number, targetIndex: number): DragOverEvent {
 	return {
 		operation: {
 			source: { index: sourceIndex },
@@ -26,7 +26,7 @@ function makeDragOverEvent(sourceIndex: number, targetIndex: number) {
 	} as unknown as DragOverEvent;
 }
 
-function makeDragEndEvent(canceled: boolean) {
+function makeDragEndEvent(canceled: boolean): DragEndEvent {
 	return { canceled } as unknown as DragEndEvent;
 }
 

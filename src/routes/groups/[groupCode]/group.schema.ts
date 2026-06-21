@@ -1,10 +1,4 @@
-import { updateTieFormFields } from '$lib/domain/tieFormSchema';
 import * as v from 'valibot';
-
-export const updateTieSchema = v.object({
-	id: v.pipe(v.string(), v.trim(), v.nonEmpty()),
-	...updateTieFormFields
-});
 
 export const setManualRankSchema = v.object({
 	teamId: v.pipe(v.string(), v.trim(), v.nonEmpty()),

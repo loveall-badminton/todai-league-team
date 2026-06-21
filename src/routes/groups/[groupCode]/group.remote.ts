@@ -15,7 +15,6 @@ import {
 } from '$lib/server/repositories/tokyoLeagueRepository';
 import { calculateGroupStandings } from '$lib/server/services/standingService';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
-import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import {
 	createRankingTiebreaker,
 	syncRankingTiebreakerResult
@@ -23,17 +22,16 @@ import {
 import { generateGroupRoundRobinTies } from '$lib/server/services/tieService';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
-import { createTiebreakerSchema, setManualRankSchema, updateTieSchema } from './group.schema';
+import { createTiebreakerSchema, setManualRankSchema } from './group.schema';
 
 function parseGroupCode(value: string): 'A' | 'B' {
 	if (value === 'A' || value === 'B') return value;
 	error(404, 'Group not found');
 }
 
-export const getGroupRealtimeData = query(async () => {
-	const event = getRequestEvent();
+export const getGroupRealtimeData = query(v.string(), async (groupCodeValue) => {
 	requireAdmin();
-	const groupCode = parseGroupCode(event.params.groupCode!);
+	const groupCode = parseGroupCode(groupCodeValue);
 
 	const [ties, standings, rankingTiebreakers] = await Promise.all([
 		listGroupTies(groupCode),
@@ -44,10 +42,9 @@ export const getGroupRealtimeData = query(async () => {
 	return { ties, standings, rankingTiebreakers };
 });
 
-export const getGroupPageData = query(async () => {
-	const event = getRequestEvent();
+export const getGroupPageData = query(v.string(), async (groupCodeValue) => {
 	requireAdmin();
-	const groupCode = parseGroupCode(event.params.groupCode!);
+	const groupCode = parseGroupCode(groupCodeValue);
 	const settings = await ensureDefaultSettings();
 	const [groupTeams, allTeams, scoringRules] = await Promise.all([
 		listTeamsByGroup(groupCode),
@@ -90,12 +87,6 @@ export const generateRoundRobin = command(async () => {
 		schedule: { phases: [groupPhaseFor(groupCode)] }
 	});
 	return { message: `${created}件の対戦を生成しました` };
-});
-
-export const updateTie = form(updateTieSchema, async (values) => {
-	requireAdmin();
-	await persistUpdateTie({ ...values, now: new Date().toISOString() });
-	return { message: '対戦情報を更新しました' };
 });
 
 export const setManualRank = form(setManualRankSchema, async ({ teamId, manualRank, reason }) => {

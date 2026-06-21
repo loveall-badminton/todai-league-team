@@ -28,11 +28,12 @@
 			.filter((label): label is string => !!label)
 	);
 	let displayLabel = $derived(selectedLabels.length > 0 ? selectedLabels.join('、') : placeholder);
+	let fieldName = $derived(name.endsWith('[]') ? name : `${name}[]`);
 </script>
 
 <Select.Root
 	type="multiple"
-	{name}
+	name={fieldName}
 	bind:value
 	{disabled}
 	items={items.map((item) => ({

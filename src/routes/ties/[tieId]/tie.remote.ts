@@ -1,9 +1,8 @@
-import { command, form, getRequestEvent, query } from '$app/server';
+import { command, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
 import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeagueRepository';
-import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import {
 	lockLineup as lockLineupService,
 	revealLineups as revealLineupsService,
@@ -19,32 +18,21 @@ import { applyMatchAction } from '$lib/server/services/matchActionService';
 import type { MatchState } from '$lib/domain/types';
 import { error, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
-import { updateTieSchema } from './tie.schema';
 import { getTieHeaderData, getTieLineupsData } from './tiePageData';
 
-export const updateTie = form(updateTieSchema, async (values) => {
+export const getLiveRubbers = query(v.string(), async (tieId) => {
 	requireAdmin();
-	const tieId = getRequestEvent().params.tieId!;
-	await persistUpdateTie({ ...values, id: tieId, now: new Date().toISOString() });
-	return { message: '対戦情報を保存しました' };
+	return getPublicRubbers(tieId);
 });
 
-export const getLiveRubbers = query(async () => {
-	const event = getRequestEvent();
+export const getTieHeader = query(v.string(), async (tieId) => {
 	requireAdmin();
-	return getPublicRubbers(event.params.tieId!);
+	return getTieHeaderData(tieId);
 });
 
-export const getTieHeader = query(async () => {
-	const event = getRequestEvent();
+export const getTieLineups = query(v.string(), async (tieId) => {
 	requireAdmin();
-	return getTieHeaderData(event.params.tieId!);
-});
-
-export const getTieLineups = query(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	return getTieLineupsData(event.params.tieId!);
+	return getTieLineupsData(tieId);
 });
 
 export const startTie = command(async () => {

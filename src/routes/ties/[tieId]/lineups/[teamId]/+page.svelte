@@ -16,17 +16,13 @@
 	import LineupForm from './LineupForm.svelte';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
-	import {
-		lineupDraftItemsFromFormData,
-		loadLocalLineupDraft,
-		saveLocalLineupDraft,
-		type LocalLineupDraftItem
-	} from '../lineupDraftStorage';
+	import { loadLocalLineupDraft, saveLocalLineupDraft } from '../lineupDraftStorage';
 
 	let { data }: PageProps = $props();
 
 	type Player = EntityOption & { gender: string };
 	type Item = { rubberCode: string; player1Id: string | null; player2Id: string | null };
+	type DraftItem = { rubberCode: string; player1Id: string | null; player2Id: string | null };
 
 	let status = $derived(data.submission?.status ?? null);
 	let isLocked = $derived(status === 'locked' || status === 'revealed');
@@ -43,7 +39,7 @@
 		return _filteredPlayers(discipline, order, data.players);
 	}
 
-	function initialDraftItems(): LocalLineupDraftItem[] {
+	function initialDraftItems(): DraftItem[] {
 		return RUBBER_DEFINITIONS.map((rubber) => ({
 			rubberCode: rubber.code,
 			player1Id: savedValue(rubber.code, 1),
@@ -56,11 +52,7 @@
 		return order === 1 ? (item?.player1Id ?? '') : (item?.player2Id ?? '');
 	}
 
-	function saveLocalDraft(event: MouseEvent) {
-		const formElement = (event.currentTarget as HTMLButtonElement | null)?.form;
-		if (!formElement) return;
-
-		const items = lineupDraftItemsFromFormData(new FormData(formElement));
+	function saveLocalDraft(items: DraftItem[]) {
 		saveLocalLineupDraft(data.tie.id, data.team.id, items);
 		draftItems = items;
 		toast.success('下書きをこの端末に保存しました');

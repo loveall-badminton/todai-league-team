@@ -5,11 +5,10 @@ import { listTies, reorderTies } from '$lib/server/repositories/tokyoLeagueRepos
 import { adminPageLoadWithDefaults } from '$lib/server/loadHelpers';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
 import { createTieWithRubbers } from '$lib/server/services/tieService';
-import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import { emptyToNull, venueOrNull } from '$lib/utils/validation';
 import { redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
-import { createTieSchema, updateTieSchema } from './ties.schema';
+import { createTieSchema } from './ties.schema';
 
 const policyFromValue = (
 	s: string | undefined | null
@@ -89,10 +88,4 @@ export const reorder = command(v.object({ ids: v.array(v.string()) }), async ({ 
 	requireAdmin();
 	await reorderTies(ids, new Date().toISOString());
 	notifyLiveBoard(['schedule'], { schedule: { tieIds: ids } });
-});
-
-export const updateTie = form(updateTieSchema, async (values) => {
-	requireAdmin();
-	await persistUpdateTie({ ...values, now: new Date().toISOString() });
-	return { message: '対戦情報を保存しました' };
 });

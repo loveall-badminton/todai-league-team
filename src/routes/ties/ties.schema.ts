@@ -1,4 +1,3 @@
-import { updateTieFormFields } from '$lib/domain/tieFormSchema';
 import * as v from 'valibot';
 
 export const createTieSchema = v.object({
@@ -14,9 +13,4 @@ export const createTieSchema = v.object({
 	courtBlockCode: v.optional(v.string()),
 	lineupDueAt: v.optional(v.string()),
 	lineupDuePolicy: v.optional(v.string())
-});
-
-export const updateTieSchema = v.object({
-	id: v.pipe(v.string(), v.trim(), v.nonEmpty()),
-	...updateTieFormFields
 });

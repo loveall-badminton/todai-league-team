@@ -101,6 +101,9 @@
 	// true = side A is currently on the physical left side of the court
 	let sideAIsLeft = $derived(manualChangeCount % 2 === 0 ? sideAStartsLeft : !sideAStartsLeft);
 
+	let initialServerPlayerId = $state('');
+	let initialReceiverPlayerId = $state('');
+
 	// Which side is currently left / right
 	let leftSide = $derived(sideAIsLeft ? ('A' as const) : ('B' as const));
 	let rightSide = $derived(sideAIsLeft ? ('B' as const) : ('A' as const));
@@ -210,10 +213,7 @@
 			<form
 				onsubmit={async (e) => {
 					e.preventDefault();
-					const fd = new FormData(e.currentTarget as HTMLFormElement);
 					await run(async () => {
-						const initialServerPlayerId = String(fd.get('initialServerPlayerId') ?? '');
-						const initialReceiverPlayerId = String(fd.get('initialReceiverPlayerId') ?? '');
 						if (localState.status === 'scheduled') {
 							await start({ initialServerPlayerId, initialReceiverPlayerId });
 						} else {
@@ -231,7 +231,7 @@
 					<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 					<AppSelect
 						name="initialServerPlayerId"
-						value={localState.service?.serverPlayerId ?? ''}
+						bind:value={initialServerPlayerId}
 						items={allPlayerItems}
 						required
 					/>
@@ -240,7 +240,7 @@
 					<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
 					<AppSelect
 						name="initialReceiverPlayerId"
-						value={localState.service?.receiverPlayerId ?? ''}
+						bind:value={initialReceiverPlayerId}
 						items={bFirstPlayerItems}
 						required
 					/>
