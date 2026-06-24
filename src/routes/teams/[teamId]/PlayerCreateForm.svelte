@@ -8,9 +8,7 @@
 
 	let { genderItems }: { genderItems: SelectItem[] } = $props();
 
-	$effect(() => {
-		createPlayer.fields.set({ name: '', gender: 'unknown' });
-	});
+	createPlayer.fields.set({ name: '', gender: 'unknown' });
 </script>
 
 <form {...createPlayer} class="flex flex-wrap items-end gap-3">

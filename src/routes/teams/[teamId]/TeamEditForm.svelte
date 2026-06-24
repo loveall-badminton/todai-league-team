@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -21,7 +22,7 @@
 		{ value: 'withdrawn', label: '棄権' }
 	];
 
-	$effect(() => {
+	onMount(() => {
 		updateTeam.fields.set({
 			name: team.name,
 			shortName: team.shortName ?? '',

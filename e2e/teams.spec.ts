@@ -19,9 +19,9 @@ test.describe.serial('team management', () => {
 	test('adds a player to a team', async ({ page }) => {
 		await page.goto(teamUrl);
 		await expect(page.locator('h1')).toContainText(TEAM_NAME);
+		await page.waitForTimeout(300);
 
 		const playerForm = page.locator('form').filter({ hasText: '氏名' });
-		// Combine value set + click in one evaluate to avoid $effect race
 		await playerForm.evaluate((form, name) => {
 			const input = form.querySelector('input[name="name"]') as HTMLInputElement;
 			const setter = Object.getOwnPropertyDescriptor(
@@ -30,10 +30,9 @@ test.describe.serial('team management', () => {
 			)!.set!;
 			setter.call(input, name);
 			input.dispatchEvent(new Event('input', { bubbles: true }));
-			const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-			btn.click();
+			form.requestSubmit();
 		}, PLAYER_NAME);
-		await page.waitForTimeout(1500);
+		await page.waitForTimeout(2000);
 		await page.goto(teamUrl);
 		await expect(page.getByText(PLAYER_NAME)).toBeVisible({ timeout: 10000 });
 	});
@@ -54,6 +53,8 @@ test.describe.serial('team management', () => {
 		const updatedName = `${TEAM_NAME}-改`;
 		await page.goto(teamUrl);
 		await expect(page.locator('h1')).toContainText(TEAM_NAME);
+		await page.waitForTimeout(300);
+
 		const teamForm = page.locator('form').filter({ hasText: 'チーム名' });
 		await teamForm.evaluate((form, value) => {
 			const input = form.querySelector('input[name="name"]') as HTMLInputElement;
@@ -63,11 +64,10 @@ test.describe.serial('team management', () => {
 			)!.set!;
 			setter.call(input, value);
 			input.dispatchEvent(new Event('input', { bubbles: true }));
-			setTimeout(() => form.requestSubmit(), 0);
+			form.requestSubmit();
 		}, updatedName);
 		await page.waitForTimeout(2000);
 		await page.goto(teamUrl);
-		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(updatedName, { timeout: 10000 });
 	});
 

@@ -16,7 +16,6 @@ test.describe.serial('tie extended operations', () => {
 		await page.locator('input[name="name"]').fill(TEAM_A);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
-		teamAUrl = page.url();
 
 		// Add player to team A
 		const playerFormA = page.locator('form').filter({ hasText: '氏名' });
@@ -29,7 +28,7 @@ test.describe.serial('tie extended operations', () => {
 			setter.call(el, value);
 			el.dispatchEvent(new Event('input', { bubbles: true }));
 		}, PLAYER_A);
-		await playerFormA.evaluate((f) => f.requestSubmit());
+		await playerFormA.evaluate((f: HTMLFormElement) => f.requestSubmit());
 		await expect(page.getByText(PLAYER_A)).toBeVisible({ timeout: 10000 });
 
 		// Team B
@@ -38,7 +37,6 @@ test.describe.serial('tie extended operations', () => {
 		await page.locator('input[name="name"]').fill(TEAM_B);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
-		teamBUrl = page.url();
 
 		// Add player to team B
 		const playerFormB = page.locator('form').filter({ hasText: '氏名' });
@@ -51,7 +49,7 @@ test.describe.serial('tie extended operations', () => {
 			setter.call(el, value);
 			el.dispatchEvent(new Event('input', { bubbles: true }));
 		}, PLAYER_B);
-		await playerFormB.evaluate((f) => f.requestSubmit());
+		await playerFormB.evaluate((f: HTMLFormElement) => f.requestSubmit());
 		await expect(page.getByText(PLAYER_B)).toBeVisible({ timeout: 10000 });
 	});
 

@@ -18,6 +18,7 @@ test.describe.serial('extended team management', () => {
 
 	test('adds a player for editing tests', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(300);
 
 		const playerForm = page.locator('form').filter({ hasText: '氏名' });
 		await playerForm.evaluate((form, name) => {
@@ -28,10 +29,9 @@ test.describe.serial('extended team management', () => {
 			)!.set!;
 			setter.call(input, name);
 			input.dispatchEvent(new Event('input', { bubbles: true }));
-			const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-			btn.click();
+			form.requestSubmit();
 		}, EDITED_PLAYER);
-		await page.waitForTimeout(1500);
+		await page.waitForTimeout(2000);
 		await page.goto(teamUrl);
 		await expect(page.getByText(EDITED_PLAYER)).toBeVisible({ timeout: 10000 });
 	});
