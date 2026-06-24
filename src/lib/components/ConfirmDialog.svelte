@@ -2,12 +2,13 @@
 	import { Dialog } from 'bits-ui';
 	import AppButton from './AppButton.svelte';
 	import { cn } from '$lib/utils/cn';
+	import type { HTMLFormAttributes } from 'svelte/elements';
 
 	type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning' | 'violet';
 	type Size = 'sm' | 'md' | 'lg';
 
 	let {
-		formAction = '',
+		formObj = undefined,
 		hiddenFields = [],
 		onConfirm = undefined,
 		triggerLabel,
@@ -22,7 +23,9 @@
 		confirmVariant = 'primary',
 		confirmClass = ''
 	}: {
-		formAction?: string;
+		formObj?:
+			| { method: HTMLFormAttributes['method']; action: HTMLFormAttributes['action'] }
+			| undefined;
 		hiddenFields?: { name: string; value: string }[];
 		onConfirm?: (() => void | Promise<void>) | undefined;
 		triggerLabel: string;
@@ -117,8 +120,8 @@
 	</Dialog.Portal>
 </Dialog.Root>
 
-{#if !onConfirm}
-	<form {@attach attachForm} method="POST" action={formAction} class="hidden">
+{#if formObj}
+	<form {@attach attachForm} {...formObj} class="hidden">
 		{#each hiddenFields as field (field.name)}
 			<input type="hidden" name={field.name} value={field.value} />
 		{/each}

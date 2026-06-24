@@ -1,14 +1,9 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
-	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import { hasScoreUpdate, matchChannel } from '$lib/realtime/channels';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { cn } from '$lib/utils/cn';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -26,23 +21,19 @@
 	} from './refereeUtils';
 	import * as v from 'valibot';
 	import AppSelect from '$lib/components/AppSelect.svelte';
+	import { Undo2 } from '@lucide/svelte';
 
-	let { data }: PageProps = $props();
+	let { data, form: formResult }: PageProps = $props();
 
 	const courtSideSchema = v.picklist(['left', 'right']);
 	const manualChangeCountSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
-	// ブロードキャストで受け取ったスコアデータで即時更新するためのローカルステート。
-	// invalidateAll() のたびに data.state から再同期する（$effect 参照）。
-	// svelte-ignore state_referenced_locally
-	let localState = $state(data.state);
-
 	let currentGame = $derived(
-		localState.games.find((game) => game.gameNo === localState.currentGameNo)
+		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
 	);
 
-	let isLocked = $derived(localState.status === 'confirmed');
-	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(localState.status));
+	let isLocked = $derived(data.state.status === 'confirmed');
+	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(data.state.status));
 
 	// Undo: find last undoable event that hasn't been undone yet
 	const undoableEventTypes = [
@@ -56,7 +47,15 @@
 	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
 
 	function undoLabel(e: (typeof data.events)[number]): string {
-		return buildUndoLabel(e, sideAName, sideBName);
+		if (e.eventType === 'rally_won') {
+			const name = e.side === 'A' ? sideAName : e.side === 'B' ? sideBName : '?';
+			return `${name} 得点 (${e.scoreAAfter ?? '?'}–${e.scoreBAfter ?? '?'})`;
+		}
+		return buildUndoLabel(
+			e as unknown as Parameters<typeof buildUndoLabel>[0],
+			sideAName,
+			sideBName
+		);
 	}
 
 	let sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
@@ -65,7 +64,7 @@
 	let sideBName = $derived(data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B');
 
 	let previousGameWinner = $derived(
-		localState.games.find((g) => g.gameNo === localState.currentGameNo - 1)?.winnerSide
+		data.state.games.find((g) => g.gameNo === data.state.currentGameNo - 1)?.winnerSide
 	);
 	let allPlayerItems = $derived(
 		previousGameWinner === 'B'
@@ -79,12 +78,10 @@
 	);
 
 	// ── Change-of-ends tracking ────────────────────────────────────────────────
-	// Persisted to localStorage by matchId. true = side A starts on the left.
-	let courtSideKey = $derived(`referee_side_${localState.matchId}`);
-	let manualChangeCountKey = $derived(`referee_changecount_${localState.matchId}`);
+	let courtSideKey = $derived(`referee_side_${data.state.matchId}`);
+	let manualChangeCountKey = $derived(`referee_changecount_${data.state.matchId}`);
 	let sideAStartsLeft = $state(true);
 
-	// Manual change-of-ends counter (persisted to localStorage)
 	let manualChangeCount = $state(0);
 
 	onMount(() => {
@@ -106,13 +103,11 @@
 		saveJsonToLocalStorage(manualChangeCountKey, manualChangeCountSchema, manualChangeCount);
 	}
 
-	// true = side A is currently on the physical left side of the court
 	let sideAIsLeft = $derived(manualChangeCount % 2 === 0 ? sideAStartsLeft : !sideAStartsLeft);
 
 	let initialServerPlayerId = $state('');
 	let initialReceiverPlayerId = $state('');
 
-	// Which side is currently left / right
 	let leftSide = $derived(sideAIsLeft ? ('A' as const) : ('B' as const));
 	let rightSide = $derived(sideAIsLeft ? ('B' as const) : ('A' as const));
 	let leftSideName = $derived(sideAIsLeft ? sideAName : sideBName);
@@ -120,38 +115,19 @@
 	let leftSidePlayers = $derived(sideAIsLeft ? sideAPlayers : sideBPlayers);
 	let rightSidePlayers = $derived(sideAIsLeft ? sideBPlayers : sideAPlayers);
 
-	// Accent colors per physical side
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
-	// invalidateAll などで data.state が変わったら localState も同期する
+	// Show form error as toast
+	let prevError = $state<string | undefined>();
 	$effect(() => {
-		const s = data.state;
-		if (s) localState = structuredClone(s);
-	});
-
-	async function run(fn: () => Promise<unknown>) {
-		try {
-			await fn();
-			// WebSocket (handleRealtimeUpdate) handles UI sync for score updates.
-			// invalidateAll() is only needed for structural changes; the realtime
-			// flow's refresh callback covers those cases.
-		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
-		}
-	}
-
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => invalidateAll(),
-		applyUpdate: (update: RealtimeUpdate) => {
-			if (!hasScoreUpdate(update.data)) return 'refresh';
-			localState = update.data.score.state;
-			return 'applied';
+		const failure = formResult as { error?: string } | undefined;
+		const err = failure?.error;
+		if (err && err !== prevError) {
+			toast.error(err);
+			prevError = err;
 		}
 	});
-
-	// WebSocket 接続と自動更新は RealtimeSync コンポーネントが管理する。
-	// テンプレートの <RealtimeSync> を参照。
 </script>
 
 {#snippet scoreCard(
@@ -174,17 +150,19 @@
 		{/if}
 		<p class="mt-1 text-5xl leading-none font-bold tabular-nums sm:text-7xl">{score}</p>
 		<div class="mt-4">
-			<LongPressButton
-				class={cn(
-					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
-					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
-				)}
-				disabled={localState.status !== 'playing' || isLocked}
-				onclick={() => run(() => rallyWon({ side }))}
-				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
-			>
-				+1
-			</LongPressButton>
+			<form {...rallyWon.for(side)}>
+				<input {...rallyWon.fields.side.as('hidden', side)} />
+				<LongPressButton
+					class={cn(
+						'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
+						accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
+					)}
+					disabled={data.state.status !== 'playing' || isLocked}
+					onShortPress={() => toast.info('得点を記録するには長押ししてください')}
+				>
+					+1
+				</LongPressButton>
+			</form>
 		</div>
 	</Card>
 {/snippet}
@@ -196,15 +174,15 @@
 <div class="grid gap-4">
 	<!-- Header -->
 	<div class="text-center text-xs text-muted">
-		第{localState.currentGameNo}ゲーム · ゲームカウント {localState.gamesWon[leftSide]}–{localState
+		第{data.state.currentGameNo}ゲーム · ゲームカウント {data.state.gamesWon[leftSide]}–{data.state
 			.gamesWon[rightSide]}
 	</div>
 
 	<!-- Start game form -->
-	{#if localState.status === 'scheduled' || localState.status === 'interval'}
+	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}
 		<Card>
 			<h2 class="mb-3 font-semibold">
-				{localState.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
+				{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 			</h2>
 
 			<div class="mb-4">
@@ -220,54 +198,65 @@
 				/>
 			</div>
 
-			<form
-				onsubmit={async (e) => {
-					e.preventDefault();
-					await run(async () => {
-						if (localState.status === 'scheduled') {
-							await start({ initialServerPlayerId, initialReceiverPlayerId });
-						} else {
-							await startGame({
-								gameNo: localState.currentGameNo,
-								initialServerPlayerId,
-								initialReceiverPlayerId
-							});
-						}
-					});
-				}}
-				class="grid gap-3 sm:grid-cols-2"
-			>
-				<div class="grid gap-1">
-					<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
-					<AppSelect
-						name="initialServerPlayerId"
-						bind:value={initialServerPlayerId}
-						items={allPlayerItems}
-						required
-					/>
-				</div>
-				<div class="grid gap-1">
-					<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
-					<AppSelect
-						name="initialReceiverPlayerId"
-						bind:value={initialReceiverPlayerId}
-						items={bFirstPlayerItems}
-						required
-					/>
-				</div>
-				<div class="sm:col-span-2">
-					<AppButton
-						class="rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-						type="submit"
-					>
-						開始
-					</AppButton>
-				</div>
-			</form>
+			{#if data.state.status === 'scheduled'}
+				<form {...start} class="grid gap-3 sm:grid-cols-2">
+					<div class="grid gap-1">
+						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
+						<AppSelect
+							name="initialServerPlayerId"
+							bind:value={initialServerPlayerId}
+							items={allPlayerItems}
+							required
+						/>
+					</div>
+					<div class="grid gap-1">
+						<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
+						<AppSelect
+							name="initialReceiverPlayerId"
+							bind:value={initialReceiverPlayerId}
+							items={bFirstPlayerItems}
+							required
+						/>
+					</div>
+					<div class="sm:col-span-2">
+						<AppButton type="submit">開始</AppButton>
+					</div>
+				</form>
+			{:else}
+				<form {...startGame} class="grid gap-3 sm:grid-cols-2">
+					<input type="hidden" name="gameNo" value={data.state.currentGameNo} />
+					<div class="grid gap-1">
+						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
+						<AppSelect
+							name="initialServerPlayerId"
+							bind:value={initialServerPlayerId}
+							items={allPlayerItems}
+							required
+						/>
+					</div>
+					<div class="grid gap-1">
+						<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
+						<AppSelect
+							name="initialReceiverPlayerId"
+							bind:value={initialReceiverPlayerId}
+							items={bFirstPlayerItems}
+							required
+						/>
+					</div>
+					<div class="sm:col-span-2">
+						<AppButton
+							class="rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
+							type="submit"
+						>
+							開始
+						</AppButton>
+					</div>
+				</form>
+			{/if}
 		</Card>
 	{/if}
 
-	<!-- Score + tap buttons (ordered by physical court: left first, right second) -->
+	<!-- Score + tap buttons -->
 	<div class="grid grid-cols-2 gap-3">
 		{@render scoreCard(
 			leftSide,
@@ -275,7 +264,7 @@
 			leftSidePlayers[0]?.teamName,
 			currentGame?.score[leftSide] ?? 0,
 			leftAccent,
-			localState.service?.servingSide === leftSide
+			data.state.service?.servingSide === leftSide
 		)}
 		{@render scoreCard(
 			rightSide,
@@ -283,7 +272,7 @@
 			rightSidePlayers[0]?.teamName,
 			currentGame?.score[rightSide] ?? 0,
 			rightAccent,
-			localState.service?.servingSide === rightSide
+			data.state.service?.servingSide === rightSide
 		)}
 	</div>
 
@@ -292,7 +281,7 @@
 
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
-		service={localState.service}
+		service={data.state.service}
 		{sideAIsLeft}
 		{leftAccent}
 		{rightAccent}
@@ -304,37 +293,33 @@
 	<!-- Controls -->
 	<Card>
 		<div class="grid grid-cols-2 gap-2">
-			<AppButton
-				class="flex flex-col col-span-2 w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-				type="button"
-				disabled={!lastUndoableEvent || isLocked}
-				onclick={() => run(() => undo({}))}
-			>
-				<span class="block text-xs text-muted">取り消し</span>
-				<span class="block leading-tight wrap-break-word">
-					{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
-				</span>
-			</AppButton>
-			<AppButton
-				variant="warning"
-				class="w-full"
-				type="button"
-				disabled={isLocked}
-				onclick={() => run(() => suspend({ reason: 'referee_decision' }))}
-			>
-				中断
-			</AppButton>
-			<AppButton
-				variant="success"
-				class="w-full"
-				type="button"
-				disabled={isLocked}
-				onclick={() => run(() => resume({}))}
-			>
-				再開
-			</AppButton>
+			<form {...undo} class="col-span-2 contents">
+				<AppButton
+					class="flex flex-col col-span-2 w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+					type="submit"
+					disabled={!lastUndoableEvent || isLocked}
+				>
+					<span class="text-xs text-muted flex items-center gap-1">
+						<Undo2 class="size-3" />取り消し
+					</span>
+					<span class="block leading-tight wrap-break-word">
+						{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
+					</span>
+				</AppButton>
+			</form>
+			<form {...suspend} class="contents">
+				<input {...suspend.fields.reason.as('hidden', 'referee_decision')} />
+				<AppButton variant="warning" class="w-full" type="submit" disabled={isLocked}>
+					中断
+				</AppButton>
+			</form>
+			<form {...resume} class="contents">
+				<AppButton variant="success" class="w-full" type="submit" disabled={isLocked}>
+					再開
+				</AppButton>
+			</form>
 			<ConfirmDialog
-				onConfirm={() => run(() => confirm())}
+				formObj={confirm}
 				triggerLabel="結果確定"
 				triggerVariant="primary"
 				triggerFullWidth
@@ -348,7 +333,7 @@
 	</Card>
 
 	<!-- Scoresheet -->
-	<RefereeScoresheet events={data.events} games={localState.games} players={data.players} />
+	<RefereeScoresheet events={data.events} games={data.state.games} players={data.players} />
 
 	<!-- Advanced controls -->
 	{#if !isLocked}
@@ -356,19 +341,12 @@
 			{currentGame}
 			{sideAName}
 			{sideBName}
-			service={localState.service}
+			service={data.state.service}
 			players={data.players}
-			currentGameNo={localState.currentGameNo}
+			currentGameNo={data.state.currentGameNo}
 		/>
 	{/if}
 
 	<!-- Event log -->
 	<RefereeEventLog events={data.events} />
-
-	<!-- WebSocket: 別端末の操作を反映 -->
-	<RealtimeSync
-		channel={matchChannel(data.match.id)}
-		topics={[]}
-		onUpdate={(u) => void handleRealtimeUpdate(u)}
-	/>
 </div>

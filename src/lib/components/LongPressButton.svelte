@@ -5,18 +5,19 @@
 		class: className = '',
 		disabled = false,
 		threshold = 450,
-		onclick,
 		onShortPress,
-		children
+		children,
+		type = 'submit'
 	}: {
 		class?: string;
 		disabled?: boolean;
 		threshold?: number;
-		onclick?: () => void;
 		onShortPress?: () => void;
 		children: import('svelte').Snippet;
+		type?: 'submit' | 'button';
 	} = $props();
 
+	let btnEl: HTMLButtonElement | undefined = $state();
 	let pressing = $state(false);
 	let progress = $state(0);
 	let timerId: ReturnType<typeof setTimeout> | null = null;
@@ -42,16 +43,20 @@
 		rafId = requestAnimationFrame(tickProgress);
 	}
 
+	function submitForm() {
+		btnEl?.closest('form')?.requestSubmit();
+	}
+
 	function onTouchStart(e: TouchEvent) {
 		if (disabled) return;
-		e.preventDefault(); // prevent synthetic click
+		e.preventDefault();
 		pressing = true;
 		startTime = Date.now();
 		progress = 0;
 		rafId = requestAnimationFrame(tickProgress);
 		timerId = setTimeout(() => {
 			cancelPress();
-			onclick?.();
+			submitForm();
 		}, threshold);
 	}
 
@@ -62,28 +67,21 @@
 		if (wasPressing) onShortPress?.();
 	}
 
-	function onClick() {
-		// desktop click
-		if (!disabled) onclick?.();
-	}
-
-	// radius and circumference for SVG ring
 	const r = 18;
 	const circ = 2 * Math.PI * r;
 </script>
 
 <button
+	bind:this={btnEl}
 	class={cn('relative touch-none select-none', className)}
 	{disabled}
-	type="button"
-	onclick={onClick}
+	{type}
 	ontouchstart={onTouchStart}
 	ontouchend={onTouchEnd}
 	ontouchcancel={onTouchEnd}
 >
 	{@render children()}
 
-	<!-- long-press progress ring (touch only) -->
 	{#if pressing}
 		<span class="pointer-events-none absolute inset-0 flex items-center justify-center">
 			<svg class="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 40 40">

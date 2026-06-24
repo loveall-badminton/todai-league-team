@@ -228,10 +228,19 @@ test.describe.serial('referee scoring', () => {
 		}
 
 		await expect(plusOneBtn).toBeVisible({ timeout: 5000 });
+
+		// Score one rally and verify undo button label updates
 		await plusOneBtn.click();
 		await page.waitForTimeout(1000);
-
 		await expect(page.getByText('取り消し').first()).toBeVisible();
+		// Undo label should include the score (e.g., "チーム名 得点 (1–0)")
+		const undoBtn = page.locator('button').filter({ hasText: /得点/ });
+		await expect(undoBtn.first()).toBeVisible({ timeout: 5000 });
+
+		// Click undo — button label should revert to "—" after undo
+		await undoBtn.first().click();
+		await page.waitForTimeout(1000);
+		await expect(page.getByText('—').first()).toBeVisible({ timeout: 5000 });
 	});
 
 	test('completes a match (2 games) and confirms result', async ({ page }) => {

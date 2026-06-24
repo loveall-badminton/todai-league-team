@@ -6,7 +6,6 @@
 	import Card from '$lib/components/Card.svelte';
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { toast } from 'svelte-sonner';
 	import { correction, cutoff, letCalled, forfeit, retire } from './referee.remote';
 
 	let {
@@ -24,15 +23,6 @@
 		players: MatchPlayer[];
 		currentGameNo: number;
 	} = $props();
-
-	async function run(fn: () => Promise<unknown>) {
-		try {
-			await fn();
-			// Invalidation handled by parent page's realtime flow (createRealtimeQueryFlow)
-		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
-		}
-	}
 
 	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
 	let letNote = $state('');
@@ -76,22 +66,17 @@
 		{ value: 'other', label: 'その他' }
 	];
 
-	async function applyCorrectionFromForm() {
-		if (!correctionReason) return;
-		await run(() =>
-			correction({
-				gameNo: currentGameNo,
-				scoreA: correctionScoreA,
-				scoreB: correctionScoreB,
-				reason: correctionReason,
-				servingSide: correctionServingSide || undefined,
-				serviceCourt: correctionServiceCourt || undefined,
-				serverPlayerId: correctionServerPlayerId || undefined,
-				receiverPlayerId: correctionReceiverPlayerId || undefined,
-				courtAssignmentsJson: courtAssignmentsJson || undefined
-			})
-		);
-	}
+	let correctionFields = $derived<{ name: string; value: string }[]>([
+		{ name: 'gameNo', value: String(currentGameNo) },
+		{ name: 'scoreA', value: String(correctionScoreA) },
+		{ name: 'scoreB', value: String(correctionScoreB) },
+		{ name: 'reason', value: correctionReason },
+		{ name: 'servingSide', value: correctionServingSide },
+		{ name: 'serviceCourt', value: correctionServiceCourt },
+		{ name: 'serverPlayerId', value: correctionServerPlayerId },
+		{ name: 'receiverPlayerId', value: correctionReceiverPlayerId },
+		{ name: 'courtAssignmentsJson', value: courtAssignmentsJson }
+	]);
 
 	$effect(() => {
 		if (!currentGame) return;
@@ -111,12 +96,7 @@
 	{/snippet}
 	<div class="divide-y divide-zinc-100">
 		<CollapsibleSection title="スコア訂正">
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-				}}
-				class="grid gap-3"
-			>
+			<div class="grid gap-3">
 				<div class="grid grid-cols-2 gap-2">
 					<AppInput
 						type="number"
@@ -160,7 +140,8 @@
 					</div>
 				</CollapsibleSection>
 				<ConfirmDialog
-					onConfirm={applyCorrectionFromForm}
+					formObj={correction}
+					hiddenFields={correctionFields}
 					triggerLabel="訂正する"
 					triggerVariant="primary"
 					triggerFullWidth
@@ -169,7 +150,7 @@
 					description="現在のゲームスコアと必要に応じてサービス状態を上書きします。入力内容を確認してください。"
 					confirmLabel="訂正を確定する"
 				/>
-			</form>
+			</div>
 		</CollapsibleSection>
 
 		<CollapsibleSection title="レット">
@@ -177,7 +158,11 @@
 				<AppSelect name="letReason" bind:value={letReason} items={letReasonItems} />
 				<AppInput name="letNote" bind:value={letNote} placeholder="メモ" />
 				<ConfirmDialog
-					onConfirm={() => run(() => letCalled({ reason: letReason, note: letNote || undefined }))}
+					formObj={letCalled}
+					hiddenFields={[
+						{ name: 'reason', value: letReason },
+						{ name: 'note', value: letNote }
+					]}
 					triggerLabel="記録する"
 					triggerVariant="primary"
 					triggerFullWidth
@@ -192,7 +177,8 @@
 		<CollapsibleSection title="棄権">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					onConfirm={() => run(() => forfeit({ side: 'A' }))}
+					formObj={forfeit.for('A')}
+					hiddenFields={[{ name: 'side', value: 'A' }]}
 					triggerLabel="{sideAName} 棄権"
 					triggerVariant="danger"
 					title="{sideAName}を棄権にしますか？"
@@ -201,7 +187,8 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					onConfirm={() => run(() => forfeit({ side: 'B' }))}
+					formObj={forfeit.for('B')}
+					hiddenFields={[{ name: 'side', value: 'B' }]}
 					triggerLabel="{sideBName} 棄権"
 					triggerVariant="danger"
 					title="{sideBName}を棄権にしますか？"
@@ -215,7 +202,8 @@
 		<CollapsibleSection title="リタイア">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					onConfirm={() => run(() => retire({ side: 'A' }))}
+					formObj={retire.for('A')}
+					hiddenFields={[{ name: 'side', value: 'A' }]}
 					triggerLabel="{sideAName} リタイア"
 					triggerVariant="danger"
 					title="{sideAName}をリタイアにしますか？"
@@ -224,7 +212,8 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					onConfirm={() => run(() => retire({ side: 'B' }))}
+					formObj={retire.for('B')}
+					hiddenFields={[{ name: 'side', value: 'B' }]}
 					triggerLabel="{sideBName} リタイア"
 					triggerVariant="danger"
 					title="{sideBName}をリタイアにしますか？"
@@ -237,7 +226,7 @@
 
 		<CollapsibleSection title="打ち切り">
 			<ConfirmDialog
-				onConfirm={() => run(() => cutoff())}
+				formObj={cutoff}
 				triggerLabel="打ち切りにする"
 				triggerVariant="danger"
 				triggerFullWidth

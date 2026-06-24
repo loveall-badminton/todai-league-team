@@ -61,7 +61,7 @@ describe('resolveRealtimeInput', () => {
 		);
 
 		expect(scoreEvent).toMatchObject({
-			type: 'undo',
+			type: 'undo_applied',
 			seqNo: 4,
 			targetSeqNo: 3
 		});

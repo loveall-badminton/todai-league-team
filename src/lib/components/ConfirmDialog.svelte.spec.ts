@@ -69,7 +69,11 @@ describe('ConfirmDialog.svelte', () => {
 
 	it('hidden form is rendered when onConfirm is not set', async () => {
 		const result = render(ConfirmDialog, {
-			props: { triggerLabel: '削除', title: '確認', formAction: '/ties/delete' }
+			props: {
+				triggerLabel: '削除',
+				title: '確認',
+				formObj: { method: 'POST', action: '/ties/delete' }
+			}
 		});
 		const form = result.container.querySelector('form');
 		expect(form).not.toBeNull();
@@ -83,7 +87,7 @@ describe('ConfirmDialog.svelte', () => {
 			props: {
 				triggerLabel: '削除',
 				title: '確認',
-				formAction: '/ties/delete',
+				formObj: { method: 'POST', action: '/ties/delete' },
 				hiddenFields: [
 					{ name: 'tieId', value: '123' },
 					{ name: 'reason', value: 'cancel' }

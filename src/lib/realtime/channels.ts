@@ -21,6 +21,7 @@ const scheduleScopeSchema = v.picklist(['tie_header', 'lineups', 'rubbers'] as c
 export const liveScoreEventSchema = v.object({
 	type: v.string(),
 	seqNo: v.optional(v.number()),
+	side: v.optional(v.string()),
 	gameNo: v.optional(v.number()),
 	scoreA: v.optional(v.number()),
 	scoreB: v.optional(v.number()),

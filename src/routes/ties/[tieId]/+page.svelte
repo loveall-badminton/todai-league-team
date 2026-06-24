@@ -342,7 +342,7 @@
 {#if currentStep <= 2}
 	<!-- Reveal / unreveal -->
 	{#if isRevealed || bothReadyToReveal}
-		<Card class="flex items-center justify-between px-5 py-3">
+		<Card innerClass="flex items-center justify-between gap-2">
 			<p class="text-sm text-muted-foreground">両チームのオーダーが揃っています。</p>
 			{#if isRevealed}
 				<AppButton

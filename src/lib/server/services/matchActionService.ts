@@ -145,7 +145,7 @@ function parsePayload(payloadJson: string): { beforeState?: MatchState; afterSta
 	}
 }
 
-function eventTypeForInput(input: ScoreEventInput) {
+export function eventTypeForInput(input: ScoreEventInput) {
 	if (input.type === 'undo') return 'undo_applied';
 	if (input.type === 'correction') return 'correction_applied';
 	return input.type;

@@ -1,4 +1,4 @@
-import { command, getRequestEvent } from '$app/server';
+import { form, getRequestEvent } from '$app/server';
 import { otherSide } from '$lib/domain/scoring';
 import {
 	CourtAssignmentsSchema,
@@ -24,7 +24,7 @@ import {
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
 import { getLastUndoableScoreEvent } from '$lib/server/repositories/scoreEventRepository';
-import { error } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { buildRealtimeScorePayload, resolveRealtimeInput } from './refereeRealtime';
 
@@ -58,8 +58,7 @@ async function applyAction(
 			players
 		});
 	} catch (err) {
-		error(400, err instanceof Error ? err.message : '操作に失敗しました');
-		return;
+		return fail(400, { error: err instanceof Error ? err.message : '操作に失敗しました' });
 	}
 	const data = {
 		score: buildRealtimeScorePayload(input, state, afterState)
@@ -68,7 +67,7 @@ async function applyAction(
 	notifyLiveBoard(['score'], data);
 }
 
-export const start = command(
+export const start = form(
 	v.object({
 		initialServerPlayerId: v.string(),
 		initialReceiverPlayerId: v.string()
@@ -76,7 +75,7 @@ export const start = command(
 	async ({ initialServerPlayerId, initialReceiverPlayerId }) => {
 		const event = getRequestEvent();
 		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state, players) => {
+		const result = await applyAction(matchId, (state, players) => {
 			validateInitialServiceSelection(
 				state,
 				players,
@@ -91,12 +90,13 @@ export const start = command(
 				initialReceiverPlayerId
 			};
 		});
+		return result ?? {};
 	}
 );
 
-export const startGame = command(
+export const startGame = form(
 	v.object({
-		gameNo: v.pipe(v.unknown(), v.toNumber(), v.integer()),
+		gameNo: v.pipe(v.string(), v.transform(Number), v.integer()),
 		initialServerPlayerId: v.string(),
 		initialReceiverPlayerId: v.string()
 	}),
@@ -104,7 +104,7 @@ export const startGame = command(
 		const event = getRequestEvent();
 		const matchId = event.params.matchId!;
 		const sides = await getMatchSideNames(matchId);
-		await applyAction(matchId, (state, players) => {
+		const result = await applyAction(matchId, (state, players) => {
 			validateInitialServiceSelection(
 				state,
 				players,
@@ -127,43 +127,38 @@ export const startGame = command(
 				initialReceiverPlayerId
 			};
 		});
+		return result ?? {};
 	}
 );
 
-export const rallyWon = command(v.object({ side: sideSchema }), async ({ side }) => {
+export const rallyWon = form(v.object({ side: sideSchema }), async ({ side }) => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
-	await applyAction(matchId, (state) => ({
+	const result = await applyAction(matchId, (state) => ({
 		type: 'rally_won',
 		idempotencyKey: crypto.randomUUID(),
 		observedSeqNo: state.lastSeqNo,
 		side
 	}));
+	return result ?? {};
 });
 
-export const undo = command(
-	v.object({
-		targetSeqNo: v.optional(v.pipe(v.unknown(), v.toNumber(), v.integer())),
-		reason: v.optional(v.string())
-	}),
-	async ({ targetSeqNo, reason }) => {
-		const event = getRequestEvent();
-		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state) => ({
-			type: 'undo',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: state.lastSeqNo,
-			targetSeqNo,
-			reason: reason || undefined
-		}));
-	}
-);
+export const undo = form(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'undo',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo
+	}));
+	return result ?? {};
+});
 
-export const correction = command(
+export const correction = form(
 	v.object({
-		gameNo: v.pipe(v.unknown(), v.toNumber(), v.integer()),
-		scoreA: v.pipe(v.unknown(), v.toNumber(), v.integer()),
-		scoreB: v.pipe(v.unknown(), v.toNumber(), v.integer()),
+		gameNo: v.pipe(v.string(), v.transform(Number), v.integer()),
+		scoreA: v.pipe(v.string(), v.transform(Number), v.integer()),
+		scoreB: v.pipe(v.string(), v.transform(Number), v.integer()),
 		reason: v.pipe(v.string(), v.nonEmpty()),
 		servingSide: v.optional(v.string()),
 		serviceCourt: v.optional(v.string()),
@@ -184,7 +179,7 @@ export const correction = command(
 	}) => {
 		const event = getRequestEvent();
 		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state, players) => {
+		const result = await applyAction(matchId, (state, players) => {
 			const service = buildServiceFromArgs(
 				{
 					servingSide,
@@ -206,10 +201,11 @@ export const correction = command(
 				reason
 			};
 		});
+		return result ?? {};
 	}
 );
 
-export const letCalled = command(
+export const letCalled = form(
 	v.object({
 		reason: LetReasonSchema,
 		note: v.optional(v.string())
@@ -217,96 +213,95 @@ export const letCalled = command(
 	async ({ reason, note }) => {
 		const event = getRequestEvent();
 		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state) => ({
+		const result = await applyAction(matchId, (state) => ({
 			type: 'let_called',
 			idempotencyKey: crypto.randomUUID(),
 			observedSeqNo: state.lastSeqNo,
 			reason,
 			note: note || undefined
 		}));
+		return result ?? {};
 	}
 );
 
-export const suspend = command(
+export const suspend = form(
 	v.object({
 		reason: SuspendReasonSchema,
 		note: v.optional(v.string())
 	}),
-	async ({ reason, note }) => {
+	async ({ reason }) => {
 		const event = getRequestEvent();
 		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state) => ({
+		const result = await applyAction(matchId, (state) => ({
 			type: 'match_suspended',
 			idempotencyKey: crypto.randomUUID(),
 			observedSeqNo: state.lastSeqNo,
-			reason,
-			note: note || undefined
+			reason
 		}));
+		return result ?? {};
 	}
 );
 
-export const resume = command(
-	v.object({
-		note: v.optional(v.string())
-	}),
-	async ({ note }) => {
-		const event = getRequestEvent();
-		const matchId = event.params.matchId!;
-		await applyAction(matchId, (state) => ({
-			type: 'match_resumed',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: state.lastSeqNo,
-			note: note || undefined
-		}));
-	}
-);
-
-export const forfeit = command(v.object({ side: sideSchema }), async ({ side }) => {
+export const resume = form(async () => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
-	await applyAction(matchId, (state) => ({
+	const result = await applyAction(matchId, (state) => ({
+		type: 'match_resumed',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo
+	}));
+	return result ?? {};
+});
+
+export const forfeit = form(v.object({ side: sideSchema }), async ({ side }) => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
 		type: 'side_forfeited',
 		idempotencyKey: crypto.randomUUID(),
 		observedSeqNo: state.lastSeqNo,
 		side,
 		reason: 'withdrawal'
 	}));
+	return result ?? {};
 });
 
-export const retire = command(v.object({ side: sideSchema }), async ({ side }) => {
+export const retire = form(v.object({ side: sideSchema }), async ({ side }) => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
-	await applyAction(matchId, (state) => ({
+	const result = await applyAction(matchId, (state) => ({
 		type: 'side_retired',
 		idempotencyKey: crypto.randomUUID(),
 		observedSeqNo: state.lastSeqNo,
 		side,
 		reason: 'injury'
 	}));
+	return result ?? {};
 });
 
-export const cutoff = command(async () => {
+export const cutoff = form(async () => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	await requireRefereeMatchAccess(matchId);
 	try {
 		await cancelMatchRubber(matchId);
 	} catch (err) {
-		error(400, err instanceof Error ? err.message : '操作に失敗しました');
+		return fail(400, { error: err instanceof Error ? err.message : '操作に失敗しました' });
 	}
 	const afterState = await getMatchState(matchId);
 	notifyMatch(matchId, ['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
 	notifyLiveBoard(['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
 });
 
-export const confirm = command(async () => {
+export const confirm = form(async () => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
-	await applyAction(matchId, (state) => ({
+	const result = await applyAction(matchId, (state) => ({
 		type: 'match_confirmed',
 		idempotencyKey: crypto.randomUUID(),
 		observedSeqNo: state.lastSeqNo
 	}));
+	return result ?? {};
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -326,7 +321,7 @@ function buildServiceFromArgs(
 		args;
 	if (!servingSide && !serviceCourt && !serverPlayerId && !receiverPlayerId) return undefined;
 	if (!servingSide || !serviceCourt || !serverPlayerId || !receiverPlayerId) {
-		error(400, 'サービス状態を訂正する場合は全項目が必須です');
+		throw new Error('サービス状態を訂正する場合は全項目が必須です');
 	}
 
 	if (current?.discipline === 'doubles') {

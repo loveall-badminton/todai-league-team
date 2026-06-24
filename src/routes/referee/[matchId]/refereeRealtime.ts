@@ -1,5 +1,6 @@
 import type { MatchState, ScoreEventInput, UndoInput } from '$lib/domain/types';
 import type { LiveTopicPayloadMap } from '$lib/realtime/channels';
+import { eventTypeForInput } from '$lib/server/services/matchActionService';
 
 export function resolveRealtimeInput(
 	input: ScoreEventInput,
@@ -26,8 +27,9 @@ export function buildRealtimeScoreEvent(
 	const targetSeqNo = input.type === 'undo' ? (input as UndoInput).targetSeqNo : undefined;
 
 	return {
-		type: input.type,
+		type: eventTypeForInput(input),
 		seqNo,
+		side: 'side' in input ? (input as { side: string }).side : undefined,
 		...(input.type === 'rally_won'
 			? {
 					gameNo: eventGameNo,
