@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import Card from '$lib/components/Card.svelte';
 	import { resolve } from '$app/paths';
 	import { ArrowRight, ClipboardList, Shield } from '@lucide/svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { statusBadgeColor } from '$lib/utils/statusStyles';
 	import type { PageProps } from './$types';
@@ -22,7 +24,13 @@
 <PageHeader
 	title="オーダー/審判"
 	description="このページをこまめに確認して、オーダー提出や審判担当の対戦を見逃さないようにしてください。"
-/>
+>
+	{#snippet actions()}
+		{#if isTeamAccount}
+			<RealtimeSync topics={['score', 'schedule']} onUpdate={() => invalidateAll()} />
+		{/if}
+	{/snippet}
+</PageHeader>
 
 {#if isTeamAccount}
 	<div class="grid gap-4 sm:grid-cols-2">
