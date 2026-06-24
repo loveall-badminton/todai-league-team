@@ -19,6 +19,7 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 	let status = $state<LiveChannelStatus>('closed');
 	let socket: PartySocket | null = null;
 	let closedByUser = false;
+	let generation = 0;
 
 	function setStatus(next: LiveChannelStatus) {
 		if (status === next) return;
@@ -28,8 +29,16 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 
 	function connect() {
 		if (!browser) return;
+
+		if (socket) {
+			socket.close();
+			socket = null;
+		}
+
 		closedByUser = false;
 		setStatus('connecting');
+		generation++;
+		const currentGeneration = generation;
 
 		const ws = new PartySocket({
 			host: window.location.host,
@@ -38,18 +47,18 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 			maxReconnectionDelay: 10000,
 			minReconnectionDelay: 3000,
 			reconnectionDelayGrowFactor: 1.3,
-			maxRetries: 10
+			maxRetries: 5
 		});
 
 		socket = ws;
 
 		ws.addEventListener('open', () => {
-			if (closedByUser || socket !== ws) return;
+			if (generation !== currentGeneration || closedByUser || socket !== ws) return;
 			setStatus('open');
 		});
 
 		ws.addEventListener('message', (event) => {
-			if (closedByUser || socket !== ws) return;
+			if (generation !== currentGeneration || closedByUser || socket !== ws) return;
 			try {
 				const raw = typeof event.data === 'string' ? event.data : String(event.data);
 				const parsed = JSON.parse(raw);
@@ -65,13 +74,14 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 		});
 
 		ws.addEventListener('close', () => {
+			if (generation !== currentGeneration) return;
 			if (socket === ws) socket = null;
 			if (closedByUser || (socket !== null && socket !== ws)) return;
 			setStatus('closed');
 		});
 
 		ws.addEventListener('error', () => {
-			if (closedByUser || socket !== ws) return;
+			if (generation !== currentGeneration || closedByUser || socket !== ws) return;
 			setStatus('closed');
 		});
 	}
