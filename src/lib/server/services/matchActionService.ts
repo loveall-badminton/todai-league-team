@@ -1,6 +1,12 @@
 import { applyScoreEvent, getCurrentGame } from '$lib/domain/scoring';
 import { MatchStatePayloadSchema } from '$lib/domain/schemas';
-import type { GameScore, MatchState, ScoreEventInput, ServiceState } from '$lib/domain/types';
+import type {
+	GameScore,
+	MatchPlayer,
+	MatchState,
+	ScoreEventInput,
+	ServiceState
+} from '$lib/domain/types';
 import * as v from 'valibot';
 import { getRequestDb } from '$lib/server/db/request';
 import {
@@ -26,6 +32,10 @@ export async function applyMatchAction(params: {
 	input: ScoreEventInput;
 	actorName?: string | null;
 	now: string;
+	/** Pre-fetched state to avoid duplicate query (caller may already have it) */
+	beforeState?: MatchState;
+	/** Pre-fetched players to avoid duplicate query */
+	players?: MatchPlayer[];
 }): Promise<MatchState> {
 	const db = getRequestDb();
 	const { matchId, actorName, now } = params;
@@ -36,9 +46,9 @@ export async function applyMatchAction(params: {
 		throw new Error('Duplicate request but afterState is missing from stored payload');
 	}
 
-	const beforeState = await getMatchState(matchId);
+	const beforeState = params.beforeState ?? (await getMatchState(matchId));
+	const players = params.players ?? (await getMatchPlayers(matchId));
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
-	const players = await getMatchPlayers(matchId);
 	const input = await prepareUndoInput(matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
 	const eventId = crypto.randomUUID();

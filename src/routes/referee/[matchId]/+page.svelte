@@ -64,11 +64,19 @@
 	let sideAName = $derived(data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A');
 	let sideBName = $derived(data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B');
 
-	let allPlayerItems = $derived([...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]);
-	let bFirstPlayerItems = $derived([
-		...playerOptions(sideBPlayers),
-		...playerOptions(sideAPlayers)
-	]);
+	let previousGameWinner = $derived(
+		localState.games.find((g) => g.gameNo === localState.currentGameNo - 1)?.winnerSide
+	);
+	let allPlayerItems = $derived(
+		previousGameWinner === 'B'
+			? [...playerOptions(sideBPlayers), ...playerOptions(sideAPlayers)]
+			: [...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]
+	);
+	let bFirstPlayerItems = $derived(
+		previousGameWinner === 'B'
+			? [...playerOptions(sideAPlayers), ...playerOptions(sideBPlayers)]
+			: [...playerOptions(sideBPlayers), ...playerOptions(sideAPlayers)]
+	);
 
 	// ── Change-of-ends tracking ────────────────────────────────────────────────
 	// Persisted to localStorage by matchId. true = side A starts on the left.
@@ -125,7 +133,9 @@
 	async function run(fn: () => Promise<unknown>) {
 		try {
 			await fn();
-			await invalidateAll();
+			// WebSocket (handleRealtimeUpdate) handles UI sync for score updates.
+			// invalidateAll() is only needed for structural changes; the realtime
+			// flow's refresh callback covers those cases.
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
 		}

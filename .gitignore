@@ -24,3 +24,10 @@ vite.config.ts.timestamp-*
 
 # Vitest
 coverage
+
+# Playwright
+e2e/.auth/
+test-results/
+
+# Wrangler local dev
+.dev.vars

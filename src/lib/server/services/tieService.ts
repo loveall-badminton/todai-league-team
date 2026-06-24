@@ -1,4 +1,4 @@
-import { and, asc, eq, or } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
 	groupPhaseFor,
 	RUBBER_DEFINITIONS,
@@ -132,20 +132,19 @@ export async function generateGroupRoundRobinTies(params: {
 	let created = 0;
 	let nextNo = await nextTieNumber(params.tieCodePrefix);
 
+	// Fetch existing ties for this group to check duplicates in memory
+	const existingTies = await db
+		.select({ teamAId: ties.teamAId, teamBId: ties.teamBId })
+		.from(ties)
+		.where(eq(ties.groupCode, params.groupCode));
+
+	const existingPairs = new Set(existingTies.map((t) => [t.teamAId, t.teamBId].sort().join('|')));
+
 	for (let i = 0; i < groupTeams.length; i += 1) {
 		for (let j = i + 1; j < groupTeams.length; j += 1) {
 			const teamA = groupTeams[i];
 			const teamB = groupTeams[j];
-			const duplicate = await db.query.ties.findFirst({
-				where: and(
-					eq(ties.groupCode, params.groupCode),
-					or(
-						and(eq(ties.teamAId, teamA.id), eq(ties.teamBId, teamB.id)),
-						and(eq(ties.teamAId, teamB.id), eq(ties.teamBId, teamA.id))
-					)
-				)
-			});
-			if (duplicate) continue;
+			if (existingPairs.has([teamA.id, teamB.id].sort().join('|'))) continue;
 
 			await createTieWithRubbers({
 				tieCode: `${params.tieCodePrefix}-${nextNo}`,

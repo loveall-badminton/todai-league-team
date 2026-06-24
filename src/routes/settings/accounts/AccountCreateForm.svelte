@@ -4,7 +4,6 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import { onMount } from 'svelte';
 	import { createAccount } from './accounts.remote';
 
 	let {
@@ -15,15 +14,7 @@
 		teamItems: SelectItem[];
 	} = $props();
 
-	onMount(() => {
-		createAccount.fields.set({
-			accountType: 'participant',
-			accountId: '',
-			name: '',
-			password: '',
-			teamId: ''
-		});
-	});
+	let accountType = $state('participant');
 </script>
 
 <FormToast result={createAccount.result} />
@@ -31,9 +22,15 @@
 	<div class="grid gap-4 sm:grid-cols-2">
 		<label class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">種別</span>
-			<AppSelect {...createAccount.fields.accountType.as('select')} items={accountTypeItems} />
+			<AppSelect
+				{...createAccount.fields.accountType.as('select', 'participant')}
+				items={accountTypeItems}
+				onValueChange={(value) => {
+					accountType = value;
+				}}
+			/>
 		</label>
-		{#if createAccount.fields.accountType.value() === 'team'}
+		{#if accountType === 'team'}
 			<label class="grid gap-1">
 				<span class="text-sm font-medium text-zinc-700">チーム</span>
 				<AppSelect {...createAccount.fields.teamId.as('select')} items={teamItems} required />

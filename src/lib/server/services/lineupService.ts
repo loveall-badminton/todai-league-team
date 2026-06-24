@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { lineupItems, lineupSubmissions, teamPlayers, ties } from '$lib/server/db/schema';
@@ -159,10 +159,10 @@ export async function saveLineupDraft(params: {
 			.where(eq(lineupSubmissions.id, submissionId));
 	}
 
-	for (const item of params.items) {
-		await db
-			.insert(lineupItems)
-			.values({
+	await db
+		.insert(lineupItems)
+		.values(
+			params.items.map((item) => ({
 				id: crypto.randomUUID(),
 				submissionId,
 				rubberCode: item.rubberCode,
@@ -170,16 +170,16 @@ export async function saveLineupDraft(params: {
 				player2Id: item.player2Id,
 				createdAt: now,
 				updatedAt: now
-			})
-			.onConflictDoUpdate({
-				target: [lineupItems.submissionId, lineupItems.rubberCode],
-				set: {
-					player1Id: item.player1Id,
-					player2Id: item.player2Id,
-					updatedAt: now
-				}
-			});
-	}
+			}))
+		)
+		.onConflictDoUpdate({
+			target: [lineupItems.submissionId, lineupItems.rubberCode],
+			set: {
+				player1Id: sql`excluded.player1_id`,
+				player2Id: sql`excluded.player2_id`,
+				updatedAt: now
+			}
+		});
 
 	return validation;
 }

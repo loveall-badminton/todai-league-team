@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
 import { courts, matchSidePlayers, matchSides, matches, tournaments } from '$lib/server/db/schema';
 
@@ -103,52 +103,65 @@ export async function listMatchesForTournament(tournamentId: string): Promise<Li
 		.where(eq(matches.tournamentId, tournamentId))
 		.orderBy(asc(matches.displayOrder), asc(matches.createdAt));
 	const courtRows = await listCourts(tournamentId);
-	const sideRows = await db
+
+	if (!matchRows.length) return [];
+
+	const matchIds = matchRows.map((m) => m.id);
+
+	const allSides = await db.select().from(matchSides).where(inArray(matchSides.matchId, matchIds));
+
+	const allPlayers = await db
 		.select()
-		.from(matchSides)
-		.where(eq(matchSides.matchId, matchRows[0]?.id ?? '__none__'));
+		.from(matchSidePlayers)
+		.where(inArray(matchSidePlayers.matchId, matchIds))
+		.orderBy(asc(matchSidePlayers.playerOrder));
 
-	return Promise.all(
-		matchRows.map(async (match) => {
-			const matchSidesRows =
-				matchRows.length === 1
-					? sideRows
-					: await db.select().from(matchSides).where(eq(matchSides.matchId, match.id));
-			const sideA = matchSidesRows.find((side) => side.side === 'A');
-			const sideB = matchSidesRows.find((side) => side.side === 'B');
-			const matchPlayers = await db
-				.select()
-				.from(matchSidePlayers)
-				.where(eq(matchSidePlayers.matchId, match.id))
-				.orderBy(asc(matchSidePlayers.playerOrder));
-			const server = matchPlayers.find((player) => player.id === match.currentServerPlayerId);
-			const court = courtRows.find((item) => item.id === match.courtId);
+	const sidesByMatchId = new Map<string, typeof allSides>();
+	for (const s of allSides) {
+		const list = sidesByMatchId.get(s.matchId) ?? [];
+		list.push(s);
+		sidesByMatchId.set(s.matchId, list);
+	}
 
-			return {
-				id: match.id,
-				tournamentId: match.tournamentId,
-				courtId: match.courtId,
-				courtName: court?.name ?? null,
-				discipline: match.discipline,
-				eventName: match.eventName,
-				category: match.category,
-				roundName: match.roundName,
-				status: match.status,
-				currentGameNo: match.currentGameNo,
-				currentScoreA: match.currentScoreA,
-				currentScoreB: match.currentScoreB,
-				gamesWonA: match.gamesWonA,
-				gamesWonB: match.gamesWonB,
-				winnerSide: match.winnerSide,
-				currentServingSide: match.currentServingSide,
-				currentServiceCourt: match.currentServiceCourt,
-				currentServerPlayerId: match.currentServerPlayerId,
-				currentReceiverPlayerId: match.currentReceiverPlayerId,
-				lastSeqNo: match.lastSeqNo,
-				sideAName: sideA?.displayName ?? 'A',
-				sideBName: sideB?.displayName ?? 'B',
-				serverName: server?.name ?? null
-			};
-		})
-	);
+	const playersByMatchId = new Map<string, typeof allPlayers>();
+	for (const p of allPlayers) {
+		const list = playersByMatchId.get(p.matchId) ?? [];
+		list.push(p);
+		playersByMatchId.set(p.matchId, list);
+	}
+
+	return matchRows.map((match) => {
+		const matchSidesRows = sidesByMatchId.get(match.id) ?? [];
+		const matchPlayers = playersByMatchId.get(match.id) ?? [];
+		const sideA = matchSidesRows.find((side) => side.side === 'A');
+		const sideB = matchSidesRows.find((side) => side.side === 'B');
+		const server = matchPlayers.find((player) => player.id === match.currentServerPlayerId);
+		const court = courtRows.find((item) => item.id === match.courtId);
+
+		return {
+			id: match.id,
+			tournamentId: match.tournamentId,
+			courtId: match.courtId,
+			courtName: court?.name ?? null,
+			discipline: match.discipline,
+			eventName: match.eventName,
+			category: match.category,
+			roundName: match.roundName,
+			status: match.status,
+			currentGameNo: match.currentGameNo,
+			currentScoreA: match.currentScoreA,
+			currentScoreB: match.currentScoreB,
+			gamesWonA: match.gamesWonA,
+			gamesWonB: match.gamesWonB,
+			winnerSide: match.winnerSide,
+			currentServingSide: match.currentServingSide,
+			currentServiceCourt: match.currentServiceCourt,
+			currentServerPlayerId: match.currentServerPlayerId,
+			currentReceiverPlayerId: match.currentReceiverPlayerId,
+			lastSeqNo: match.lastSeqNo,
+			sideAName: sideA?.displayName ?? 'A',
+			sideBName: sideB?.displayName ?? 'B',
+			serverName: server?.name ?? null
+		};
+	});
 }

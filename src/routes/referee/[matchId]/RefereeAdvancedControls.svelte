@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import type { GameState, LetCalledInput, ServiceState, MatchPlayer } from '$lib/domain/types';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -29,7 +28,7 @@
 	async function run(fn: () => Promise<unknown>) {
 		try {
 			await fn();
-			await invalidateAll();
+			// Invalidation handled by parent page's realtime flow (createRealtimeQueryFlow)
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : '操作に失敗しました');
 		}

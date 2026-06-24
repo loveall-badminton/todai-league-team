@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import Card from '$lib/components/Card.svelte';
@@ -73,6 +73,7 @@
 		<ConfirmDialog
 			onConfirm={async () => {
 				await deleteTeam();
+				await goto(resolve('/teams'));
 			}}
 			triggerLabel="チームを削除"
 			triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"

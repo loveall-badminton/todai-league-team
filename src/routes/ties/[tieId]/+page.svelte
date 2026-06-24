@@ -2,6 +2,7 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
@@ -239,11 +240,8 @@
 	<span class="ml-auto">
 		<ConfirmDialog
 			onConfirm={async () => {
-				try {
-					await deleteTie();
-				} catch {
-					// redirect throws
-				}
+				await deleteTie();
+				goto(resolve('/ties'));
 			}}
 			triggerLabel="対戦を削除"
 			triggerClass="text-xs text-red-500 hover:text-red-700 hover:underline"

@@ -10,7 +10,7 @@ import {
 	updateTeamPlayer,
 	updateTeam as updateTeamRepo
 } from '$lib/server/repositories/tokyoLeagueRepository';
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 import {
 	bulkCreatePlayersSchema,
@@ -102,5 +102,4 @@ export const deleteTeam = command(async () => {
 	const event = getRequestEvent();
 	requireAdmin();
 	await deleteTeamRepo(event.params.teamId!);
-	redirect(303, '/teams');
 });

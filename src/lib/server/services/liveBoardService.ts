@@ -279,6 +279,81 @@ export async function getPublicRubbers(tieId: string): Promise<PublicRubberSumma
 	return getPublicRubbersForTie(tieId, revealed);
 }
 
+async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSummary[][]> {
+	if (!tieIds.length) return [];
+
+	const db = getRequestDb();
+
+	// 1. Fetch all rubbers for all ties
+	const allRubbers = await db
+		.select()
+		.from(rubbers)
+		.where(inArray(rubbers.tieId, tieIds))
+		.orderBy(asc(rubbers.displayOrder));
+
+	const matchIds = allRubbers.map((r) => r.matchId).filter((id): id is string => !!id);
+
+	// 2. Fetch all matches
+	const allMatches =
+		matchIds.length > 0
+			? await db
+					.select({
+						id: matches.id,
+						gamesWonA: matches.gamesWonA,
+						gamesWonB: matches.gamesWonB,
+						currentScoreA: matches.currentScoreA,
+						currentScoreB: matches.currentScoreB,
+						currentGameNo: matches.currentGameNo,
+						status: matches.status
+					})
+					.from(matches)
+					.where(inArray(matches.id, matchIds))
+			: [];
+
+	// 3. Fetch all game scores
+	const allGameScores = matchIds.length > 0 ? await fetchLiveGameScores(matchIds) : [];
+
+	// 4. Fetch all lineup submissions
+	const allSubmissions = await db
+		.select()
+		.from(lineupSubmissions)
+		.where(inArray(lineupSubmissions.tieId, tieIds));
+
+	const submissionIds = allSubmissions.map((s) => s.id);
+
+	// 5. Fetch all lineup items
+	const allItems =
+		submissionIds.length > 0
+			? await db.select().from(lineupItems).where(inArray(lineupItems.submissionId, submissionIds))
+			: [];
+
+	const playerIds = allItems
+		.flatMap((item) => [item.player1Id, item.player2Id])
+		.filter((id): id is string => !!id);
+
+	// 6. Fetch all players
+	const allPlayers =
+		playerIds.length > 0
+			? await db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
+			: [];
+
+	// Group per tie
+	return tieIds.map((tieId) => {
+		const tieRubbers = allRubbers.filter((r) => r.tieId === tieId);
+		const tieSubmissions = allSubmissions.filter((s) => s.tieId === tieId);
+
+		return createPublicRubberSummaries({
+			rubbers: tieRubbers,
+			matches: allMatches,
+			gameScores: allGameScores,
+			revealed: true,
+			submissions: tieSubmissions,
+			items: allItems,
+			players: allPlayers
+		});
+	});
+}
+
 export async function getActiveTieBoard() {
 	const db = getRequestDb();
 	const tieRows = await db
@@ -296,13 +371,13 @@ export async function getActiveTieBoard() {
 			rubbersByTieId: {} as Record<string, PublicRubberSummary[]>
 		};
 
+	const tieIds = tieRows.map((t) => t.id);
 	const teamIds = [
 		...new Set(tieRows.flatMap((t) => [t.teamAId, t.teamBId]).filter((id): id is string => !!id))
 	];
-	const [teamRows, rubberResults] = await Promise.all([
-		db.select().from(teams).where(inArray(teams.id, teamIds)),
-		Promise.all(tieRows.map((tie) => getPublicRubbersForTie(tie.id, !!tie.lineupsRevealedAt)))
-	]);
+	const teamRows = await db.select().from(teams).where(inArray(teams.id, teamIds));
+
+	const rubberResults = await getBatchedPublicRubbers(tieIds);
 
 	return {
 		ties: tieRows.map((tie) => ({

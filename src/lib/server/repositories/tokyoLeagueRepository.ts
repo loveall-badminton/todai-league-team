@@ -101,15 +101,17 @@ export async function updateScoringRule(input: {
 export async function listTeams(): Promise<TeamSummary[]> {
 	const db = getRequestDb();
 	const rows = await db.select().from(teams).orderBy(asc(teams.displayOrder), asc(teams.name));
-	return Promise.all(
-		rows.map(async (team) => {
-			const [{ value }] = await db
-				.select({ value: count() })
-				.from(teamPlayers)
-				.where(eq(teamPlayers.teamId, team.id));
-			return { ...team, playerCount: value };
-		})
-	);
+	if (!rows.length) return [];
+
+	const teamIds = rows.map((t) => t.id);
+	const counts = await db
+		.select({ teamId: teamPlayers.teamId, value: count() })
+		.from(teamPlayers)
+		.where(inArray(teamPlayers.teamId, teamIds))
+		.groupBy(teamPlayers.teamId);
+
+	const countByTeamId = new Map(counts.map((c) => [c.teamId, c.value]));
+	return rows.map((team) => ({ ...team, playerCount: countByTeamId.get(team.id) ?? 0 }));
 }
 
 export async function listTeamsByGroup(groupCode: GroupCode): Promise<TeamSummary[]> {
@@ -310,48 +312,59 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 		: [];
 	const summaryByTieId = summarizeTieSummaries(tieRows, rubberRows);
 
-	return Promise.all(
-		tieRows.map(async (tie) => {
-			const assignments = await db
-				.select()
-				.from(officiatingAssignments)
-				.where(
-					and(
-						eq(officiatingAssignments.tieId, tie.id),
-						eq(officiatingAssignments.role, 'umpire_team')
+	const tieIds = tieRows.map((tie) => tie.id);
+	const allAssignments =
+		tieIds.length > 0
+			? await db
+					.select()
+					.from(officiatingAssignments)
+					.where(
+						and(
+							inArray(officiatingAssignments.tieId, tieIds),
+							eq(officiatingAssignments.role, 'umpire_team')
+						)
 					)
-				)
-				.orderBy(asc(officiatingAssignments.createdAt));
-			const assignment = assignments[0] ?? null;
-			const assignedTeamIds = assignments
-				.map((row) => row.assignedTeamId)
-				.filter((id): id is string => !!id);
-			const assignedTeamNames = assignedTeamIds
-				.map((id) => teamRows.find((team) => team.id === id)?.name)
-				.filter((name): name is string => !!name);
-			const summary = summaryByTieId.get(tie.id) ?? {
-				rubberCount: 0,
-				teamScoreA: tie.teamScoreA,
-				teamScoreB: tie.teamScoreB,
-				winnerTeamId: tie.winnerTeamId
-			};
+					.orderBy(asc(officiatingAssignments.createdAt))
+			: [];
 
-			return {
-				...tie,
-				teamScoreA: summary.teamScoreA,
-				teamScoreB: summary.teamScoreB,
-				winnerTeamId: summary.winnerTeamId,
-				teamAName: teamRows.find((team) => team.id === tie.teamAId)?.name ?? null,
-				teamBName: teamRows.find((team) => team.id === tie.teamBId)?.name ?? null,
-				officiatingTeamId: assignedTeamIds[0] ?? null,
-				officiatingTeamName: assignedTeamNames[0] ?? null,
-				officiatingTeamIds: assignedTeamIds,
-				officiatingTeamNames: assignedTeamNames,
-				officiatingNote: assignment?.note ?? null,
-				rubberCount: summary.rubberCount
-			};
-		})
-	);
+	const assignmentsByTieId = new Map<string, typeof allAssignments>();
+	for (const a of allAssignments) {
+		const list = assignmentsByTieId.get(a.tieId) ?? [];
+		list.push(a);
+		assignmentsByTieId.set(a.tieId, list);
+	}
+
+	return tieRows.map((tie) => {
+		const assignments = assignmentsByTieId.get(tie.id) ?? [];
+		const assignment = assignments[0] ?? null;
+		const assignedTeamIds = assignments
+			.map((row) => row.assignedTeamId)
+			.filter((id): id is string => !!id);
+		const assignedTeamNames = assignedTeamIds
+			.map((id) => teamRows.find((team) => team.id === id)?.name)
+			.filter((name): name is string => !!name);
+		const summary = summaryByTieId.get(tie.id) ?? {
+			rubberCount: 0,
+			teamScoreA: tie.teamScoreA,
+			teamScoreB: tie.teamScoreB,
+			winnerTeamId: tie.winnerTeamId
+		};
+
+		return {
+			...tie,
+			teamScoreA: summary.teamScoreA,
+			teamScoreB: summary.teamScoreB,
+			winnerTeamId: summary.winnerTeamId,
+			teamAName: teamRows.find((team) => team.id === tie.teamAId)?.name ?? null,
+			teamBName: teamRows.find((team) => team.id === tie.teamBId)?.name ?? null,
+			officiatingTeamId: assignedTeamIds[0] ?? null,
+			officiatingTeamName: assignedTeamNames[0] ?? null,
+			officiatingTeamIds: assignedTeamIds,
+			officiatingTeamNames: assignedTeamNames,
+			officiatingNote: assignment?.note ?? null,
+			rubberCount: summary.rubberCount
+		};
+	});
 }
 
 export async function listGroupTies(groupCode: GroupCode): Promise<TieSummary[]> {
@@ -572,16 +585,23 @@ export async function listPlayersForTeam(teamId: string): Promise<TeamPlayer[]> 
 export async function listAllTeamsWithPlayers(): Promise<{ team: Team; players: TeamPlayer[] }[]> {
 	const db = getRequestDb();
 	const allTeams = await db.select().from(teams).orderBy(asc(teams.displayOrder), asc(teams.name));
-	return Promise.all(
-		allTeams.map(async (team) => {
-			const players = await db
-				.select()
-				.from(teamPlayers)
-				.where(eq(teamPlayers.teamId, team.id))
-				.orderBy(asc(teamPlayers.displayOrder), asc(teamPlayers.name));
-			return { team, players };
-		})
-	);
+	if (!allTeams.length) return [];
+
+	const teamIds = allTeams.map((t) => t.id);
+	const allPlayers = await db
+		.select()
+		.from(teamPlayers)
+		.where(inArray(teamPlayers.teamId, teamIds))
+		.orderBy(asc(teamPlayers.displayOrder), asc(teamPlayers.name));
+
+	const playersByTeamId = new Map<string, TeamPlayer[]>();
+	for (const p of allPlayers) {
+		const list = playersByTeamId.get(p.teamId) ?? [];
+		list.push(p);
+		playersByTeamId.set(p.teamId, list);
+	}
+
+	return allTeams.map((team) => ({ team, players: playersByTeamId.get(team.id) ?? [] }));
 }
 
 export async function listTiesForTeam(teamId: string): Promise<Tie[]> {

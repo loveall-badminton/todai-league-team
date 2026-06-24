@@ -16,7 +16,7 @@ import {
 } from '$lib/server/services/tieOperationService';
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import type { MatchState } from '$lib/domain/types';
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { getTieHeaderData, getTieLineupsData } from './tiePageData';
 
@@ -120,7 +120,6 @@ export const deleteTie = command(async () => {
 		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header'] },
 		finals: { tieIds: [event.params.tieId!] }
 	});
-	redirect(303, '/ties');
 });
 
 export const confirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {

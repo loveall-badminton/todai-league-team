@@ -17,7 +17,7 @@
 <Collapsible.Root>
 	<Collapsible.Trigger
 		class={cn(
-			'group flex w-full cursor-pointer items-center justify-between px-5 py-3 text-sm font-medium text-zinc-700 outline-none hover:bg-muted',
+			'group flex w-full cursor-pointer items-center justify-between px-5 py-3 text-sm font-medium text-zinc-700 outline-none hover:bg-zinc-100',
 			className
 		)}
 	>

@@ -38,18 +38,29 @@ export type StandingOverrideRecord = {
 };
 
 export async function calculateGroupStandings(groupCode: GroupCode): Promise<GroupStanding[]> {
+	const all = await calculateAllGroupStandings();
+	return all[groupCode];
+}
+
+export async function calculateAllGroupStandings(): Promise<Record<GroupCode, GroupStanding[]>> {
 	const db = getRequestDb();
-	const groupTeams = await db
+
+	const groupCodes: GroupCode[] = ['A', 'B'];
+
+	// Fetch both groups' data in single queries
+	const allTeams = await db
 		.select()
 		.from(teams)
-		.where(and(eq(teams.groupCode, groupCode), eq(teams.status, 'active')))
+		.where(and(inArray(teams.groupCode, groupCodes), eq(teams.status, 'active')))
 		.orderBy(asc(teams.displayOrder), asc(teams.name));
-	const groupTies = await db
+
+	const allTies = await db
 		.select()
 		.from(ties)
-		.where(eq(ties.groupCode, groupCode))
+		.where(inArray(ties.groupCode, groupCodes))
 		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
-	const tieIds = groupTies.map((tie) => tie.id);
+
+	const tieIds = allTies.map((tie) => tie.id);
 	const rubberRows =
 		tieIds.length > 0 ? await db.select().from(rubbers).where(inArray(rubbers.tieId, tieIds)) : [];
 	const matchIds = rubberRows.map((rubber) => rubber.matchId).filter((id): id is string => !!id);
@@ -58,15 +69,24 @@ export async function calculateGroupStandings(groupCode: GroupCode): Promise<Gro
 	const overrides = await db
 		.select()
 		.from(groupStandingOverrides)
-		.where(eq(groupStandingOverrides.groupCode, groupCode));
+		.where(inArray(groupStandingOverrides.groupCode, groupCodes));
 
-	return calculateGroupStandingsFromRecords({
-		teams: groupTeams,
-		ties: groupTies,
-		rubbers: rubberRows,
-		matches: matchRows,
-		overrides
-	});
+	return {
+		A: calculateGroupStandingsFromRecords({
+			teams: allTeams.filter((t) => t.groupCode === 'A'),
+			ties: allTies.filter((t) => t.groupCode === 'A'),
+			rubbers: rubberRows,
+			matches: matchRows,
+			overrides: overrides.filter((o) => o.groupCode === 'A')
+		}),
+		B: calculateGroupStandingsFromRecords({
+			teams: allTeams.filter((t) => t.groupCode === 'B'),
+			ties: allTies.filter((t) => t.groupCode === 'B'),
+			rubbers: rubberRows,
+			matches: matchRows,
+			overrides: overrides.filter((o) => o.groupCode === 'B')
+		})
+	};
 }
 
 export function calculateGroupStandingsFromRecords(params: {

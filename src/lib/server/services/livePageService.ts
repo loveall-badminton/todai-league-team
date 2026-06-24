@@ -1,8 +1,9 @@
 import { getRequestDb } from '$lib/server/db/request';
 import { rubbers, scoreEvents } from '$lib/server/db/schema';
-import { listGroupTies, listTeams, listTies } from '$lib/server/repositories/tokyoLeagueRepository';
+import { listTeams } from '$lib/server/repositories/tokyoLeagueRepository';
 import { getActiveTieBoard, getFinalsTieBoard } from '$lib/server/services/liveBoardService';
-import { calculateGroupStandings } from '$lib/server/services/standingService';
+import { calculateAllGroupStandings } from '$lib/server/services/standingService';
+import { listTies } from '$lib/server/repositories/tokyoLeagueRepository';
 import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { buildProgressionFromEvents, type ProgressionEvent } from '$lib/utils/scoreProgression';
 
@@ -56,24 +57,25 @@ export async function getScoreProgressionData() {
 }
 
 export async function getLivePageData() {
-	const [activeTies, standings, finalsBoard, schedule, progression] = await Promise.all([
+	const [activeTies, allStandings, finalsBoard, schedule, teams, progression] = await Promise.all([
 		getActiveTieBoard(),
-		(async () => {
-			const [standingA, standingB, groupA, groupB, teams] = await Promise.all([
-				calculateGroupStandings('A'),
-				calculateGroupStandings('B'),
-				listGroupTies('A'),
-				listGroupTies('B'),
-				listTeams()
-			]);
-			return { standingA, standingB, groupA, groupB, teams };
-		})(),
+		calculateAllGroupStandings(),
 		getFinalsTieBoard(),
 		listTies(),
+		listTeams(),
 		getScoreProgressionData()
 	]);
 
-	return { activeTies, standings, finalsBoard, schedule, progression };
+	const groupA = schedule.filter((t) => t.phase === 'group_a');
+	const groupB = schedule.filter((t) => t.phase === 'group_b');
+
+	return {
+		activeTies,
+		standings: { standingA: allStandings.A, standingB: allStandings.B, groupA, groupB, teams },
+		finalsBoard,
+		schedule,
+		progression
+	};
 }
 
 export type LivePageData = Awaited<ReturnType<typeof getLivePageData>>;
