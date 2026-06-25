@@ -37,14 +37,11 @@
 	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
 
 	function undoLabel(e: (typeof data.events)[number]): string {
-		if (e.eventType === 'rally_won') {
-			const name = e.side === 'A' ? sideAName : e.side === 'B' ? sideBName : '?';
-			return `${name} 得点 (${e.scoreAAfter ?? '?'}–${e.scoreBAfter ?? '?'})`;
-		}
 		return buildUndoLabel(
 			e as unknown as Parameters<typeof buildUndoLabel>[0],
 			sideAName,
-			sideBName
+			sideBName,
+			{ left: leftSide, right: rightSide }
 		);
 	}
 

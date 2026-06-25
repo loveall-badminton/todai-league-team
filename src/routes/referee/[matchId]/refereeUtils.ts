@@ -10,6 +10,11 @@ export type ScoreEvent = {
 	scoreBAfter?: number | null;
 };
 
+type DisplaySideOrder = {
+	left: 'A' | 'B';
+	right: 'A' | 'B';
+};
+
 /**
  * イベントリストから「まだ取り消されていない最後の取り消し可能イベント」を返す。
  * 取り消し済みのイベント（undo_applied の targetSeqNo に一致するもの）は除外する。
@@ -33,10 +38,17 @@ export function findLastUndoableEvent<T extends ScoreEvent>(
 /**
  * アンドゥ対象イベントのラベルを返す。審判画面の「取り消し」ボタン表示用。
  */
-export function undoLabel(event: ScoreEvent, sideAName: string, sideBName: string): string {
+export function undoLabel(
+	event: ScoreEvent,
+	sideAName: string,
+	sideBName: string,
+	displayOrder: DisplaySideOrder = { left: 'A', right: 'B' }
+): string {
 	if (event.eventType === 'rally_won') {
 		const name = event.side === 'A' ? sideAName : event.side === 'B' ? sideBName : '?';
-		return `${name} 得点 (${event.scoreAAfter}–${event.scoreBAfter})`;
+		const leftScore = displayOrder.left === 'A' ? event.scoreAAfter : event.scoreBAfter;
+		const rightScore = displayOrder.right === 'A' ? event.scoreAAfter : event.scoreBAfter;
+		return `${name} 得点 (${leftScore}–${rightScore})`;
 	}
 	if (event.eventType === 'match_started' || event.eventType === 'game_started')
 		return 'サービス設定';

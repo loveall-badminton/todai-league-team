@@ -142,6 +142,20 @@ describe('undoLabel', () => {
 		expect(undoLabel(event, 'チームA', 'チームB')).toBe('チームA 得点 (10–8)');
 	});
 
+	test('formats rally_won score in left-right order after change ends', () => {
+		const event = {
+			eventType: 'rally_won',
+			seqNo: 5,
+			targetSeqNo: null,
+			side: 'A',
+			scoreAAfter: 10,
+			scoreBAfter: 8
+		};
+		expect(undoLabel(event, 'チームA', 'チームB', { left: 'B', right: 'A' })).toBe(
+			'チームA 得点 (8–10)'
+		);
+	});
+
 	test('formats rally_won for side B with score', () => {
 		const event = {
 			eventType: 'rally_won',
