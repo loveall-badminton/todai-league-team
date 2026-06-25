@@ -19,12 +19,10 @@ export type ProgressionEvent = {
  * - seqNo 昇順に処理することを前提とする
  */
 export function buildProgressionFromEvents(events: ProgressionEvent[]): ScorePoint[] {
-	const excluded = new Set<number>();
+	const excludedRanges: Array<{ start: number; end: number }> = [];
 	for (const e of events) {
 		if ((e.type === 'undo_applied' || e.type === 'undo') && e.targetSeqNo != null) {
-			for (let s = e.targetSeqNo; s < e.seqNo; s++) {
-				excluded.add(s);
-			}
+			excludedRanges.push({ start: e.targetSeqNo, end: e.seqNo });
 		}
 	}
 	const points: ScorePoint[] = [];
@@ -34,12 +32,16 @@ export function buildProgressionFromEvents(events: ProgressionEvent[]): ScorePoi
 			e.gameNo != null &&
 			e.scoreA != null &&
 			e.scoreB != null &&
-			!excluded.has(e.seqNo)
+			!isSeqNoExcluded(e.seqNo, excludedRanges)
 		) {
 			points.push({ gameNo: e.gameNo, scoreA: e.scoreA, scoreB: e.scoreB });
 		}
 	}
 	return points;
+}
+
+function isSeqNoExcluded(seqNo: number, ranges: Array<{ start: number; end: number }>) {
+	return ranges.some((range) => seqNo >= range.start && seqNo < range.end);
 }
 
 /**

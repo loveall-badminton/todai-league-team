@@ -93,6 +93,12 @@ describe('buildProgressionFromEvents', () => {
 		expect(result).toEqual([{ gameNo: 1, scoreA: 1, scoreB: 0 }]);
 	});
 
+	test('handles large seqNo gaps without iterating every missing seqNo', () => {
+		const events = [rally(1, 1, 0), rally(2_000_000, 1, 1), undoApplied(4_000_000, 2)];
+		const result = buildProgressionFromEvents(events);
+		expect(result).toEqual([{ gameNo: 1, scoreA: 1, scoreB: 0 }]);
+	});
+
 	test('non-rally events are ignored', () => {
 		const events: ProgressionEvent[] = [
 			{

@@ -170,10 +170,16 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 	const sideA = params.submissions.find((s) => s.side === 'A');
 	const sideB = params.submissions.find((s) => s.side === 'B');
 	const gameScores = params.gameScores ?? [];
+	const matchById = new Map(params.matches.map((match) => [match.id, match]));
+	const gameScoresByMatchId = groupBy(gameScores, (score) => score.matchId);
+	const playerNameById = new Map(params.players.map((player) => [player.id, player.name]));
+	const lineupItemBySubmissionAndRubber = new Map(
+		params.items.map((item) => [`${item.submissionId}:${item.rubberCode}`, item])
+	);
 
 	return params.rubbers.map((rubber) => {
-		const match = params.matches.find((m) => m.id === rubber.matchId) ?? null;
-		const scores = scoreFor(match, gameScores);
+		const match = rubber.matchId ? (matchById.get(rubber.matchId) ?? null) : null;
+		const scores = scoreFor(match, match ? (gameScoresByMatchId.get(match.id) ?? []) : []);
 		return {
 			...rubber,
 			matchStatus: match?.status ?? null,
@@ -182,10 +188,20 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 			pointScore: scores.pointScore,
 			gameDetails: scores.gameDetails,
 			sideAPlayers: params.revealed
-				? lineupNames(params.items, params.players, sideA?.id ?? null, rubber.code)
+				? lineupNames(
+						lineupItemBySubmissionAndRubber,
+						playerNameById,
+						sideA?.id ?? null,
+						rubber.code
+					)
 				: null,
 			sideBPlayers: params.revealed
-				? lineupNames(params.items, params.players, sideB?.id ?? null, rubber.code)
+				? lineupNames(
+						lineupItemBySubmissionAndRubber,
+						playerNameById,
+						sideB?.id ?? null,
+						rubber.code
+					)
 				: null
 		};
 	});
@@ -210,9 +226,7 @@ function scoreFor(
 ): { gamesScore: string | null; pointScore: string | null; gameDetails: LiveGameScore[] } {
 	if (!match) return { gamesScore: null, pointScore: null, gameDetails: [] };
 
-	const matchGames = gameScores
-		.filter((g) => g.matchId === match.id)
-		.sort((a, b) => a.gameNo - b.gameNo);
+	const matchGames = [...gameScores].sort((a, b) => a.gameNo - b.gameNo);
 
 	const gameDetails: LiveGameScore[] = [];
 
@@ -256,19 +270,28 @@ function scoreFor(
 }
 
 function lineupNames(
-	items: PublicLineupItemInput[],
-	players: PublicTeamPlayerInput[],
+	itemsBySubmissionAndRubber: Map<string, PublicLineupItemInput>,
+	playerNameById: Map<string, string>,
 	submissionId: string | null,
 	rubberCode: string
 ) {
 	if (!submissionId) return null;
-	const item = items.find(
-		(row) => row.submissionId === submissionId && row.rubberCode === rubberCode
-	);
+	const item = itemsBySubmissionAndRubber.get(`${submissionId}:${rubberCode}`);
 	if (!item) return null;
-	const first = players.find((p) => p.id === item.player1Id)?.name ?? '';
-	const second = players.find((p) => p.id === item.player2Id)?.name ?? '';
+	const first = playerNameById.get(item.player1Id) ?? '';
+	const second = playerNameById.get(item.player2Id) ?? '';
 	return [first, second].filter(Boolean).join(' / ') || null;
+}
+
+function groupBy<T, K>(items: T[], keyFor: (item: T) => K) {
+	const map = new Map<K, T[]>();
+	for (const item of items) {
+		const key = keyFor(item);
+		const group = map.get(key);
+		if (group) group.push(item);
+		else map.set(key, [item]);
+	}
+	return map;
 }
 
 export async function getPublicRubbers(tieId: string): Promise<PublicRubberSummary[]> {
@@ -338,16 +361,15 @@ async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSu
 			: [];
 
 	// Group per tie
+	const rubbersByTieId = groupBy(allRubbers, (rubber) => rubber.tieId);
+	const submissionsByTieId = groupBy(allSubmissions, (submission) => submission.tieId);
 	return tieIds.map((tieId) => {
-		const tieRubbers = allRubbers.filter((r) => r.tieId === tieId);
-		const tieSubmissions = allSubmissions.filter((s) => s.tieId === tieId);
-
 		return createPublicRubberSummaries({
-			rubbers: tieRubbers,
+			rubbers: rubbersByTieId.get(tieId) ?? [],
 			matches: allMatches,
 			gameScores: allGameScores,
 			revealed: true,
-			submissions: tieSubmissions,
+			submissions: submissionsByTieId.get(tieId) ?? [],
 			items: allItems,
 			players: allPlayers
 		});
@@ -376,14 +398,15 @@ export async function getActiveTieBoard() {
 		...new Set(tieRows.flatMap((t) => [t.teamAId, t.teamBId]).filter((id): id is string => !!id))
 	];
 	const teamRows = await db.select().from(teams).where(inArray(teams.id, teamIds));
+	const teamNameById = new Map(teamRows.map((team) => [team.id, team.name]));
 
 	const rubberResults = await getBatchedPublicRubbers(tieIds);
 
 	return {
 		ties: tieRows.map((tie) => ({
 			...tie,
-			teamAName: teamRows.find((t) => t.id === tie.teamAId)?.name ?? null,
-			teamBName: teamRows.find((t) => t.id === tie.teamBId)?.name ?? null
+			teamAName: tie.teamAId ? (teamNameById.get(tie.teamAId) ?? null) : null,
+			teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null
 		})),
 		rubbersByTieId: Object.fromEntries(tieRows.map((tie, i) => [tie.id, rubberResults[i]]))
 	};
@@ -406,12 +429,13 @@ export async function getFinalsTieBoard() {
 	const teamRows = teamIds.length
 		? await db.select().from(teams).where(inArray(teams.id, teamIds))
 		: [];
+	const teamNameById = new Map(teamRows.map((team) => [team.id, team.name]));
 
 	return {
 		finalsBoard: tieRows.map((tie) => ({
 			...tie,
-			teamAName: teamRows.find((t) => t.id === tie.teamAId)?.name ?? null,
-			teamBName: teamRows.find((t) => t.id === tie.teamBId)?.name ?? null
+			teamAName: tie.teamAId ? (teamNameById.get(tie.teamAId) ?? null) : null,
+			teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null
 		}))
 	};
 }
