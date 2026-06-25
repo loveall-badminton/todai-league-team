@@ -19,9 +19,10 @@
 </script>
 
 <Tabs.Root
-	bind:value
+	{value}
 	onValueChange={(v) => {
-		onValueChange?.(v ?? '');
+		value = v ?? '';
+		onValueChange?.(value);
 	}}
 >
 	<Tabs.List class={cn('flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5', listClass)}>

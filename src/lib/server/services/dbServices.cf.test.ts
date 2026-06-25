@@ -404,6 +404,33 @@ describe('tieOperationService DB state transitions', () => {
 		expect(rubberRows.every((rubber) => rubber.matchId)).toBe(true);
 	});
 
+	test('startTie does not move tie into playing state when match creation fails', async () => {
+		await seedTeams();
+		const tieId = await createTieWithRubbers({
+			tieCode: 'start-fail',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			scoringRuleId: 'GROUP_15',
+			now
+		});
+		await seedSubmittedLineups(tieId);
+
+		const submissionA = await cfTestDb.db.query.lineupSubmissions.findFirst({
+			where: eq(lineupSubmissions.tieId, tieId)
+		});
+		await cfTestDb.db.delete(lineupItems).where(eq(lineupItems.submissionId, submissionA!.id));
+
+		await expect(startTie(tieId, { now })).rejects.toThrow();
+
+		const tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+		const rubberRows = await cfTestDb.db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
+		expect(tie).toMatchObject({ status: 'ready', lineupsRevealedAt: now, actualStartAt: null });
+		expect(rubberRows.every((rubber) => !rubber.matchId)).toBe(true);
+		expect(rubberRows.every((rubber) => rubber.status !== 'playing')).toBe(true);
+	});
+
 	test('syncRubberResultFromMatch updates rubber result and recalculates tie score', async () => {
 		await seedTeams();
 		await cfTestDb.db.insert(ties).values({

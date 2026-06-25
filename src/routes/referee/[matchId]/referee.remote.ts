@@ -5,15 +5,17 @@ import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
 import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
 import {
-	getMatchWithPlayers,
 	getMatchPlayers,
+	getMatchWithPlayers,
 	getMatchState
 } from '$lib/server/repositories/matchRepository';
-import { applyMatchAction } from '$lib/server/services/matchActionService';
+import {
+	applyMatchActionWithRealtime,
+	autoConfirmMatchIfComplete,
+	type MatchActionRealtimeResult
+} from '$lib/server/services/matchRealtimeActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
-import { getLastUndoableScoreEvent } from '$lib/server/repositories/scoreEventRepository';
 import * as v from 'valibot';
-import { buildRealtimeScorePayload, resolveRealtimeInput } from './refereeRealtime';
 
 const sideSchema = SideSchema;
 
@@ -27,20 +29,14 @@ async function applyAction(
 	await requireRefereeMatchAccess(matchId);
 	const state = await getMatchState(matchId);
 	const players = await getMatchPlayers(matchId);
-	let afterState: MatchState;
-	let input: ScoreEventInput;
+	let primary: MatchActionRealtimeResult;
 	try {
-		input = buildInput(state, players);
-		const lastUndoableEvent =
-			input.type === 'undo' && input.targetSeqNo === undefined
-				? await getLastUndoableScoreEvent(matchId)
-				: null;
-		input = resolveRealtimeInput(input, lastUndoableEvent?.seqNo);
-		afterState = await applyMatchAction({
+		const now = new Date().toISOString();
+		primary = await applyMatchActionWithRealtime({
 			matchId,
-			input,
+			input: buildInput(state, players),
 			actorName: null,
-			now: new Date().toISOString(),
+			now,
 			beforeState: state,
 			players
 		});
@@ -48,33 +44,16 @@ async function applyAction(
 		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 
-	notifyMatch(matchId, ['score'], {
-		score: buildRealtimeScorePayload(input, state, afterState)
+	broadcastScoreUpdate(matchId, primary.scorePayload);
+	const followUp = await autoConfirmMatchIfComplete({
+		matchId,
+		state: primary.afterState,
+		players: primary.players,
+		actorName: null,
+		now: new Date().toISOString()
 	});
-	notifyLiveBoard(['score'], {
-		score: buildRealtimeScorePayload(input, state, afterState)
-	});
-
-	if (['finished', 'forfeited', 'retired'].includes(afterState.status)) {
-		const confirmInput: ScoreEventInput = {
-			type: 'match_confirmed',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: afterState.lastSeqNo
-		};
-		const confirmedState = await applyMatchAction({
-			matchId,
-			input: confirmInput,
-			actorName: null,
-			now: new Date().toISOString(),
-			beforeState: afterState,
-			players
-		});
-		notifyMatch(matchId, ['score'], {
-			score: buildRealtimeScorePayload(confirmInput, afterState, confirmedState)
-		});
-		notifyLiveBoard(['score'], {
-			score: buildRealtimeScorePayload(confirmInput, afterState, confirmedState)
-		});
+	if (followUp) {
+		broadcastScoreUpdate(matchId, followUp.scorePayload);
 	}
 }
 
@@ -220,9 +199,18 @@ export const cutoff = form(async () => {
 		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 	const afterState = await getMatchState(matchId);
-	notifyMatch(matchId, ['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
-	notifyLiveBoard(['score'], { score: { state: afterState, event: { type: 'cutoff' } } });
+	broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
 });
+
+function broadcastScoreUpdate(
+	matchId: string,
+	score:
+		| MatchActionRealtimeResult['scorePayload']
+		| { state: MatchState; event: { type: 'cutoff' } }
+) {
+	notifyMatch(matchId, ['score'], { score });
+	notifyLiveBoard(['score'], { score });
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

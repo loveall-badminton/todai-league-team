@@ -77,23 +77,20 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 		await revealLineups(tieId, now);
 	}
 
-	await db
-		.update(ties)
-		.set({ status: 'playing', actualStartAt: tie.actualStartAt ?? now, updatedAt: now })
-		.where(eq(ties.id, tieId));
-	await db.update(rubbers).set({ status: 'ready', updatedAt: now }).where(eq(rubbers.tieId, tieId));
-
-	// Auto-create scoring matches for all rubbers
 	const allRubbers = await db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
 	for (const rubber of allRubbers) {
 		if (!rubber.matchId) {
-			try {
-				await createMatchFromRubber(rubber.id, now);
-			} catch {
-				// continue even if one rubber fails (e.g. missing lineup item)
-			}
+			await createMatchFromRubber(rubber.id, now);
 		}
 	}
+
+	await db.batch([
+		db
+			.update(ties)
+			.set({ status: 'playing', actualStartAt: tie.actualStartAt ?? now, updatedAt: now })
+			.where(eq(ties.id, tieId)),
+		db.update(rubbers).set({ status: 'scheduled', updatedAt: now }).where(eq(rubbers.tieId, tieId))
+	]);
 }
 
 export async function createMatchFromRubber(

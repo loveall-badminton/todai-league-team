@@ -40,10 +40,16 @@ test.describe.serial('team management', () => {
 	test('bulk creates players on a team', async ({ page }) => {
 		const names = [`E2E-Bulk1-${Date.now()}`, `E2E-Bulk2-${Date.now()}`];
 		await page.goto(teamUrl);
-		await page.getByRole('tab', { name: '一括登録' }).click();
-		await page.locator('textarea[name="namesText"]').fill(names.join('\n'));
+		await expect(page.locator('h1')).toContainText(TEAM_NAME);
+
+		const bulkTab = page.getByRole('tab', { name: '一括登録' });
+		await bulkTab.click();
+		await expect(bulkTab).toHaveAttribute('aria-selected', 'true');
+
+		const namesTextarea = page.locator('textarea[name="namesText"]');
+		await expect(namesTextarea).toBeVisible();
+		await namesTextarea.fill(names.join('\n'));
 		await page.getByRole('button', { name: '一括登録' }).click();
-		await page.waitForTimeout(500);
 		for (const name of names) {
 			await expect(page.getByText(name)).toBeVisible();
 		}

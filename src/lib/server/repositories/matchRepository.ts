@@ -1,17 +1,16 @@
 import { asc, eq } from 'drizzle-orm';
-import { createInitialMatchState, getCurrentGame } from '$lib/domain/scoring';
+import { createInitialMatchState } from '$lib/domain/scoring';
 import { MatchStateSchema } from '$lib/domain/schemas';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
 import type { ScoringConfig } from '$lib/domain/types';
 import * as v from 'valibot';
 import { getRequestDb } from '$lib/server/db/request';
+import { matchSidePlayers, matchSides, matchSnapshots, matches } from '$lib/server/db/schema';
 import {
-	matchServiceStates,
-	matchSidePlayers,
-	matchSides,
-	matchSnapshots,
-	matches
-} from '$lib/server/db/schema';
+	buildMatchServiceStateUpsert,
+	buildMatchSnapshotUpsert,
+	buildMatchUpdate
+} from './matchStateStore';
 
 export interface CreateMatchWithPlayersInput {
 	tournamentId: string;
@@ -153,28 +152,7 @@ export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput)
 
 export async function updateMatchDerivedState(state: MatchState): Promise<void> {
 	const db = getRequestDb();
-	const currentGame = getCurrentGame(state);
-	await db
-		.update(matches)
-		.set({
-			status: state.status,
-			currentGameNo: state.currentGameNo,
-			currentScoreA: currentGame.score.A,
-			currentScoreB: currentGame.score.B,
-			gamesWonA: state.gamesWon.A,
-			gamesWonB: state.gamesWon.B,
-			winnerSide: state.winnerSide,
-			currentServingSide: state.service?.servingSide ?? null,
-			currentServiceCourt: state.service?.serviceCourt ?? null,
-			currentServerPlayerId: state.service?.serverPlayerId ?? null,
-			currentReceiverPlayerId: state.service?.receiverPlayerId ?? null,
-			lastSeqNo: state.lastSeqNo,
-			actualStartAt:
-				state.lastSeqNo === 1 && state.status === 'playing' ? state.updatedAt : undefined,
-			actualEndAt: state.winnerSide ? state.updatedAt : undefined,
-			updatedAt: state.updatedAt
-		})
-		.where(eq(matches.id, state.matchId));
+	await buildMatchUpdate(db, state);
 }
 
 export async function upsertMatchSnapshot(state: MatchState): Promise<void> {
@@ -185,56 +163,4 @@ export async function upsertMatchSnapshot(state: MatchState): Promise<void> {
 export async function upsertMatchServiceState(state: MatchState): Promise<void> {
 	const db = getRequestDb();
 	await buildMatchServiceStateUpsert(db, state);
-}
-
-function buildMatchSnapshotUpsert(db: ReturnType<typeof getRequestDb>, state: MatchState) {
-	return db
-		.insert(matchSnapshots)
-		.values({
-			matchId: state.matchId,
-			seqNo: state.lastSeqNo,
-			stateJson: JSON.stringify(state),
-			updatedAt: state.updatedAt
-		})
-		.onConflictDoUpdate({
-			target: matchSnapshots.matchId,
-			set: {
-				seqNo: state.lastSeqNo,
-				stateJson: JSON.stringify(state),
-				updatedAt: state.updatedAt
-			}
-		});
-}
-
-function buildMatchServiceStateUpsert(db: ReturnType<typeof getRequestDb>, state: MatchState) {
-	return db
-		.insert(matchServiceStates)
-		.values({
-			matchId: state.matchId,
-			gameNo: state.currentGameNo,
-			servingSide: state.service?.servingSide ?? null,
-			serviceCourt: state.service?.serviceCourt ?? null,
-			serverPlayerId: state.service?.serverPlayerId ?? null,
-			receiverPlayerId: state.service?.receiverPlayerId ?? null,
-			courtAssignmentsJson:
-				state.service?.discipline === 'doubles'
-					? JSON.stringify(state.service.courtAssignments)
-					: '{}',
-			updatedAt: state.updatedAt
-		})
-		.onConflictDoUpdate({
-			target: matchServiceStates.matchId,
-			set: {
-				gameNo: state.currentGameNo,
-				servingSide: state.service?.servingSide ?? null,
-				serviceCourt: state.service?.serviceCourt ?? null,
-				serverPlayerId: state.service?.serverPlayerId ?? null,
-				receiverPlayerId: state.service?.receiverPlayerId ?? null,
-				courtAssignmentsJson:
-					state.service?.discipline === 'doubles'
-						? JSON.stringify(state.service.courtAssignments)
-						: '{}',
-				updatedAt: state.updatedAt
-			}
-		});
 }

@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import type { MatchState, ScoreEventInput, Side } from '$lib/domain/types';
 import { getRequestDb } from '$lib/server/db/request';
 import { scoreEventUndoLinks, scoreEvents } from '$lib/server/db/schema';
+import { buildScoreEventInsert, buildUndoLinkInsert } from './matchStateStore';
 
 export type ScoreEvent = typeof scoreEvents.$inferSelect;
 
@@ -23,41 +24,20 @@ export interface InsertScoreEventParams {
 
 export async function insertScoreEvent(params: InsertScoreEventParams): Promise<void> {
 	const db = getRequestDb();
-	const beforeGame = params.beforeState.games.find(
-		(game) => game.gameNo === params.beforeState.currentGameNo
-	);
-	const eventGameNo = params.gameNo ?? params.beforeState.currentGameNo;
-	const afterGame = params.afterState.games.find((game) => game.gameNo === eventGameNo);
-
-	await db.insert(scoreEvents).values({
-		id: params.id,
+	await buildScoreEventInsert(db, {
+		eventId: params.id,
 		matchId: params.matchId,
+		input: params.input,
+		beforeState: params.beforeState,
+		afterState: params.afterState,
+		actorName: params.actorName,
+		now: params.createdAt,
 		seqNo: params.seqNo,
 		eventType: params.eventType,
-		side: params.side ?? null,
-		gameNo: eventGameNo,
-		scoreABefore: beforeGame?.score.A ?? null,
-		scoreBBefore: beforeGame?.score.B ?? null,
-		scoreAAfter: afterGame?.score.A ?? null,
-		scoreBAfter: afterGame?.score.B ?? null,
-		servingSideBefore: params.beforeState.service?.servingSide ?? null,
-		serviceCourtBefore: params.beforeState.service?.serviceCourt ?? null,
-		serverPlayerIdBefore: params.beforeState.service?.serverPlayerId ?? null,
-		receiverPlayerIdBefore: params.beforeState.service?.receiverPlayerId ?? null,
-		servingSideAfter: params.afterState.service?.servingSide ?? null,
-		serviceCourtAfter: params.afterState.service?.serviceCourt ?? null,
-		serverPlayerIdAfter: params.afterState.service?.serverPlayerId ?? null,
-		receiverPlayerIdAfter: params.afterState.service?.receiverPlayerId ?? null,
-		targetSeqNo: params.targetSeqNo ?? null,
-		reason: params.reason ?? null,
-		payloadJson: JSON.stringify({
-			input: params.input,
-			beforeState: params.beforeState,
-			afterState: params.afterState
-		}),
-		actorName: params.actorName ?? null,
-		idempotencyKey: params.input.idempotencyKey,
-		createdAt: params.createdAt
+		side: params.side,
+		gameNo: params.gameNo,
+		targetSeqNo: params.targetSeqNo,
+		reason: params.reason
 	});
 }
 
@@ -142,12 +122,5 @@ export async function insertUndoLink(params: {
 	createdAt: string;
 }): Promise<void> {
 	const db = getRequestDb();
-	await db.insert(scoreEventUndoLinks).values({
-		id: crypto.randomUUID(),
-		matchId: params.matchId,
-		undoEventId: params.undoEventId,
-		targetEventId: params.targetEventId,
-		targetSeqNo: params.targetSeqNo,
-		createdAt: params.createdAt
-	});
+	await buildUndoLinkInsert(db, params);
 }

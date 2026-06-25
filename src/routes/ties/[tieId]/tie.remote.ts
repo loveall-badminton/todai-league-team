@@ -14,9 +14,8 @@ import {
 	confirmTie as confirmTieService,
 	startTie as startTieService
 } from '$lib/server/services/tieOperationService';
-import { applyMatchAction } from '$lib/server/services/matchActionService';
-import type { MatchState } from '$lib/domain/types';
 import { error } from '@sveltejs/kit';
+import { applyMatchActionWithRealtime } from '$lib/server/services/matchRealtimeActionService';
 import * as v from 'valibot';
 import { getTieHeaderData, getTieLineupsData } from './tiePageData';
 
@@ -36,131 +35,104 @@ export const getTieLineups = query(v.string(), async (tieId) => {
 });
 
 export const startTie = command(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	try {
-		await startTieService(event.params.tieId!);
-	} catch (caught) {
-		error(400, actionErrorMessage(caught, '操作に失敗しました'));
-	}
-	notifyLiveBoard(['score', 'schedule'], {
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header', 'rubbers'] }
-	});
+	const tieId = requireAdminTieId();
+	await runAdminMutation(
+		() => startTieService(tieId),
+		(resolvedTieId) =>
+			notifyLiveBoard(['score', 'schedule'], {
+				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers'] }
+			})
+	);
 });
 
 export const confirmTie = command(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	await confirmTieService(event.params.tieId!);
-	notifyLiveBoard(['standings', 'schedule', 'finals'], {
-		standings: { tieIds: [event.params.tieId!] },
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header'] },
-		finals: { tieIds: [event.params.tieId!] }
-	});
+	const tieId = requireAdminTieId();
+	await confirmTieService(tieId);
+	notifyTieStructureChange(tieId);
 });
 
 export const lockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
-	const event = getRequestEvent();
-	requireAdmin();
-	try {
-		await lockLineupService({ tieId: event.params.tieId!, teamId });
-	} catch (caught) {
-		error(400, actionErrorMessage(caught, '操作に失敗しました'));
-	}
-	notifyLiveBoard(['schedule'], {
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header', 'lineups'] }
-	});
+	const tieId = requireAdminTieId();
+	await runAdminMutation(() => lockLineupService({ tieId, teamId }), notifyTieLineupChange);
 });
 
 export const unlockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
-	const event = getRequestEvent();
-	requireAdmin();
-	try {
-		await unlockLineupService({ tieId: event.params.tieId!, teamId });
-	} catch (caught) {
-		error(400, actionErrorMessage(caught, '操作に失敗しました'));
-	}
-	notifyLiveBoard(['schedule'], {
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header', 'lineups'] }
-	});
+	const tieId = requireAdminTieId();
+	await runAdminMutation(() => unlockLineupService({ tieId, teamId }), notifyTieLineupChange);
 });
 
 export const revealLineups = command(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	try {
-		await revealLineupsService(event.params.tieId!);
-	} catch (caught) {
-		error(400, actionErrorMessage(caught, '操作に失敗しました'));
-	}
-	notifyLiveBoard(['schedule'], {
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header', 'lineups'] }
-	});
+	const tieId = requireAdminTieId();
+	await runAdminMutation(() => revealLineupsService(tieId), notifyTieLineupChange);
 });
 
 export const unrevealLineups = command(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	try {
-		await unrevealLineupsService(event.params.tieId!);
-	} catch (caught) {
-		error(400, actionErrorMessage(caught, '操作に失敗しました'));
-	}
-	notifyLiveBoard(['schedule'], {
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header', 'lineups'] }
-	});
+	const tieId = requireAdminTieId();
+	await runAdminMutation(() => unrevealLineupsService(tieId), notifyTieLineupChange);
 });
 
 export const deleteTie = command(async () => {
-	const event = getRequestEvent();
-	requireAdmin();
-	await deleteTieRepo(event.params.tieId!);
-	notifyLiveBoard(['standings', 'schedule', 'finals'], {
-		standings: { tieIds: [event.params.tieId!] },
-		schedule: { tieIds: [event.params.tieId!], scopes: ['tie_header'] },
-		finals: { tieIds: [event.params.tieId!] }
-	});
+	const tieId = requireAdminTieId();
+	await deleteTieRepo(tieId);
+	notifyTieStructureChange(tieId);
 });
 
 export const confirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
 	requireAdmin();
-	const afterState: MatchState = await applyMatchAction({
-		matchId,
-		input: {
-			type: 'match_confirmed',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: await getMatchSeqNo(matchId)
-		},
-		actorName: null,
-		now: new Date().toISOString()
-	});
-	notifyMatch(matchId, ['score'], {
-		score: { state: afterState, event: { type: 'match_confirmed' } }
-	});
-	notifyLiveBoard(['score'], {
-		score: { state: afterState, event: { type: 'match_confirmed' } }
-	});
+	await applyLifecycleMatchAction(matchId, 'match_confirmed');
 });
 
 export const unconfirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
 	requireAdmin();
-	const afterState: MatchState = await applyMatchAction({
+	await applyLifecycleMatchAction(matchId, 'match_unconfirmed');
+});
+
+function requireAdminTieId() {
+	requireAdmin();
+	return getRequestEvent().params.tieId!;
+}
+
+async function runAdminMutation(action: () => Promise<void>, notify: (tieId: string) => void) {
+	const tieId = requireAdminTieId();
+	try {
+		await action();
+	} catch (caught) {
+		error(400, actionErrorMessage(caught, '操作に失敗しました'));
+	}
+	notify(tieId);
+}
+
+function notifyTieLineupChange(tieId: string) {
+	notifyLiveBoard(['schedule'], {
+		schedule: { tieIds: [tieId], scopes: ['tie_header', 'lineups'] }
+	});
+}
+
+function notifyTieStructureChange(tieId: string) {
+	notifyLiveBoard(['standings', 'schedule', 'finals'], {
+		standings: { tieIds: [tieId] },
+		schedule: { tieIds: [tieId], scopes: ['tie_header'] },
+		finals: { tieIds: [tieId] }
+	});
+}
+
+async function applyLifecycleMatchAction(
+	matchId: string,
+	type: 'match_confirmed' | 'match_unconfirmed'
+) {
+	const result = await applyMatchActionWithRealtime({
 		matchId,
 		input: {
-			type: 'match_unconfirmed',
+			type,
 			idempotencyKey: crypto.randomUUID(),
 			observedSeqNo: await getMatchSeqNo(matchId)
 		},
 		actorName: null,
 		now: new Date().toISOString()
 	});
-	notifyMatch(matchId, ['score'], {
-		score: { state: afterState, event: { type: 'match_unconfirmed' } }
-	});
-	notifyLiveBoard(['score'], {
-		score: { state: afterState, event: { type: 'match_unconfirmed' } }
-	});
-});
+	notifyMatch(matchId, ['score'], { score: result.scorePayload });
+	notifyLiveBoard(['score'], { score: result.scorePayload });
+}
 
 async function getMatchSeqNo(matchId: string): Promise<number> {
 	const { getMatchState } = await import('$lib/server/repositories/matchRepository');
