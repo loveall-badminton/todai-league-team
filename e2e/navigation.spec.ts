@@ -43,11 +43,13 @@ test.describe('docs page', () => {
 		await page.goto('/docs', { waitUntil: 'networkidle' });
 		await expect(page).toHaveURL('/docs');
 
-		await expect(page.getByText('使い方ガイド')).toBeVisible();
-		await expect(page.getByText('はじめに')).toBeVisible();
-		await expect(page.getByText('管理者マニュアル')).toBeVisible();
-
-		await expect(page.getByText('東大リーグ団体戦 使い方ガイド')).toBeVisible();
+		const sidebar = page.locator('main').getByRole('complementary').first();
+		await expect(sidebar.getByRole('paragraph').filter({ hasText: '使い方ガイド' })).toBeVisible();
+		await expect(sidebar.getByRole('paragraph').filter({ hasText: 'はじめに' })).toBeVisible();
+		await expect(
+			sidebar.getByRole('paragraph').filter({ hasText: '管理者マニュアル' })
+		).toBeVisible();
+		await expect(page.getByRole('heading', { level: 1, name: '使い方ガイド' })).toBeVisible();
 
 		expect(errors).toEqual([]);
 	});
@@ -56,8 +58,8 @@ test.describe('docs page', () => {
 		await page.goto('/docs/admin/setup', { waitUntil: 'networkidle' });
 		await expect(page).toHaveURL('/docs/admin/setup');
 
-		await expect(page.getByText('セットアップ')).toBeVisible();
-		await expect(page.getByText('アカウント作成')).toBeVisible();
+		await expect(page.getByRole('heading', { level: 1, name: 'セットアップ' })).toBeVisible();
+		await expect(page.getByRole('heading', { level: 2, name: 'アカウント作成' })).toBeVisible();
 
 		const sidebarLink = page.locator('aside a', { hasText: 'セットアップ' });
 		await expect(sidebarLink).toBeVisible();

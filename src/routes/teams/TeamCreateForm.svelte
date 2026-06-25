@@ -12,10 +12,6 @@
 		groupCodeItems: SelectItem[];
 		onCancel: () => void;
 	} = $props();
-
-	$effect(() => {
-		create.fields.set({ name: '', shortName: '', groupCode: '' });
-	});
 </script>
 
 <form {...create} class="space-y-4">
@@ -24,7 +20,7 @@
 			<label class="block">
 				<span class="text-xs font-medium tracking-wide text-muted-foreground">チーム名 *</span>
 				<AppInput
-					{...create.fields.name.as('text')}
+					{...create.fields.name.as('text', '')}
 					required
 					placeholder="例: 東京大学"
 					class="mt-1"
@@ -34,14 +30,18 @@
 		<div>
 			<label class="block">
 				<span class="text-xs font-medium tracking-wide text-muted-foreground">略称</span>
-				<AppInput {...create.fields.shortName.as('text')} placeholder="例: 東大" class="mt-1" />
+				<AppInput
+					{...create.fields.shortName.as('text', '')}
+					placeholder="例: ラブオール"
+					class="mt-1"
+				/>
 			</label>
 		</div>
 		<div>
 			<label class="block">
 				<span class="text-xs font-medium tracking-wide text-muted-foreground">リーグ</span>
 				<AppSelect
-					{...create.fields.groupCode.as('select')}
+					{...create.fields.groupCode.as('select', '')}
 					items={groupCodeItems}
 					placeholder="未割当"
 					class="mt-1"

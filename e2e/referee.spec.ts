@@ -72,7 +72,7 @@ test.describe.serial('referee scoring', () => {
 	test('creates a tie with teams assigned', async ({ page }) => {
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 
@@ -290,13 +290,8 @@ test.describe.serial('referee scoring', () => {
 			await page.waitForTimeout(150);
 		}
 
-		// Match should be finished — "結果確定" button should be enabled
+		// Match is auto-confirmed on completion
 		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
-
-		// Confirm the result
-		await page.getByText('結果確定').click();
-		await page.getByRole('button', { name: '結果を確定する' }).click();
-		await page.waitForTimeout(1000);
 
 		// Navigate to tie page and verify rubber shows the completed score
 		await page.goto(tieUrl);

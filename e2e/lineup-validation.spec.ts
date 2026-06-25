@@ -67,7 +67,7 @@ test.describe.serial('lineup gender validation', () => {
 		// Create tie
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 
 		await page

@@ -22,26 +22,13 @@
 		scoringRuleItems: SelectItem[];
 		lineupRevealItems: SelectItem[];
 	} = $props();
-
-	$effect(() => {
-		updateSettings.fields.set({
-			eventName: settings.eventName ?? '',
-			groupStageScoringRuleId: settings.groupStageScoringRuleId ?? '',
-			knockoutScoringRuleId: settings.knockoutScoringRuleId ?? '',
-			tiebreakerScoringRuleId: settings.tiebreakerScoringRuleId ?? '',
-			lineupRevealPolicy: (settings.lineupRevealPolicy ?? 'on_tie_start') as
-				| 'on_tie_start'
-				| 'manual',
-			defaultLineupDueMinutesBefore: String(settings.defaultLineupDueMinutesBefore)
-		});
-	});
 </script>
 
 <form {...updateSettings} class="space-y-4">
 	<FormToast result={updateSettings.result} />
 	<div class="grid gap-1">
 		<span class="text-sm font-medium text-zinc-700">大会名</span>
-		<AppInput {...updateSettings.fields.eventName.as('text')} required />
+		<AppInput {...updateSettings.fields.eventName.as('text', settings.eventName ?? '')} required />
 		{#each updateSettings.fields.eventName.issues() ?? [] as issue (issue.message)}
 			<span class="text-xs text-red-600">{issue.message}</span>
 		{/each}
@@ -51,21 +38,30 @@
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">予選ルール</span>
 			<AppSelect
-				{...updateSettings.fields.groupStageScoringRuleId.as('select')}
+				{...updateSettings.fields.groupStageScoringRuleId.as(
+					'select',
+					settings.groupStageScoringRuleId ?? ''
+				)}
 				items={scoringRuleItems}
 			/>
 		</div>
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">決勝トーナメントルール</span>
 			<AppSelect
-				{...updateSettings.fields.knockoutScoringRuleId.as('select')}
+				{...updateSettings.fields.knockoutScoringRuleId.as(
+					'select',
+					settings.knockoutScoringRuleId ?? ''
+				)}
 				items={scoringRuleItems}
 			/>
 		</div>
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">順位決定再試合</span>
 			<AppSelect
-				{...updateSettings.fields.tiebreakerScoringRuleId.as('select')}
+				{...updateSettings.fields.tiebreakerScoringRuleId.as(
+					'select',
+					settings.tiebreakerScoringRuleId ?? ''
+				)}
 				items={scoringRuleItems}
 			/>
 		</div>
@@ -75,7 +71,10 @@
 		<div class="grid gap-1">
 			<span class="text-sm font-medium text-zinc-700">オーダー公開</span>
 			<AppSelect
-				{...updateSettings.fields.lineupRevealPolicy.as('select')}
+				{...updateSettings.fields.lineupRevealPolicy.as(
+					'select',
+					settings.lineupRevealPolicy ?? 'on_tie_start'
+				)}
 				items={lineupRevealItems}
 			/>
 		</div>
@@ -83,7 +82,10 @@
 			<span class="text-sm font-medium text-zinc-700">提出期限 (開始前の分数)</span>
 			<AppInput
 				type="number"
-				{...updateSettings.fields.defaultLineupDueMinutesBefore.as('text')}
+				{...updateSettings.fields.defaultLineupDueMinutesBefore.as(
+					'text',
+					String(settings.defaultLineupDueMinutesBefore)
+				)}
 				min="0"
 			/>
 		</div>

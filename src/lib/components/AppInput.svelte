@@ -18,7 +18,7 @@
 		invalid ? 'border-red-400 focus:ring-red-500' : 'border-border focus:ring-zinc-950',
 		className
 	)}
-	{value}
+	bind:value
 	aria-invalid={ariaInvalid}
 	{...restProps}
 />

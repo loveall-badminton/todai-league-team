@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Select } from 'bits-ui';
 	import { ChevronDown } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
@@ -29,6 +30,21 @@
 
 	let selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
 	const invalid = $derived(ariaInvalid === true || ariaInvalid === 'true');
+	let triggerRef: HTMLButtonElement | null = $state(null);
+
+	$effect(() => {
+		const form = triggerRef?.closest('form');
+		if (!form) return;
+
+		const handleReset = async () => {
+			const valueBeforeReset = value;
+			await tick();
+			value = valueBeforeReset;
+		};
+
+		form.addEventListener('reset', handleReset, { capture: true });
+		return () => form.removeEventListener('reset', handleReset, { capture: true });
+	});
 </script>
 
 <Select.Root
@@ -42,6 +58,7 @@
 	onValueChange={(v) => onValueChange?.(v ?? '')}
 >
 	<Select.Trigger
+		bind:ref={triggerRef}
 		aria-invalid={ariaInvalid}
 		class={cn(
 			'flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 disabled:opacity-50',

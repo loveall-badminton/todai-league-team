@@ -14,20 +14,21 @@ test.describe('tie creation flow', () => {
 
 	test('opens create dialog when "新規作成" is clicked', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await expect(page.getByRole('button', { name: '作成', exact: true })).toBeVisible();
 	});
 
 	test('closes dialog with cancel button', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
 		await page.getByText('キャンセル').click();
-		await expect(page.getByText('対戦を作成')).not.toBeVisible();
+		await expect(dialog).not.toBeVisible();
 	});
 
 	test('creates a tie and redirects to its page', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 
@@ -47,17 +48,19 @@ test.describe('tie creation flow', () => {
 
 	test('closes dialog when dialog close button is clicked', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
 
 		await page.locator('button[data-dialog-close]:has(svg.lucide-x)').click();
-		await expect(page.getByText('対戦を作成')).not.toBeVisible();
+		await expect(dialog).not.toBeVisible();
 	});
 
 	test('cancel button in dialog footer closes the dialog', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
 
 		await page.locator('button:has-text("キャンセル")').click();
-		await expect(page.getByText('対戦を作成')).not.toBeVisible();
+		await expect(dialog).not.toBeVisible();
 	});
 });

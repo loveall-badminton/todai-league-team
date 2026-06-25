@@ -27,17 +27,6 @@
 		accountTypeItems: SelectItem[];
 		teamItems: SelectItem[];
 	} = $props();
-
-	$effect(() => {
-		if (!editAccount) return;
-		updateAccount?.fields.set({
-			userId: editAccount.id,
-			name: editAccount.name,
-			accountType: accountTypeValue(editAccount) as 'admin' | 'participant' | 'team',
-			teamId: editAccount.profile?.teamId ?? ''
-		});
-		resetPassword?.fields.set({ userId: editAccount.id, password: '' });
-	});
 </script>
 
 <Dialog.Root bind:open>
@@ -80,20 +69,26 @@
 							<input {...updateAccount.fields.userId.as('hidden', editAccount.id)} />
 							<label class="grid gap-1">
 								<span class="text-xs font-medium text-muted-emphasis">表示名</span>
-								<AppInput {...updateAccount.fields.name.as('text')} required />
+								<AppInput {...updateAccount.fields.name.as('text', editAccount.name)} required />
 							</label>
 							<div class={`grid gap-3 ${acctType === 'team' ? 'sm:grid-cols-2' : ''}`}>
 								<label class="grid gap-1">
 									<span class="text-xs font-medium text-muted-emphasis">種別</span>
 									<AppSelect
-										{...updateAccount.fields.accountType.as('select')}
+										{...updateAccount.fields.accountType.as('select', acctType)}
 										items={accountTypeItems}
 									/>
 								</label>
 								{#if acctType === 'team'}
 									<label class="grid gap-1">
 										<span class="text-xs font-medium text-muted-emphasis">チーム</span>
-										<AppSelect {...updateAccount.fields.teamId.as('select')} items={teamItems} />
+										<AppSelect
+											{...updateAccount.fields.teamId.as(
+												'select',
+												editAccount.profile?.teamId ?? ''
+											)}
+											items={teamItems}
+										/>
 									</label>
 								{/if}
 							</div>

@@ -17,10 +17,6 @@
 			toast.error(e instanceof Error ? e.message : '一括登録に失敗しました');
 		}
 	});
-
-	$effect(() => {
-		bulkCreatePlayers.fields.set({ namesText: '', gender: 'unknown' });
-	});
 </script>
 
 <form {...enhancedForm} class="space-y-3">
@@ -28,7 +24,7 @@
 	<label class="block">
 		<span class="text-xs font-medium text-muted-foreground">選手名（1行に1人）</span>
 		<AppTextarea
-			{...bulkCreatePlayers.fields.namesText.as('text')}
+			{...bulkCreatePlayers.fields.namesText.as('text', '')}
 			rows={8}
 			placeholder="山田太郎
 鈴木花子

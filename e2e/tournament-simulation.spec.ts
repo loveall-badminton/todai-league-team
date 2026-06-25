@@ -384,11 +384,8 @@ test.describe.serial('tournament simulation', () => {
 			}
 		}
 
-		// Confirm result
+		// Match is auto-confirmed on completion
 		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
-		await page.getByText('結果確定').click();
-		await page.getByRole('button', { name: '結果を確定する' }).click();
-		await page.waitForTimeout(1000);
 
 		// Navigate to tie page and verify rubber result visible
 		await page.goto(tieUrl);

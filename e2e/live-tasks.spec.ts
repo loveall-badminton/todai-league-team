@@ -28,6 +28,7 @@ test.describe.serial('team tasks dashboard', () => {
 	test('setup: create teams, team account, and tie', async ({ page }) => {
 		await page.goto('/teams');
 		await page.getByRole('button', { name: '+ 追加' }).click();
+		await expect(page.locator('input[name="name"]')).toBeVisible();
 		await page.locator('input[name="name"]').fill(TEAM_NAME);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
@@ -36,6 +37,7 @@ test.describe.serial('team tasks dashboard', () => {
 
 		await page.goto('/teams');
 		await page.getByRole('button', { name: '+ 追加' }).click();
+		await expect(page.locator('input[name="name"]')).toBeVisible();
 		await page.locator('input[name="name"]').fill(TEAM2_NAME);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
@@ -43,6 +45,7 @@ test.describe.serial('team tasks dashboard', () => {
 
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 		await page
 			.locator('span')

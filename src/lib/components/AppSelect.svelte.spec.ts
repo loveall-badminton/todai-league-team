@@ -1,6 +1,7 @@
 import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { tick } from 'svelte';
 import AppSelect from './AppSelect.svelte';
 
 const items = [
@@ -50,6 +51,20 @@ describe('AppSelect.svelte', () => {
 
 		expect(onValueChange).toHaveBeenCalledWith('second_gym');
 		await expect.element(page.getByText('第二体育館')).toBeInTheDocument();
+	});
+
+	it('keeps the selected value after the parent form is reset', async () => {
+		const form = document.body.appendChild(document.createElement('form'));
+		render(AppSelect, {
+			target: form,
+			props: { name: 'venue', value: 'second_gym', items }
+		});
+
+		form.reset();
+		await tick();
+
+		await expect.element(page.getByText('第二体育館')).toBeInTheDocument();
+		expect(new FormData(form).get('venue')).toBe('second_gym');
 	});
 
 	it('marks the trigger as disabled when disabled=true', async () => {

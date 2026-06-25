@@ -71,7 +71,7 @@ test.describe.serial('live page with real data', () => {
 		// Create tie
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 		await selectBitsUiTrigger(page, 'A側チーム');
 		await page.getByRole('option', { name: TEAM_A }).click();

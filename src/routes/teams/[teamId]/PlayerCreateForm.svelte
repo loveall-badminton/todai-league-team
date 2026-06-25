@@ -7,8 +7,6 @@
 	import type { SelectItem } from '$lib/types/ui';
 
 	let { genderItems }: { genderItems: SelectItem[] } = $props();
-
-	createPlayer.fields.set({ name: '', gender: 'unknown' });
 </script>
 
 <form {...createPlayer} class="flex flex-wrap items-end gap-3">
@@ -17,7 +15,7 @@
 		<label class="block">
 			<span class="text-xs font-medium text-muted-foreground">氏名 *</span>
 			<AppInput
-				{...createPlayer.fields.name.as('text')}
+				{...createPlayer.fields.name.as('text', '')}
 				required
 				placeholder="例: 山田太郎"
 				class="mt-1"
@@ -27,7 +25,11 @@
 	<div class="w-28">
 		<label class="block">
 			<span class="text-xs font-medium text-muted-foreground">性別</span>
-			<AppSelect {...createPlayer.fields.gender.as('select')} items={genderItems} class="mt-1" />
+			<AppSelect
+				{...createPlayer.fields.gender.as('select', 'unknown')}
+				items={genderItems}
+				class="mt-1"
+			/>
 		</label>
 	</div>
 	<AppButton type="submit">追加</AppButton>

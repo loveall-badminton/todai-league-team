@@ -63,7 +63,7 @@ test.describe.serial('referee forfeit', () => {
 		// Create tie
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByText('対戦を作成')).toBeVisible();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
 		await page
 			.locator('span')
@@ -234,11 +234,6 @@ test.describe.serial('referee forfeit', () => {
 
 		// Match should now be terminal
 		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
-
-		// Confirm result
-		await page.getByText('結果確定').click();
-		await page.getByRole('button', { name: '結果を確定する' }).click();
-		await page.waitForTimeout(1000);
 
 		// Verify on tie page
 		await page.goto(tieUrl);

@@ -1,6 +1,15 @@
 import { test, expect, type Page } from '@playwright/test';
 import { writeFileSync, unlinkSync, existsSync } from 'fs';
 
+async function openTeamCreateForm(page: Page) {
+	await page.getByRole('button', { name: '+ 追加' }).click();
+	const createForm = page
+		.locator('form')
+		.filter({ has: page.getByRole('button', { name: '追加', exact: true }) });
+	await expect(createForm.locator('input[name="name"]')).toBeVisible();
+	return createForm;
+}
+
 test.describe.serial('extended team management', () => {
 	const BASE_TEAM = `E2E-Ext-${Date.now()}`;
 	const EDITED_PLAYER = `E2E-PEdit-${Date.now()}`;
@@ -9,9 +18,9 @@ test.describe.serial('extended team management', () => {
 
 	test('creates a team for extended tests', async ({ page }) => {
 		await page.goto('/teams');
-		await page.getByRole('button', { name: '+ 追加' }).click();
-		await page.locator('input[name="name"]').fill(BASE_TEAM);
-		await page.getByRole('button', { name: '追加', exact: true }).click();
+		const createForm = await openTeamCreateForm(page);
+		await createForm.locator('input[name="name"]').fill(BASE_TEAM);
+		await createForm.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		teamUrl = page.url();
 	});
@@ -40,7 +49,7 @@ test.describe.serial('extended team management', () => {
 		await page.goto(teamUrl);
 		await expect(page.getByText(EDITED_PLAYER)).toBeVisible();
 
-		await page.getByText(EDITED_PLAYER).click();
+		await page.getByRole('button', { name: new RegExp(EDITED_PLAYER) }).click();
 		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
 		await expect(editForm.locator('input[name="name"]')).toBeVisible();
 
@@ -64,7 +73,7 @@ test.describe.serial('extended team management', () => {
 		await page.goto(teamUrl);
 		await expect(page.getByText(UPDATED_PLAYER_NAME)).toBeVisible();
 
-		await page.getByText(UPDATED_PLAYER_NAME).click();
+		await page.getByRole('button', { name: new RegExp(UPDATED_PLAYER_NAME) }).click();
 		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
 
 		await editForm.getByRole('button', { name: '保存' }).click();
@@ -75,7 +84,7 @@ test.describe.serial('extended team management', () => {
 		await page.goto(teamUrl);
 		await expect(page.getByText(UPDATED_PLAYER_NAME)).toBeVisible();
 
-		await page.getByText(UPDATED_PLAYER_NAME).click();
+		await page.getByRole('button', { name: new RegExp(UPDATED_PLAYER_NAME) }).click();
 		await page.getByText('選手を削除').click();
 		await page.getByRole('button', { name: '削除する' }).click();
 		await page.waitForTimeout(800);
@@ -112,9 +121,9 @@ test.describe.serial('team status and group changes', () => {
 
 	test('creates a team for status test', async ({ page }) => {
 		await page.goto('/teams');
-		await page.getByRole('button', { name: '+ 追加' }).click();
-		await page.locator('input[name="name"]').fill(TEAM_NAME);
-		await page.getByRole('button', { name: '追加', exact: true }).click();
+		const createForm = await openTeamCreateForm(page);
+		await createForm.locator('input[name="name"]').fill(TEAM_NAME);
+		await createForm.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		teamUrl = page.url();
 	});
@@ -180,9 +189,9 @@ test.describe.serial('CSV import', () => {
 
 	test('creates a team for CSV import', async ({ page }) => {
 		await page.goto('/teams');
-		await page.getByRole('button', { name: '+ 追加' }).click();
-		await page.locator('input[name="name"]').fill(TEAM_NAME);
-		await page.getByRole('button', { name: '追加', exact: true }).click();
+		const createForm = await openTeamCreateForm(page);
+		await createForm.locator('input[name="name"]').fill(TEAM_NAME);
+		await createForm.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		teamUrl = page.url();
 	});

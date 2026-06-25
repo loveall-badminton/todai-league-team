@@ -22,7 +22,7 @@ test.describe.serial('team management', () => {
 		await page.waitForTimeout(300);
 
 		const playerForm = page.locator('form').filter({ hasText: '氏名' });
-		await playerForm.evaluate((form, name) => {
+		await playerForm.evaluate((form: HTMLFormElement, name) => {
 			const input = form.querySelector('input[name="name"]') as HTMLInputElement;
 			const setter = Object.getOwnPropertyDescriptor(
 				window.HTMLInputElement.prototype,
@@ -56,7 +56,7 @@ test.describe.serial('team management', () => {
 		await page.waitForTimeout(300);
 
 		const teamForm = page.locator('form').filter({ hasText: 'チーム名' });
-		await teamForm.evaluate((form, value) => {
+		await teamForm.evaluate((form: HTMLFormElement, value) => {
 			const input = form.querySelector('input[name="name"]') as HTMLInputElement;
 			const setter = Object.getOwnPropertyDescriptor(
 				window.HTMLInputElement.prototype,
