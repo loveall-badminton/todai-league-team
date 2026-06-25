@@ -267,6 +267,21 @@
 
 	<!-- Change-of-ends -->
 	<CourtSideToggle ontoggle={doChangeEnds} />
+	<!-- Undo button -->
+	<form {...undo} class="contents">
+		<AppButton
+			class="flex w-full flex-col rounded-xl bg-zinc-950 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-muted disabled:opacity-50"
+			type="submit"
+			disabled={!lastUndoableEvent || isLocked}
+		>
+			<span class="flex items-center gap-1 text-xs text-zinc-300">
+				<Undo2 class="size-3" />取り消し
+			</span>
+			<span class="block leading-tight wrap-break-word">
+				{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
+			</span>
+		</AppButton>
+	</form>
 
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
@@ -278,24 +293,6 @@
 		{rightSidePlayers}
 		players={data.players}
 	/>
-
-	<!-- Controls -->
-	<Card>
-		<form {...undo} class="contents">
-			<AppButton
-				class="flex flex-col w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-				type="submit"
-				disabled={!lastUndoableEvent || isLocked}
-			>
-				<span class="text-xs text-muted flex items-center gap-1">
-					<Undo2 class="size-3" />取り消し
-				</span>
-				<span class="block leading-tight wrap-break-word">
-					{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
-				</span>
-			</AppButton>
-		</form>
-	</Card>
 
 	<!-- Scoresheet -->
 	<RefereeScoresheet events={data.events} games={data.state.games} players={data.players} />

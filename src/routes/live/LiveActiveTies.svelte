@@ -10,9 +10,11 @@
 	import type { LivePageData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import { cn } from '$lib/utils/cn';
+	import AppTabs from '$lib/components/AppTabs.svelte';
 	import { ChevronDown } from '@lucide/svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import ScoreProgressChart from './ScoreProgressChart.svelte';
+	import { filterScorePointsByGame, getScoreProgressionGameNos } from '$lib/utils/scoreProgression';
 
 	type TieRubber = NonNullable<LivePageData['activeTies']>['rubbersByTieId'][string][number];
 
@@ -34,9 +36,40 @@
 
 	let byMatchId = $derived(progressionQuery.current?.byMatchId ?? {});
 	let expandedRubberId = $state<string | null>(null);
+	let selectedGameByRubberId = $state<Record<string, string>>({});
 
 	function toggleRubber(rubberId: string) {
 		expandedRubberId = expandedRubberId === rubberId ? null : rubberId;
+	}
+
+	function availableGameNos(rubber: TieRubber, points: NonNullable<(typeof byMatchId)[string]>) {
+		const fromPoints = getScoreProgressionGameNos(points);
+		const fromDetails = rubber.gameDetails.map((detail) => detail.gameNo);
+		return [...new Set([...fromDetails, ...fromPoints])].sort((a, b) => a - b);
+	}
+
+	function selectedGameNo(rubber: TieRubber, points: NonNullable<(typeof byMatchId)[string]>) {
+		const gameNos = availableGameNos(rubber, points);
+		if (gameNos.length === 0) return null;
+		const selected = Number(selectedGameByRubberId[rubber.id]);
+		return gameNos.includes(selected) ? selected : gameNos[gameNos.length - 1];
+	}
+
+	function selectGame(rubberId: string, value: string) {
+		selectedGameByRubberId = { ...selectedGameByRubberId, [rubberId]: value };
+	}
+
+	function scoreForGame(
+		rubber: TieRubber,
+		points: NonNullable<(typeof byMatchId)[string]>,
+		gameNo: number | null
+	) {
+		const gamePoints = filterScorePointsByGame(points, gameNo);
+		const lastPoint = gamePoints[gamePoints.length - 1];
+		if (lastPoint) return lastPoint;
+		if (gameNo == null) return null;
+		const detail = rubber.gameDetails.find((game) => game.gameNo === gameNo);
+		return detail ? { scoreA: detail.scoreA, scoreB: detail.scoreB } : null;
 	}
 </script>
 
@@ -170,7 +203,10 @@
 									/>
 								</button>
 								{#key rubber.id}
-									{@const currentScore = points.length > 0 ? points[points.length - 1] : null}
+									{@const gameNos = availableGameNos(rubber, points)}
+									{@const gameNo = selectedGameNo(rubber, points)}
+									{@const chartPoints = filterScorePointsByGame(points, gameNo)}
+									{@const currentScore = scoreForGame(rubber, points, gameNo)}
 									<div
 										class="grid transition-all duration-200 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]"
 										data-state={isExpanded ? 'open' : 'closed'}
@@ -189,9 +225,20 @@
 														</p>
 													{/if}
 												</div>
-												{#if points.length > 0}
+												{#if gameNos.length > 1}
+													<AppTabs
+														value={String(gameNo)}
+														items={gameNos.map((n) => ({
+															value: String(n),
+															label: `第${n}ゲーム`
+														}))}
+														onValueChange={(value) => selectGame(rubber.id, value)}
+														listClass="mb-3"
+													/>
+												{/if}
+												{#if chartPoints.length > 0}
 													<ScoreProgressChart
-														{points}
+														points={chartPoints}
 														nameA={tie.teamAName ?? 'A'}
 														nameB={tie.teamBName ?? 'B'}
 													/>

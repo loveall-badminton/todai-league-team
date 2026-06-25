@@ -44,6 +44,14 @@ function isSeqNoExcluded(seqNo: number, ranges: Array<{ start: number; end: numb
 	return ranges.some((range) => seqNo >= range.start && seqNo < range.end);
 }
 
+export function getScoreProgressionGameNos(points: ScorePoint[]): number[] {
+	return [...new Set(points.map((point) => point.gameNo))].sort((a, b) => a - b);
+}
+
+export function filterScorePointsByGame(points: ScorePoint[], gameNo: number | null): ScorePoint[] {
+	return gameNo == null ? points : points.filter((point) => point.gameNo === gameNo);
+}
+
 /**
  * スコア推移チャート用のデータ系列を構築する。
  *
@@ -57,7 +65,7 @@ export function buildScoreProgressionSeries(
 	if (points.length === 0) return null;
 
 	const lastGame = points[points.length - 1].gameNo;
-	const raw = points.filter((p) => p.gameNo === lastGame);
+	const raw = filterScorePointsByGame(points, lastGame);
 	const deduped = raw.filter(
 		(p, i) => i === 0 || p.scoreA !== raw[i - 1].scoreA || p.scoreB !== raw[i - 1].scoreB
 	);

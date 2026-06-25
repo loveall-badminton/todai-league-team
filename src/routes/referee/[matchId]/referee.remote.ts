@@ -12,7 +12,6 @@ import {
 import { applyMatchAction } from '$lib/server/services/matchActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
 import { getLastUndoableScoreEvent } from '$lib/server/repositories/scoreEventRepository';
-import { fail } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { buildRealtimeScorePayload, resolveRealtimeInput } from './refereeRealtime';
 
@@ -24,7 +23,7 @@ async function applyAction(
 		state: Awaited<ReturnType<typeof getMatchState>>,
 		players: MatchPlayer[]
 	) => ScoreEventInput
-) {
+): Promise<{ error: string } | void> {
 	await requireRefereeMatchAccess(matchId);
 	const state = await getMatchState(matchId);
 	const players = await getMatchPlayers(matchId);
@@ -46,7 +45,7 @@ async function applyAction(
 			players
 		});
 	} catch (err) {
-		return fail(400, { error: err instanceof Error ? err.message : '操作に失敗しました' });
+		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 
 	notifyMatch(matchId, ['score'], {
@@ -218,7 +217,7 @@ export const cutoff = form(async () => {
 	try {
 		await cancelMatchRubber(matchId);
 	} catch (err) {
-		return fail(400, { error: err instanceof Error ? err.message : '操作に失敗しました' });
+		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 	const afterState = await getMatchState(matchId);
 	notifyMatch(matchId, ['score'], { score: { state: afterState, event: { type: 'cutoff' } } });

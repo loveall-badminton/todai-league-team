@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { buildProgressionFromEvents, buildScoreProgressionSeries } from './scoreProgression';
+import {
+	buildProgressionFromEvents,
+	buildScoreProgressionSeries,
+	filterScorePointsByGame,
+	getScoreProgressionGameNos
+} from './scoreProgression';
 import type { ProgressionEvent } from './scoreProgression';
 
 describe('buildProgressionFromEvents', () => {
@@ -229,5 +234,41 @@ describe('buildScoreProgressionSeries', () => {
 		]);
 		expect(result?.a.map((p) => p.y)).toEqual([0, 1, 1, 2]);
 		expect(result?.b.map((p) => p.y)).toEqual([0, 0, 1, 1]);
+	});
+});
+
+describe('score progression helpers', () => {
+	test('getScoreProgressionGameNos returns sorted unique game numbers', () => {
+		expect(
+			getScoreProgressionGameNos([
+				{ gameNo: 2, scoreA: 1, scoreB: 0 },
+				{ gameNo: 1, scoreA: 1, scoreB: 0 },
+				{ gameNo: 2, scoreA: 2, scoreB: 0 }
+			])
+		).toEqual([1, 2]);
+	});
+
+	test('filterScorePointsByGame returns only the selected game', () => {
+		expect(
+			filterScorePointsByGame(
+				[
+					{ gameNo: 1, scoreA: 1, scoreB: 0 },
+					{ gameNo: 2, scoreA: 1, scoreB: 1 },
+					{ gameNo: 2, scoreA: 2, scoreB: 1 }
+				],
+				2
+			)
+		).toEqual([
+			{ gameNo: 2, scoreA: 1, scoreB: 1 },
+			{ gameNo: 2, scoreA: 2, scoreB: 1 }
+		]);
+	});
+
+	test('filterScorePointsByGame returns the original array when game is null', () => {
+		const points = [
+			{ gameNo: 1, scoreA: 1, scoreB: 0 },
+			{ gameNo: 2, scoreA: 1, scoreB: 1 }
+		];
+		expect(filterScorePointsByGame(points, null)).toEqual(points);
 	});
 });
