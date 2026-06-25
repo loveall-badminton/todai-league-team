@@ -15,7 +15,8 @@
 		Settings,
 		Menu,
 		X,
-		ClipboardList
+		ClipboardList,
+		BookOpen
 	} from '@lucide/svelte';
 	import type { AccountType } from '$lib/server/auth/accountManagement';
 	import Footer from '$lib/components/Footer.svelte';
@@ -27,7 +28,16 @@
 
 	type NavItem = {
 		label: string;
-		path: '/' | '/teams' | '/groups' | '/finals' | '/ties' | '/live' | '/live/tasks' | '/settings';
+		path:
+			| '/'
+			| '/teams'
+			| '/groups'
+			| '/finals'
+			| '/ties'
+			| '/live'
+			| '/live/tasks'
+			| '/settings'
+			| '/docs';
 		icon: Component;
 		roles: AccountType[];
 	};
@@ -40,7 +50,8 @@
 		{ label: '対戦管理', path: '/ties', icon: List, roles: ['admin'] },
 		{ label: 'ライブ', path: '/live', icon: Radio, roles: ['admin', 'participant', 'team'] },
 		{ label: 'オーダー/審判', path: '/live/tasks', icon: ClipboardList, roles: ['team'] },
-		{ label: '設定', path: '/settings', icon: Settings, roles: ['admin'] }
+		{ label: '設定', path: '/settings', icon: Settings, roles: ['admin'] },
+		{ label: '使い方', path: '/docs', icon: BookOpen, roles: ['admin', 'participant', 'team'] }
 	];
 
 	let currentRole = $derived(
@@ -54,6 +65,7 @@
 		const href = resolve(path);
 		if (href === resolve('/')) return pathname === href;
 		if (href === resolve('/live')) return pathname === href;
+		if (href === resolve('/docs')) return pathname.startsWith(href);
 		return pathname.startsWith(href);
 	}
 

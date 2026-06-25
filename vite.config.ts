@@ -1,11 +1,12 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import contentCollections from '@content-collections/vite';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
+	plugins: [tailwindcss(), contentCollections(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
 		coverage: {

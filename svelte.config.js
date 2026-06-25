@@ -16,6 +16,9 @@ const config = {
 		experimental: {
 			remoteFunctions: true
 		},
+		alias: {
+			'content-collections': './.content-collections/generated'
+		},
 		version: {
 			pollInterval: 30_000
 		},

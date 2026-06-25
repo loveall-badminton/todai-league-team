@@ -31,3 +31,6 @@ test-results/
 
 # Wrangler local dev
 .dev.vars
+
+# Content Collections
+.content-collections

@@ -2,6 +2,7 @@
 @import '@fontsource/line-seed-jp/700.css';
 @import '@fontsource/line-seed-jp/800.css';
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
 @theme {
 	--font-sans:
@@ -38,4 +39,32 @@ input,
 textarea,
 select {
 	font-family: var(--font-sans);
+}
+
+/* ── Docs prose customization ──────────────────────────────── */
+.doc-content {
+	--tw-prose-body: var(--color-zinc-700);
+	--tw-prose-headings: var(--color-zinc-950);
+	--tw-prose-lead: var(--color-zinc-600);
+	--tw-prose-links: var(--color-zinc-900);
+	--tw-prose-bold: var(--color-zinc-900);
+	--tw-prose-counters: var(--color-zinc-500);
+	--tw-prose-bullets: var(--color-zinc-400);
+	--tw-prose-hr: var(--color-zinc-200);
+	--tw-prose-quotes: var(--color-zinc-900);
+	--tw-prose-quote-borders: var(--color-zinc-200);
+	--tw-prose-captions: var(--color-zinc-500);
+	--tw-prose-code: var(--color-zinc-900);
+	--tw-prose-pre-code: var(--color-zinc-200);
+	--tw-prose-pre-bg: var(--color-zinc-900);
+	--tw-prose-th-borders: var(--color-zinc-300);
+	--tw-prose-td-borders: var(--color-zinc-200);
+}
+
+.doc-content :is(h2, h3) {
+	scroll-margin-top: 1.5rem;
+}
+
+.doc-content table {
+	font-size: 0.875rem;
 }
