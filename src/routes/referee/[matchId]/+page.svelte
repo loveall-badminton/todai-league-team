@@ -1,7 +1,6 @@
 <script lang="ts">
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Card from '$lib/components/Card.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import { cn } from '$lib/utils/cn';
@@ -12,7 +11,7 @@
 	import RefereeCourtDiagram from './RefereeCourtDiagram.svelte';
 	import RefereeEventLog from './RefereeEventLog.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
-	import { confirm, rallyWon, resume, start, startGame, suspend, undo } from './referee.remote';
+	import { rallyWon, start, startGame, undo } from './referee.remote';
 	import { loadJsonFromLocalStorage, saveJsonToLocalStorage } from '$lib/utils/localStorage';
 	import {
 		undoLabel as buildUndoLabel,
@@ -33,17 +32,8 @@
 	);
 
 	let isLocked = $derived(data.state.status === 'confirmed');
-	let isTerminal = $derived(['finished', 'forfeited', 'retired'].includes(data.state.status));
 
-	// Undo: find last undoable event that hasn't been undone yet
-	const undoableEventTypes = [
-		'rally_won',
-		'correction_applied',
-		'match_suspended',
-		'match_resumed',
-		'match_started',
-		'game_started'
-	];
+	const undoableEventTypes = ['rally_won', 'match_started', 'game_started'];
 	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
 
 	function undoLabel(e: (typeof data.events)[number]): string {
@@ -118,7 +108,6 @@
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
-	// Show form error as toast
 	let prevError = $state<string | undefined>();
 	$effect(() => {
 		const failure = formResult as { error?: string } | undefined;
@@ -292,44 +281,20 @@
 
 	<!-- Controls -->
 	<Card>
-		<div class="grid grid-cols-2 gap-2">
-			<form {...undo} class="col-span-2 contents">
-				<AppButton
-					class="flex flex-col col-span-2 w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-					type="submit"
-					disabled={!lastUndoableEvent || isLocked}
-				>
-					<span class="text-xs text-muted flex items-center gap-1">
-						<Undo2 class="size-3" />取り消し
-					</span>
-					<span class="block leading-tight wrap-break-word">
-						{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
-					</span>
-				</AppButton>
-			</form>
-			<form {...suspend} class="contents">
-				<input {...suspend.fields.reason.as('hidden', 'referee_decision')} />
-				<AppButton variant="warning" class="w-full" type="submit" disabled={isLocked}>
-					中断
-				</AppButton>
-			</form>
-			<form {...resume} class="contents">
-				<AppButton variant="success" class="w-full" type="submit" disabled={isLocked}>
-					再開
-				</AppButton>
-			</form>
-			<ConfirmDialog
-				formObj={confirm}
-				triggerLabel="結果確定"
-				triggerVariant="primary"
-				triggerFullWidth
-				triggerClass="col-span-2"
-				disabled={!isTerminal || isLocked}
-				title="結果を確定しますか？"
-				description="確定後は通常の審判操作では変更できません。スコアと勝者を確認してください。"
-				confirmLabel="結果を確定する"
-			/>
-		</div>
+		<form {...undo} class="contents">
+			<AppButton
+				class="flex flex-col w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+				type="submit"
+				disabled={!lastUndoableEvent || isLocked}
+			>
+				<span class="text-xs text-muted flex items-center gap-1">
+					<Undo2 class="size-3" />取り消し
+				</span>
+				<span class="block leading-tight wrap-break-word">
+					{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
+				</span>
+			</AppButton>
+		</form>
 	</Card>
 
 	<!-- Scoresheet -->
@@ -337,14 +302,7 @@
 
 	<!-- Advanced controls -->
 	{#if !isLocked}
-		<RefereeAdvancedControls
-			{currentGame}
-			{sideAName}
-			{sideBName}
-			service={data.state.service}
-			players={data.players}
-			currentGameNo={data.state.currentGameNo}
-		/>
+		<RefereeAdvancedControls {sideAName} {sideBName} />
 	{/if}
 
 	<!-- Event log -->
