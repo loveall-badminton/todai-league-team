@@ -57,6 +57,13 @@
       "when": 1782440813042,
       "tag": "0007_melodic_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1782442346907,
+      "tag": "0008_stormy_venus",
+      "breakpoints": true
     }
   ]
 }

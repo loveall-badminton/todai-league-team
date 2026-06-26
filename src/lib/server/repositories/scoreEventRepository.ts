@@ -84,6 +84,18 @@ const UNDOABLE_EVENT_TYPES = [
 	'game_started'
 ] as const;
 
+const undoableColumns = {
+	id: scoreEvents.id,
+	matchId: scoreEvents.matchId,
+	seqNo: scoreEvents.seqNo,
+	eventType: scoreEvents.eventType,
+	payloadJson: scoreEvents.payloadJson,
+	scoreAAfter: scoreEvents.scoreAAfter,
+	scoreBAfter: scoreEvents.scoreBAfter,
+	idempotencyKey: scoreEvents.idempotencyKey,
+	createdAt: scoreEvents.createdAt
+} as const;
+
 export async function getLastUndoableScoreEvent(
 	matchId: string,
 	dbParam?: RequestDb
@@ -91,7 +103,7 @@ export async function getLastUndoableScoreEvent(
 	const db = await getRequestDbOrThrow(dbParam);
 	const [rows, undoneLinks] = await Promise.all([
 		db
-			.select()
+			.select(undoableColumns)
 			.from(scoreEvents)
 			.where(
 				and(eq(scoreEvents.matchId, matchId), inArray(scoreEvents.eventType, UNDOABLE_EVENT_TYPES))
@@ -105,7 +117,8 @@ export async function getLastUndoableScoreEvent(
 
 	const undoneSeqNos = new Set(undoneLinks.map((r) => r.targetSeqNo));
 
-	return rows.find((event) => !undoneSeqNos.has(event.seqNo)) ?? null;
+	const found = rows.find((event) => !undoneSeqNos.has(event.seqNo));
+	return (found ?? null) as ScoreEvent | null;
 }
 
 export async function hasUndoLink(

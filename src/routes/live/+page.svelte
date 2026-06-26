@@ -43,7 +43,8 @@
 			if (!hasScoreUpdate(update.data) || !activeTies.current) return 'refresh';
 			const state = update.data.score.state;
 			applyScoreToActiveTies(activeTies.current, state);
-			applyProgressionEvent(state.matchId, update.data.score.event);
+			const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
+			if (progResult === 'refresh') return 'refresh';
 			if (['finished', 'forfeited', 'retired'].includes(state.status)) {
 				return 'refresh';
 			}
@@ -55,20 +56,18 @@
 	function applyProgressionEvent(
 		matchId: string,
 		scoreEvent?: import('$lib/realtime/channels').LiveScoreEvent
-	) {
+	): 'applied' | 'refresh' | 'ignore' {
 		const prog = progression.current;
-		if (!prog) return;
+		if (!prog) return 'ignore';
 		const next = applyRealtimeProgressionEvent(matchId, scoreEvent, {
 			byMatchId: prog.byMatchId,
 			eventsByMatchId: progressionEvents
 		} satisfies ProgressionRealtimeState);
-		if (next === null) return;
-		if (next === 'refresh') {
-			void liveQuery.refresh();
-			return;
-		}
+		if (next === null) return 'ignore';
+		if (next === 'refresh') return 'refresh';
 		progressionEvents = next.eventsByMatchId;
 		prog.byMatchId = next.byMatchId;
+		return 'applied';
 	}
 
 	function applyScoreToActiveTies(

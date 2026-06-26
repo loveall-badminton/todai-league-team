@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 const TS = Date.now();
 const TEAM_A = `Live-A-${TS}`;
 const TEAM_B = `Live-B-${TS}`;
-const TIE_CODE = `Live-Tie-${TS}`;
+const TIE_CODE = `L-${TS}`;
 const PLAYERS_A = [`Live-A1-${TS}`, `Live-A2-${TS}`];
 const PLAYERS_B = [`Live-B1-${TS}`, `Live-B2-${TS}`];
 

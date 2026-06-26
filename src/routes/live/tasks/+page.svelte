@@ -9,12 +9,20 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { statusBadgeColor } from '$lib/utils/statusStyles';
+	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let myTeamId = $derived(data.authProfile?.teamId ?? null);
 	let isTeamAccount = $derived(data.authProfile?.accountType === 'team' && !!myTeamId);
+
+	const handleRealtimeUpdate = createRealtimeQueryFlow({
+		refresh: () => invalidateAll(),
+		shouldRefresh: (update: RealtimeUpdate) => update.topics.includes('schedule'),
+		debounceMs: 0
+	});
 </script>
 
 <svelte:head>
@@ -27,7 +35,7 @@
 >
 	{#snippet actions()}
 		{#if isTeamAccount}
-			<RealtimeSync topics={['score', 'schedule']} onUpdate={() => invalidateAll()} />
+			<RealtimeSync topics={['score', 'schedule']} onUpdate={(u) => void handleRealtimeUpdate(u)} />
 		{/if}
 	{/snippet}
 </PageHeader>

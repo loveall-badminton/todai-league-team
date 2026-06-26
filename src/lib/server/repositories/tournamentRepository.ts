@@ -86,13 +86,11 @@ export async function createCourt(input: {
 
 export async function listCourts(tournamentId: string): Promise<Court[]> {
 	const db = getRequestDb();
-	const courtRows = db
+	return await db
 		.select()
 		.from(courts)
 		.where(eq(courts.tournamentId, tournamentId))
 		.orderBy(asc(courts.displayOrder), asc(courts.name));
-
-	return courtRows;
 }
 
 export async function listMatchesForTournament(tournamentId: string): Promise<LiveMatchSummary[]> {
@@ -102,19 +100,30 @@ export async function listMatchesForTournament(tournamentId: string): Promise<Li
 		.from(matches)
 		.where(eq(matches.tournamentId, tournamentId))
 		.orderBy(asc(matches.displayOrder), asc(matches.createdAt));
-	const courtRows = await listCourts(tournamentId);
 
 	if (!matchRows.length) return [];
 
 	const matchIds = matchRows.map((m) => m.id);
 
-	const allSides = await db.select().from(matchSides).where(inArray(matchSides.matchId, matchIds));
-
-	const allPlayers = await db
-		.select()
-		.from(matchSidePlayers)
-		.where(inArray(matchSidePlayers.matchId, matchIds))
-		.orderBy(asc(matchSidePlayers.playerOrder));
+	const [courtRows, allSides, allPlayers] = (await (
+		db.batch as unknown as (q: unknown[]) => Promise<unknown>
+	)([
+		db
+			.select()
+			.from(courts)
+			.where(eq(courts.tournamentId, tournamentId))
+			.orderBy(asc(courts.displayOrder), asc(courts.name)),
+		db.select().from(matchSides).where(inArray(matchSides.matchId, matchIds)),
+		db
+			.select()
+			.from(matchSidePlayers)
+			.where(inArray(matchSidePlayers.matchId, matchIds))
+			.orderBy(asc(matchSidePlayers.playerOrder))
+	])) as [
+		(typeof courts.$inferSelect)[],
+		(typeof matchSides.$inferSelect)[],
+		(typeof matchSidePlayers.$inferSelect)[]
+	];
 
 	const sidesByMatchId = new Map<string, typeof allSides>();
 	for (const s of allSides) {

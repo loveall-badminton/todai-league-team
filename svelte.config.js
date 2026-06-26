@@ -20,7 +20,7 @@ const config = {
 			'content-collections': './.content-collections/generated'
 		},
 		version: {
-			pollInterval: 30_000
+			pollInterval: 60_000 // 60秒ごとにバージョンをチェックする
 		},
 		typescript: {
 			config: (config) => ({

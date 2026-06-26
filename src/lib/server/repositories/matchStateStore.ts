@@ -137,9 +137,7 @@ export function buildRubberUpdate(db: RequestDb, rubberId: string, state: MatchS
 					? 'playing'
 					: null;
 
-	if (!status) {
-		return db.update(rubbers).set({ updatedAt: now }).where(eq(rubbers.id, rubberId));
-	}
+	if (!status) return null;
 
 	return db
 		.update(rubbers)

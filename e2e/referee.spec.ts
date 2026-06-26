@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 test.describe.serial('referee scoring', () => {
 	const TEAM_A = `E2E-RefA-${Date.now()}`;
 	const TEAM_B = `E2E-RefB-${Date.now()}`;
-	const TIE_CODE = `E2E-Ref-${Date.now()}`;
+	const TIE_CODE = `R-${Date.now()}`;
 	const PLAYERS_A = [`E2E-RA1-${Date.now()}`, `E2E-RA2-${Date.now()}`, `E2E-RA3-${Date.now()}`];
 	const PLAYERS_B = [`E2E-RB1-${Date.now()}`, `E2E-RB2-${Date.now()}`, `E2E-RB3-${Date.now()}`];
 	let tieUrl: string;

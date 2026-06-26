@@ -42,6 +42,7 @@ describe('createRealtimeQueryFlow', () => {
 	});
 
 	test('uses shouldRefresh when no local apply path exists', async () => {
+		vi.useFakeTimers();
 		const refresh = vi.fn(async () => undefined);
 		const handle = createRealtimeQueryFlow({
 			refresh,
@@ -50,7 +51,9 @@ describe('createRealtimeQueryFlow', () => {
 
 		await handle(update({ topics: ['schedule'] }));
 		await handle(update({ topics: ['score'] }));
+		vi.advanceTimersByTime(200);
 
 		expect(refresh).toHaveBeenCalledTimes(1);
+		vi.useRealTimers();
 	});
 });

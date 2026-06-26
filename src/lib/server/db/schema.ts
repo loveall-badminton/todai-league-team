@@ -254,7 +254,9 @@ export const ties = sqliteTable(
 		uniqueIndex('ties_tie_code_unique').on(table.tieCode),
 		index('ties_group_code_idx').on(table.groupCode),
 		index('ties_team_a_idx').on(table.teamAId),
-		index('ties_team_b_idx').on(table.teamBId)
+		index('ties_team_b_idx').on(table.teamBId),
+		index('ties_phase_idx').on(table.phase),
+		index('ties_status_idx').on(table.status)
 	]
 );
 
@@ -426,7 +428,8 @@ export const matches = sqliteTable(
 		index('matches_rubber_id_idx').on(table.rubberId),
 		index('matches_ranking_tiebreaker_id_idx').on(table.rankingTiebreakerId),
 		index('matches_scoring_rule_id_idx').on(table.scoringRuleId),
-		index('matches_current_server_idx').on(table.currentServerPlayerId)
+		index('matches_current_server_idx').on(table.currentServerPlayerId),
+		index('matches_status_idx').on(table.status)
 	]
 );
 

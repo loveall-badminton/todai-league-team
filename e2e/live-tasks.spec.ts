@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 const TS = Date.now();
 const TEAM_NAME = `Task-T-${TS}`;
 const TEAM2_NAME = `Task-T2-${TS}`;
-const TIE_CODE = `Task-Tie-${TS}`;
+const TIE_CODE = `Tk-${TS}`;
 const ACCOUNT_ID = `task-${TS}`;
 const ACCOUNT_PW = 'TaskPass789';
 const PLAYER = `Task-P-${TS}`;

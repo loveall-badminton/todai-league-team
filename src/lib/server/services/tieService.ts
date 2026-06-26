@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, like, sql } from 'drizzle-orm';
 import {
 	groupPhaseFor,
 	RUBBER_DEFINITIONS,
@@ -31,9 +31,11 @@ export async function createTieWithRubbers(params: {
 	const db = getRequestDb();
 	const tieCode = params.tieCode.trim();
 	if (!tieCode) throw new Error('tieCode is required');
-
-	const existing = await db.query.ties.findFirst({ where: eq(ties.tieCode, tieCode) });
-	if (existing) throw new Error(`tieCode ${tieCode} already exists`);
+	if (!/^[A-Za-z]+-\d+$/.test(tieCode)) {
+		throw new Error(
+			`tieCode must be in format {PREFIX}-{NUMBER} (e.g. A-1, LIVE-2), got "${tieCode}"`
+		);
+	}
 
 	const now = params.now ?? new Date().toISOString();
 	const settings = await ensureDefaultSettings(now);
@@ -88,12 +90,17 @@ export async function ensureRubbersForTie(params: {
 	now?: string;
 }) {
 	const db = getRequestDb();
+	const [{ count: existingCount }] = await db
+		.select({ count: sql<number>`COUNT(*)` })
+		.from(rubbers)
+		.where(eq(rubbers.tieId, params.tieId));
+	if (existingCount >= RUBBER_DEFINITIONS.length) return;
+
 	const existing = await db
 		.select()
 		.from(rubbers)
 		.where(eq(rubbers.tieId, params.tieId))
 		.orderBy(asc(rubbers.displayOrder));
-	if (existing.length === RUBBER_DEFINITIONS.length) return;
 
 	const existingCodes = new Set(existing.map((rubber) => rubber.code));
 	const now = params.now ?? new Date().toISOString();
@@ -123,16 +130,20 @@ export async function generateGroupRoundRobinTies(params: {
 }): Promise<number> {
 	const db = getRequestDb();
 	const now = params.now ?? new Date().toISOString();
+	const settings = await ensureDefaultSettings(now);
+	const lineupDueAt = inferLineupDueAt(
+		null,
+		settings.defaultLineupDueMinutesBefore,
+		'ten_minutes_before'
+	);
 	const groupTeams = await db
 		.select()
 		.from(teams)
 		.where(and(eq(teams.groupCode, params.groupCode), eq(teams.status, 'active')))
 		.orderBy(asc(teams.displayOrder), asc(teams.name));
 
-	let created = 0;
 	let nextNo = await nextTieNumber(params.tieCodePrefix);
 
-	// Fetch existing ties for this group to check duplicates in memory
 	const existingTies = await db
 		.select({ teamAId: ties.teamAId, teamBId: ties.teamBId })
 		.from(ties)
@@ -140,29 +151,60 @@ export async function generateGroupRoundRobinTies(params: {
 
 	const existingPairs = new Set(existingTies.map((t) => [t.teamAId, t.teamBId].sort().join('|')));
 
+	const tieInserts: unknown[] = [];
+	const rubberInserts: unknown[] = [];
+
 	for (let i = 0; i < groupTeams.length; i += 1) {
 		for (let j = i + 1; j < groupTeams.length; j += 1) {
 			const teamA = groupTeams[i];
 			const teamB = groupTeams[j];
 			if (existingPairs.has([teamA.id, teamB.id].sort().join('|'))) continue;
 
-			await createTieWithRubbers({
-				tieCode: `${params.tieCodePrefix}-${nextNo}`,
-				phase: groupPhaseFor(params.groupCode),
-				groupCode: params.groupCode,
-				roundLabel: `${params.groupCode}リーグ`,
-				teamAId: teamA.id,
-				teamBId: teamB.id,
-				scoringRuleId: params.scoringRuleId,
-				displayOrder: nextNo,
-				now
-			});
-			created += 1;
+			const tieId = crypto.randomUUID();
+			tieInserts.push(
+				db.insert(ties).values({
+					id: tieId,
+					tieCode: `${params.tieCodePrefix}-${nextNo}`,
+					phase: groupPhaseFor(params.groupCode),
+					groupCode: params.groupCode,
+					roundLabel: `${params.groupCode}リーグ`,
+					teamAId: teamA.id,
+					teamBId: teamB.id,
+					status: 'lineup_pending',
+					displayOrder: nextNo,
+					lineupDueAt,
+					lineupDuePolicy: 'ten_minutes_before',
+					createdAt: now,
+					updatedAt: now
+				})
+			);
+			rubberInserts.push(
+				db.insert(rubbers).values(
+					RUBBER_DEFINITIONS.map((rubber) => ({
+						id: crypto.randomUUID(),
+						tieId,
+						code: rubber.code,
+						discipline: rubber.discipline,
+						displayOrder: rubber.displayOrder,
+						scoringRuleId: params.scoringRuleId,
+						status: 'not_ready' as const,
+						createdAt: now,
+						updatedAt: now
+					}))
+				)
+			);
 			nextNo += 1;
 		}
 	}
 
-	return created;
+	if (tieInserts.length > 0) {
+		await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)([
+			...tieInserts,
+			...rubberInserts
+		]);
+	}
+
+	return tieInserts.length;
 }
 
 export function inferLineupDueAt(
@@ -191,12 +233,12 @@ export function generateRoundRobinPairs<T>(teams: T[]): [T, T][] {
 
 async function nextTieNumber(prefix: GroupCode) {
 	const db = getRequestDb();
-	const existing = await db.select({ tieCode: ties.tieCode }).from(ties);
-	const usedNumbers = existing
-		.map((tie) => {
-			const match = new RegExp(`^${prefix}-(\\d+)$`).exec(tie.tieCode);
-			return match ? Number(match[1]) : 0;
+	const rows = await db
+		.select({
+			maxNo: sql<number>`CAST(SUBSTR(${ties.tieCode}, 3) AS INTEGER)`
 		})
-		.filter((value) => Number.isInteger(value) && value > 0);
-	return Math.max(0, ...usedNumbers) + 1;
+		.from(ties)
+		.where(like(ties.tieCode, `${prefix}-%`));
+	const maxNo = rows[0]?.maxNo ?? 0;
+	return maxNo + 1;
 }

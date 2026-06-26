@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const TIE_CODE = `E2E-Val-${Date.now()}`;
+const TIE_CODE = `V-${Date.now()}`;
 const TEAM_A = `E2E-ValA-${Date.now()}`;
 const TEAM_B = `E2E-ValB-${Date.now()}`;
 const MALE = `VM-Taro-${Date.now()}`;

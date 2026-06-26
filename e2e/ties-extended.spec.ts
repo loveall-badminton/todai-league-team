@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe.serial('tie extended operations', () => {
-	const TIE_CODE_A = `E2E-TA-${Date.now()}`;
+	const TIE_CODE_A = `TA-${Date.now()}`;
 	const TEAM_A = `E2E-TieTeamA-${Date.now()}`;
 	const TEAM_B = `E2E-TieTeamB-${Date.now()}`;
 	const PLAYER_A = `E2E-TiePlayerA-${Date.now()}`;

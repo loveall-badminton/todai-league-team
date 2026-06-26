@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const TIE_CODE = `E2E-${Date.now()}`;
+const TIE_CODE = `T-${Date.now()}`;
 
 test.describe('tie creation flow', () => {
 	test.beforeEach(async ({ page }) => {

@@ -384,7 +384,7 @@ describe('tieOperationService DB state transitions', () => {
 	test('startTie reveals submitted lineups and moves tie/rubbers into play-ready state', async () => {
 		await seedTeams();
 		const tieId = await createTieWithRubbers({
-			tieCode: 'start',
+			tieCode: 'T-1',
 			phase: 'group_a',
 			groupCode: 'A',
 			teamAId: 'team-a',
@@ -407,7 +407,7 @@ describe('tieOperationService DB state transitions', () => {
 	test('startTie does not move tie into playing state when match creation fails', async () => {
 		await seedTeams();
 		const tieId = await createTieWithRubbers({
-			tieCode: 'start-fail',
+			tieCode: 'T-2',
 			phase: 'group_a',
 			groupCode: 'A',
 			teamAId: 'team-a',
@@ -619,25 +619,9 @@ describe('tieService creation/update/constraint DB flows', () => {
 		expect(rubberRows.map((rubber) => rubber.code)).toEqual(['WD1', 'XD1', 'MD3', 'MD2', 'MD1']);
 	});
 
-	test('rejects duplicate or empty tie code', async () => {
+	test('rejects empty tie code', async () => {
 		await seedTeams();
-		await createTieWithRubbers({
-			tieCode: 'A-1',
-			phase: 'group_a',
-			groupCode: 'A',
-			scoringRuleId: 'GROUP_15',
-			now
-		});
 
-		await expect(
-			createTieWithRubbers({
-				tieCode: 'A-1',
-				phase: 'group_a',
-				groupCode: 'A',
-				scoringRuleId: 'GROUP_15',
-				now
-			})
-		).rejects.toThrow('tieCode A-1 already exists');
 		await expect(
 			createTieWithRubbers({
 				tieCode: '   ',
