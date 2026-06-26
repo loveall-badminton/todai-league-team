@@ -2,8 +2,7 @@ import { applyScoreEvent } from '$lib/domain/scoring';
 import { MatchStatePayloadSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
-import { matches, rubbers } from '$lib/server/db/schema';
-import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
+import { matchSidePlayers, matchSnapshots, matches, rubbers } from '$lib/server/db/schema';
 import {
 	buildMatchServiceStateUpsert,
 	buildMatchSnapshotUpsert,
@@ -20,7 +19,7 @@ import {
 	hasUndoLink
 } from '$lib/server/repositories/scoreEventRepository';
 import { recalculateTieResult } from '$lib/server/services/tieOperationService';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 export type ApplyMatchActionParams = {
 	matchId: string;
@@ -48,9 +47,67 @@ export async function applyMatchActionWithDb(
 		throw new Error('Duplicate request but afterState is missing from stored payload');
 	}
 
-	const beforeState = params.beforeState ?? (await getMatchState(matchId, db));
-	const players = params.players ?? (await getMatchPlayers(matchId, db));
-	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+	// db.batch() で複数クエリを1つの D1 HTTP リクエストに統合
+	const needsState = !params.beforeState;
+	const needsPlayers = !params.players;
+
+	let beforeState: MatchState;
+	let players: MatchPlayer[];
+	let match: Awaited<ReturnType<typeof db.query.matches.findFirst>>;
+
+	if (needsState || needsPlayers) {
+		const queries = [];
+		if (needsState)
+			queries.push(
+				db.query.matchSnapshots.findFirst({ where: eq(matchSnapshots.matchId, matchId) })
+			);
+		if (needsPlayers)
+			queries.push(
+				db
+					.select()
+					.from(matchSidePlayers)
+					.where(eq(matchSidePlayers.matchId, matchId))
+					.orderBy(asc(matchSidePlayers.side), asc(matchSidePlayers.playerOrder))
+			);
+		queries.push(db.query.matches.findFirst({ where: eq(matches.id, matchId) }));
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const results: any[] = await (db.batch as any)(queries);
+		let r = 0;
+
+		if (needsState) {
+			const snapshot = results[r++] as { stateJson: string } | undefined;
+			if (!snapshot) throw new Error('Match snapshot not found');
+			beforeState = v.parse(MatchStatePayloadSchema, JSON.parse(snapshot.stateJson)) as MatchState;
+		} else {
+			beforeState = params.beforeState!;
+		}
+
+		if (needsPlayers) {
+			const rows = results[r++] as Array<{
+				id: string;
+				side: string;
+				playerOrder: number;
+				name: string;
+				teamName: string | null;
+			}>;
+			players = rows.map((row) => ({
+				id: row.id,
+				side: row.side as 'A' | 'B',
+				order: row.playerOrder as 1 | 2,
+				name: row.name,
+				teamName: row.teamName
+			}));
+		} else {
+			players = params.players!;
+		}
+
+		match = results[r] as (typeof results)[number];
+	} else {
+		beforeState = params.beforeState!;
+		players = params.players!;
+		match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+	}
 	const input = await prepareUndoInput(db, matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
 	const eventId = crypto.randomUUID();
@@ -94,8 +151,19 @@ export async function applyMatchActionWithDb(
 	await db.batch([...ops, ...extra]);
 
 	if (match?.rubberId) {
-		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
-		if (rubber) await recalculateTieResult(rubber.tieId, now, db);
+		const terminalStatuses = new Set([
+			'finished',
+			'forfeited',
+			'retired',
+			'confirmed',
+			'cancelled'
+		]);
+		const wasTerminal = terminalStatuses.has(beforeState.status);
+		const isTerminal = terminalStatuses.has(afterState.status);
+		if (wasTerminal !== isTerminal) {
+			const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
+			if (rubber) await recalculateTieResult(rubber.tieId, now, db);
+		}
 	}
 
 	return { afterState, input };

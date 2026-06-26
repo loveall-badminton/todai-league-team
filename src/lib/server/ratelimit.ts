@@ -1,59 +1,7 @@
 import { dev } from '$app/environment';
-
-type TokenBucket = {
-	tokens: number;
-	maxTokens: number;
-	refillRate: number;
-	lastRefill: number;
-};
-
-const RATE_LIMIT_MAX_TOKENS = 60;
-const RATE_LIMIT_REFILL_RATE = 60 / 60;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-
-const AUTH_RATE_LIMIT_MAX_TOKENS = 10;
-const AUTH_RATE_LIMIT_REFILL_RATE = 10 / 60;
-
-const ipBuckets = new Map<string, TokenBucket>();
-
-let lastCleanup = Date.now();
-
-function cleanupExpiredBuckets(now: number) {
-	const elapsed = now - lastCleanup;
-	if (elapsed < 60_000) return;
-	lastCleanup = now;
-
-	const expiry = now - RATE_LIMIT_WINDOW_MS * 2;
-	for (const [key, bucket] of ipBuckets) {
-		if (bucket.lastRefill < expiry) ipBuckets.delete(key);
-	}
-}
-
-function refillAndConsume(bucket: TokenBucket, now: number, cost: number): boolean {
-	const elapsed = (now - bucket.lastRefill) / 1000;
-	bucket.tokens = Math.min(bucket.maxTokens, bucket.tokens + elapsed * bucket.refillRate);
-	bucket.lastRefill = now;
-
-	if (bucket.tokens >= cost) {
-		bucket.tokens -= cost;
-		return true;
-	}
-	return false;
-}
-
-function getOrCreateBucket(
-	map: Map<string, TokenBucket>,
-	key: string,
-	now: number,
-	maxTokens: number,
-	refillRate: number
-): TokenBucket {
-	const existing = map.get(key);
-	if (existing) return existing;
-	const bucket: TokenBucket = { tokens: maxTokens, maxTokens, refillRate, lastRefill: now };
-	map.set(key, bucket);
-	return bucket;
-}
+import { getDb } from '$lib/server/db';
+import { rateLimits } from '$lib/server/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
 export type RateLimitCheck = {
 	allowed: boolean;
@@ -62,37 +10,53 @@ export type RateLimitCheck = {
 
 export type RateLimitConfig = {
 	maxTokens: number;
-	refillRate: number;
 	cost?: number;
 };
 
 export const API_RATE_LIMIT: RateLimitConfig = {
-	maxTokens: RATE_LIMIT_MAX_TOKENS,
-	refillRate: RATE_LIMIT_REFILL_RATE
+	maxTokens: 60
 };
 
 export const AUTH_RATE_LIMIT: RateLimitConfig = {
-	maxTokens: AUTH_RATE_LIMIT_MAX_TOKENS,
-	refillRate: AUTH_RATE_LIMIT_REFILL_RATE
+	maxTokens: 10
 };
 
-export function checkRateLimit(
+const WINDOW_MS = 60_000;
+
+export async function checkRateLimit(
+	db: D1Database,
 	key: string,
 	config: RateLimitConfig = API_RATE_LIMIT
-): RateLimitCheck {
+): Promise<RateLimitCheck> {
 	if (dev) return { allowed: true, retryAfterMs: 0 };
 
-	const { maxTokens, refillRate, cost = 1 } = config;
+	const { maxTokens, cost = 1 } = config;
 	const now = Date.now();
-	cleanupExpiredBuckets(now);
+	const windowStart = Math.floor(now / WINDOW_MS);
+	const nowISO = new Date(now).toISOString();
 
-	const bucket = getOrCreateBucket(ipBuckets, key, now, maxTokens, refillRate);
-	if (!refillAndConsume(bucket, now, cost)) {
-		const waitMs = Math.ceil(((cost - bucket.tokens) / refillRate) * 1000);
-		return { allowed: false, retryAfterMs: Math.max(waitMs, 1000) };
+	const drizzle = getDb(db);
+
+	const row = await drizzle
+		.select({ count: rateLimits.count })
+		.from(rateLimits)
+		.where(and(eq(rateLimits.key, key), eq(rateLimits.windowStart, windowStart)))
+		.get();
+
+	const currentCount = row?.count ?? 0;
+
+	if (currentCount + cost > maxTokens) {
+		const retryAfter = (windowStart + 1) * WINDOW_MS - now;
+		return { allowed: false, retryAfterMs: Math.max(retryAfter, 1000) };
 	}
+
+	await drizzle.run(sql`
+		INSERT INTO rate_limits (key, window_start_seconds, count, created_at, updated_at)
+		VALUES (${key}, ${windowStart}, ${cost}, ${nowISO}, ${nowISO})
+		ON CONFLICT(key, window_start_seconds) DO UPDATE SET
+			count = count + ${cost},
+			updated_at = ${nowISO}
+	`);
 
 	return { allowed: true, retryAfterMs: 0 };
 }
-
-export { RATE_LIMIT_WINDOW_MS };

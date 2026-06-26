@@ -2,7 +2,8 @@ import { getRequestEvent } from '$app/server';
 import type { LiveTopic } from '$lib/realtime/channels';
 import type { LivePageData } from '$lib/server/services/livePageService';
 
-const LIVE_PAGE_CACHE_TTL_MS = 5_000;
+const LIVE_PAGE_CACHE_TTL_MS = 10_000;
+const LIVE_PAGE_STALE_TTL_MS = 30_000;
 const LIVE_PAGE_CACHE_KEY = 'https://live-cache.internal/live-page-data';
 const LIVE_PAGE_CACHE_EXPIRY_HEADER = 'x-live-cache-expires-at';
 const livePageTopics = new Set<LiveTopic>(['score', 'schedule', 'standings', 'finals']);
@@ -10,6 +11,7 @@ const livePageTopics = new Set<LiveTopic>(['score', 'schedule', 'standings', 'fi
 type LivePageCacheEntry = {
 	value: LivePageData;
 	expiresAt: number;
+	bornAt: number;
 };
 
 let cacheEntry: LivePageCacheEntry | null = null;
@@ -21,6 +23,11 @@ export async function getCachedLivePageData(
 ): Promise<LivePageData> {
 	if (cacheEntry && cacheEntry.expiresAt > now) return cacheEntry.value;
 
+	if (cacheEntry && now - cacheEntry.bornAt < LIVE_PAGE_STALE_TTL_MS) {
+		refreshInBackground(load);
+		return cacheEntry.value;
+	}
+
 	const edgeCached = await readLivePageFromEdgeCache(now);
 	if (edgeCached) {
 		cacheEntry = edgeCached;
@@ -29,21 +36,38 @@ export async function getCachedLivePageData(
 
 	if (inFlight) return inFlight;
 
+	const entry = await loadFresh(load);
+	cacheEntry = entry;
+	return entry.value;
+}
+
+function refreshInBackground(load: () => Promise<LivePageData>): void {
+	if (inFlight) return;
 	inFlight = load().then(async (value) => {
 		const entry = {
 			value,
-			expiresAt: Date.now() + LIVE_PAGE_CACHE_TTL_MS
+			expiresAt: Date.now() + LIVE_PAGE_CACHE_TTL_MS,
+			bornAt: Date.now()
 		};
 		cacheEntry = entry;
 		await writeLivePageToEdgeCache(entry);
 		return value;
 	});
-
-	try {
-		return await inFlight;
-	} finally {
+	inFlight.finally(() => {
 		inFlight = null;
-	}
+	});
+}
+
+async function loadFresh(load: () => Promise<LivePageData>): Promise<LivePageCacheEntry> {
+	const value = await load();
+	const entry = {
+		value,
+		expiresAt: Date.now() + LIVE_PAGE_CACHE_TTL_MS,
+		bornAt: Date.now()
+	};
+	cacheEntry = entry;
+	await writeLivePageToEdgeCache(entry);
+	return entry;
 }
 
 export function invalidateLivePageCache(topics: readonly LiveTopic[]) {
@@ -53,6 +77,15 @@ export function invalidateLivePageCache(topics: readonly LiveTopic[]) {
 	const cache = getEdgeCache();
 	if (!cache) return;
 	void runInBackground(cache.delete(buildLivePageCacheRequest()));
+}
+
+let lastPrewarmAt = 0;
+
+export function prewarmLivePageCache(load: () => Promise<LivePageData>): void {
+	const now = Date.now();
+	if (now - lastPrewarmAt < 3000) return;
+	lastPrewarmAt = now;
+	refreshInBackground(load);
 }
 
 export function clearLivePageCacheForTests() {
@@ -75,7 +108,8 @@ async function readLivePageFromEdgeCache(now: number): Promise<LivePageCacheEntr
 
 	return {
 		value: (await response.json()) as LivePageData,
-		expiresAt
+		expiresAt,
+		bornAt: Date.now()
 	};
 }
 

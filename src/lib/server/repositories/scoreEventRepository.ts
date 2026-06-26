@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
 import type { MatchState, ScoreEventInput, Side } from '$lib/domain/types';
 import type { RequestDb } from './matchStateStore';
@@ -75,6 +75,15 @@ export async function getScoreEventByIdempotencyKey(
 	return event ?? null;
 }
 
+const UNDOABLE_EVENT_TYPES = [
+	'rally_won',
+	'correction_applied',
+	'match_suspended',
+	'match_resumed',
+	'match_started',
+	'game_started'
+] as const;
+
 export async function getLastUndoableScoreEvent(
 	matchId: string,
 	dbParam?: RequestDb
@@ -84,7 +93,9 @@ export async function getLastUndoableScoreEvent(
 		db
 			.select()
 			.from(scoreEvents)
-			.where(eq(scoreEvents.matchId, matchId))
+			.where(
+				and(eq(scoreEvents.matchId, matchId), inArray(scoreEvents.eventType, UNDOABLE_EVENT_TYPES))
+			)
 			.orderBy(desc(scoreEvents.seqNo)),
 		db
 			.select({ targetSeqNo: scoreEventUndoLinks.targetSeqNo })
@@ -94,19 +105,7 @@ export async function getLastUndoableScoreEvent(
 
 	const undoneSeqNos = new Set(undoneLinks.map((r) => r.targetSeqNo));
 
-	return (
-		rows.find(
-			(event) =>
-				[
-					'rally_won',
-					'correction_applied',
-					'match_suspended',
-					'match_resumed',
-					'match_started',
-					'game_started'
-				].includes(event.eventType) && !undoneSeqNos.has(event.seqNo)
-		) ?? null
-	);
+	return rows.find((event) => !undoneSeqNos.has(event.seqNo)) ?? null;
 }
 
 export async function hasUndoLink(

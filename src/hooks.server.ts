@@ -11,11 +11,19 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (!event.platform?.env?.DB)
 		throw new Error('D1 binding "DB" not found - are you running with wrangler?');
 
+	const pathname = event.url.pathname;
+
+	// 静的アセットは auth チェック不要 — キャッシュヘッダー付けて即返す
+	if (pathname.startsWith('/_app/immutable/')) {
+		const response = await resolve(event);
+		response.headers.set('cache-control', 'public, max-age=31536000, immutable');
+		return response;
+	}
+
 	event.locals.auth = createAuth(event.platform.env.DB);
 
 	const { auth } = event.locals;
 	const session = await auth.api.getSession({ headers: event.request.headers });
-	const pathname = event.url.pathname;
 
 	if (session) {
 		event.locals.session = session.session;
@@ -41,7 +49,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (isAuthPath || isApiPath) {
 		const ip = event.request.headers.get('cf-connecting-ip') ?? 'unknown';
 		const config = isAuthPath ? AUTH_RATE_LIMIT : API_RATE_LIMIT;
-		const check = checkRateLimit(ip, config);
+		const check = await checkRateLimit(event.platform.env.DB, ip, config);
 		if (!check.allowed) {
 			return new Response('Too Many Requests', {
 				status: 429,
@@ -54,13 +62,8 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
 	const response = await svelteKitHandler({ event, resolve, auth, building });
 
-	if (pathname.startsWith('/api/live') || pathname.startsWith('/_app/immutable/')) {
-		response.headers.set(
-			'cache-control',
-			pathname.startsWith('/_app/immutable/')
-				? 'public, max-age=31536000, immutable'
-				: 'public, max-age=5, must-revalidate'
-		);
+	if (pathname.startsWith('/api/live')) {
+		response.headers.set('cache-control', 'public, max-age=5, must-revalidate');
 	}
 
 	return response;

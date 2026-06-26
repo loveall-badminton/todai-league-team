@@ -27,7 +27,7 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 		options.onStatusChange?.(next);
 	}
 
-	function connect() {
+	async function connect() {
 		if (!browser) return;
 
 		if (socket) {
@@ -40,14 +40,20 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 		generation++;
 		const currentGeneration = generation;
 
+		// ジッターで再接続のタイミングを分散
+		const jitterMs = 500 + Math.random() * 3000;
+		await new Promise((resolve) => setTimeout(resolve, jitterMs));
+
+		if (generation !== currentGeneration) return;
+
 		const ws = new PartySocket({
 			host: window.location.host,
 			room: options.channel,
 			party: 'live-board',
-			maxReconnectionDelay: 10000,
-			minReconnectionDelay: 3000,
-			reconnectionDelayGrowFactor: 1.3,
-			maxRetries: 5
+			maxReconnectionDelay: 15000,
+			minReconnectionDelay: 2000,
+			reconnectionDelayGrowFactor: 1.5,
+			maxRetries: 10
 		});
 
 		socket = ws;

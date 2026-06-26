@@ -35,7 +35,8 @@ export async function getScoreProgressionData() {
 		})
 		.from(scoreEvents)
 		.where(inArray(scoreEvents.matchId, matchIds))
-		.orderBy(asc(scoreEvents.matchId), asc(scoreEvents.seqNo));
+		.orderBy(asc(scoreEvents.matchId), asc(scoreEvents.seqNo))
+		.limit(1000);
 
 	const eventsByMatchId: Record<string, ProgressionEvent[]> = {};
 	for (const e of allEvents) {

@@ -8,7 +8,8 @@ import {
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
-import { invalidateLivePageCache } from '$lib/server/services/livePageCache';
+import { invalidateLivePageCache, prewarmLivePageCache } from '$lib/server/services/livePageCache';
+import { getLivePageData } from '$lib/server/services/livePageService';
 
 export function notifyLiveBoard(): void;
 export function notifyLiveBoard<TTopics extends readonly LiveTopic[]>(
@@ -20,6 +21,7 @@ export function notifyLiveBoard(
 	data?: LiveUpdateData
 ): void {
 	invalidateLivePageCache(topics);
+	prewarmLivePageCache(getLivePageData);
 	if (dev) {
 		console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
 	}
@@ -43,6 +45,7 @@ export function notifyScoreChange<TTopics extends readonly LiveTopic[]>(
 	data?: LiveUpdateData<TTopics[number]>
 ): void {
 	invalidateLivePageCache(topics);
+	prewarmLivePageCache(getLivePageData);
 	if (dev) {
 		console.log('[broadcast] notifyScoreChange', {
 			matchId,
@@ -61,11 +64,12 @@ function dispatch(channel: string, message: LiveMessage): void {
 		const { platform } = getRequestEvent();
 		const namespace = platform?.env?.LiveBoard;
 		if (!namespace) {
-			console.warn('[broadcast] LiveBoard binding not available', {
-				channel,
-				message,
-				at: new Date().toISOString()
-			});
+			if (dev) {
+				console.warn('[broadcast] LiveBoard binding not available', {
+					channel,
+					at: new Date().toISOString()
+				});
+			}
 			return;
 		}
 
@@ -76,29 +80,25 @@ function dispatch(channel: string, message: LiveMessage): void {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify(message)
 			})
-			.then((res) => {
+			.then(() => undefined)
+			.catch((err) => {
 				if (dev) {
-					console.log('[broadcast] dispatched ok', {
+					console.warn('[broadcast] dispatch error', {
 						channel,
-						status: res.status,
+						error: String(err),
 						at: new Date().toISOString()
 					});
 				}
-			})
-			.catch((err) => {
-				console.warn('[broadcast] dispatch error', {
-					channel,
-					error: String(err),
-					at: new Date().toISOString()
-				});
 			});
 
 		platform?.ctx?.waitUntil?.(task);
 	} catch (err) {
-		console.warn('[broadcast] dispatch exception', {
-			channel,
-			error: String(err),
-			at: new Date().toISOString()
-		});
+		if (dev) {
+			console.warn('[broadcast] dispatch exception', {
+				channel,
+				error: String(err),
+				at: new Date().toISOString()
+			});
+		}
 	}
 }

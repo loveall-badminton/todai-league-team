@@ -8,7 +8,8 @@ import {
 	sqliteTable,
 	text,
 	uniqueIndex,
-	index
+	index,
+	unique
 } from 'drizzle-orm/sqlite-core';
 
 export const scoringRules = sqliteTable('scoring_rules', {
@@ -57,31 +58,51 @@ export const appSettings = sqliteTable('app_settings', {
 		.default(sql`CURRENT_TIMESTAMP`)
 });
 
-export const teams = sqliteTable('teams', {
-	id: text('id').primaryKey(),
+export const rateLimits = sqliteTable(
+	'rate_limits',
+	{
+		key: text('key').notNull(),
+		windowStart: integer('window_start_seconds').notNull(),
+		count: integer('count').notNull().default(0),
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => [unique('rate_limits_key_window_unique').on(table.key, table.windowStart)]
+);
 
-	name: text('name').notNull(),
-	shortName: text('short_name'),
+export const teams = sqliteTable(
+	'teams',
+	{
+		id: text('id').primaryKey(),
 
-	groupCode: text('group_code', {
-		enum: ['A', 'B']
-	}),
+		name: text('name').notNull(),
+		shortName: text('short_name'),
 
-	displayOrder: integer('display_order').notNull().default(0),
+		groupCode: text('group_code', {
+			enum: ['A', 'B']
+		}),
 
-	status: text('status', {
-		enum: ['active', 'withdrawn']
-	})
-		.notNull()
-		.default('active'),
+		displayOrder: integer('display_order').notNull().default(0),
 
-	createdAt: text('created_at')
-		.notNull()
-		.default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: text('updated_at')
-		.notNull()
-		.default(sql`CURRENT_TIMESTAMP`)
-});
+		status: text('status', {
+			enum: ['active', 'withdrawn']
+		})
+			.notNull()
+			.default('active'),
+
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(table) => [index('teams_group_status_idx').on(table.groupCode, table.status)]
+);
 
 export const authUserProfiles = sqliteTable(
 	'auth_user_profiles',
@@ -560,7 +581,8 @@ export const scoreEvents = sqliteTable(
 	(table) => [
 		uniqueIndex('score_events_match_seq_unique').on(table.matchId, table.seqNo),
 		uniqueIndex('score_events_match_idempotency_unique').on(table.matchId, table.idempotencyKey),
-		index('score_events_match_seq_idx').on(table.matchId, table.seqNo)
+		index('score_events_match_seq_idx').on(table.matchId, table.seqNo),
+		index('score_events_event_type_idx').on(table.eventType)
 	]
 );
 
@@ -687,7 +709,8 @@ export const rubbers = sqliteTable(
 	(table) => [
 		index('rubbers_tie_id_idx').on(table.tieId),
 		uniqueIndex('rubbers_tie_code_unique').on(table.tieId, table.code),
-		index('rubbers_match_id_idx').on(table.matchId)
+		index('rubbers_match_id_idx').on(table.matchId),
+		index('rubbers_status_pair_idx').on(table.status, table.matchId)
 	]
 );
 
