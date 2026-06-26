@@ -14,9 +14,11 @@ export const load: PageServerLoad = async () => {
 	const match = await getMatchWithPlayers(matchId);
 	if (!match) error(404, 'Match not found');
 
+	const [state, events] = await Promise.all([getMatchState(matchId), getScoreEvents(matchId)]);
+
 	return {
 		...match,
-		state: await getMatchState(matchId),
-		events: await getScoreEvents(matchId)
+		state,
+		events
 	};
 };

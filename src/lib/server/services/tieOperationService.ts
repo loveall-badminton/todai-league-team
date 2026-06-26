@@ -1,9 +1,11 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 import { getRequestDb } from '$lib/server/db/request';
+import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
+import type { RequestDb } from '$lib/server/repositories/matchStateStore';
 import {
 	lineupItems,
 	lineupSubmissions,
+	matchSnapshots,
 	matches,
 	rubbers,
 	scoringRules,
@@ -11,6 +13,8 @@ import {
 	teams,
 	ties
 } from '$lib/server/db/schema';
+import { MatchStateSchema } from '$lib/domain/schemas';
+import * as v from 'valibot';
 import { revealLineups } from './lineupService';
 import {
 	INTERNAL_TOURNAMENT_ID,
@@ -57,7 +61,7 @@ export function rubberStatusFromMatchResultStatus(
 }
 
 export async function startTie(tieId: string, options: { force?: boolean; now?: string } = {}) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const now = options.now ?? new Date().toISOString();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('対戦が見つかりません');
@@ -97,7 +101,7 @@ export async function createMatchFromRubber(
 	rubberId: string,
 	now = new Date().toISOString()
 ): Promise<string> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');
 	if (rubber.matchId) return rubber.matchId;
@@ -152,7 +156,7 @@ export async function createMatchFromRubber(
 }
 
 export async function syncRubberResultFromMatch(matchId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) return;
 	const rubberStatus = rubberStatusFromMatchResultStatus(match.status);
@@ -171,8 +175,12 @@ export async function syncRubberResultFromMatch(matchId: string, now = new Date(
 	if (rubber) await recalculateTieResult(rubber.tieId, now);
 }
 
-export async function recalculateTieResult(tieId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
+export async function recalculateTieResult(
+	tieId: string,
+	now = new Date().toISOString(),
+	dbParam?: RequestDb
+) {
+	const db = await getRequestDbOrThrow(dbParam);
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('Tie not found');
 	const rubberRows = await db
@@ -196,38 +204,65 @@ export async function recalculateTieResult(tieId: string, now = new Date().toISO
 }
 
 export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) throw new Error('この試合は種目と紐づいていません');
-	await db
-		.update(matches)
-		.set({ status: 'cancelled', updatedAt: now })
-		.where(eq(matches.id, matchId));
-	await cancelRubber(match.rubberId, now);
-}
 
-async function cancelRubber(rubberId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
-	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
+	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');
 	if (terminalRubberStatuses.has(rubber.status)) {
 		throw new Error('すでに終了している種目は打ち切りできません');
 	}
-	await db
-		.update(rubbers)
-		.set({ status: 'cancelled', updatedAt: now })
-		.where(eq(rubbers.id, rubber.id));
+
+	const snapshot = await db.query.matchSnapshots.findFirst({
+		where: eq(matchSnapshots.matchId, matchId)
+	});
+	let nextSeqNo = 0;
+	let stateJson = '{}';
+
+	if (snapshot) {
+		const state = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
+		state.status = 'cancelled';
+		state.lastSeqNo += 1;
+		state.updatedAt = now;
+		state.service = null;
+		nextSeqNo = state.lastSeqNo;
+		stateJson = JSON.stringify(state);
+	}
+
+	const ops: ReturnType<typeof db.batch>[0] = [
+		db.update(matches).set({ status: 'cancelled', updatedAt: now }).where(eq(matches.id, matchId)),
+		db
+			.update(rubbers)
+			.set({ status: 'cancelled', updatedAt: now })
+			.where(eq(rubbers.id, match.rubberId))
+	];
+
+	if (snapshot) {
+		ops.push(
+			db
+				.update(matchSnapshots)
+				.set({
+					stateJson,
+					seqNo: nextSeqNo,
+					updatedAt: now
+				})
+				.where(eq(matchSnapshots.matchId, matchId))
+		);
+	}
+
+	await db.batch(ops);
 	await recalculateTieResult(rubber.tieId, now);
 }
 
 export async function confirmTie(tieId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await recalculateTieResult(tieId, now);
 	await db.update(ties).set({ status: 'confirmed', updatedAt: now }).where(eq(ties.id, tieId));
 }
 
 async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberCode: string) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const submission = await db.query.lineupSubmissions.findFirst({
 		where: and(eq(lineupSubmissions.tieId, tieId), eq(lineupSubmissions.side, side))
 	});
@@ -251,4 +286,9 @@ async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberC
 		if (!player) throw new Error('選手が見つかりません');
 		return { ...player, teamName: team?.name ?? null };
 	});
+}
+
+async function getRequestDbOrThrow(dbParam?: RequestDb): Promise<RequestDb> {
+	if (dbParam) return dbParam;
+	return getRequestDb();
 }

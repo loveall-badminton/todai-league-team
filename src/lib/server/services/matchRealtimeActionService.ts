@@ -1,8 +1,7 @@
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
-import { buildRealtimeScorePayload, resolveRealtimeInput } from '$lib/realtime/matchScorePayload';
+import { buildRealtimeScorePayload } from '$lib/realtime/matchScorePayload';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
-import { getLastUndoableScoreEvent } from '$lib/server/repositories/scoreEventRepository';
-import { applyMatchAction } from '$lib/server/services/matchActionService';
+import { applySerializedMatchAction } from '$lib/server/services/matchActionSerializedService';
 
 const autoConfirmStatuses = new Set(['finished', 'forfeited', 'retired']);
 
@@ -24,14 +23,9 @@ export async function applyMatchActionWithRealtime(params: {
 }): Promise<MatchActionRealtimeResult> {
 	const beforeState = params.beforeState ?? (await getMatchState(params.matchId));
 	const players = params.players ?? (await getMatchPlayers(params.matchId));
-	const lastUndoableEvent =
-		params.input.type === 'undo' && params.input.targetSeqNo === undefined
-			? await getLastUndoableScoreEvent(params.matchId)
-			: null;
-	const input = resolveRealtimeInput(params.input, lastUndoableEvent?.seqNo);
-	const afterState = await applyMatchAction({
+	const { afterState, input } = await applySerializedMatchAction({
 		matchId: params.matchId,
-		input,
+		input: params.input,
 		actorName: params.actorName,
 		now: params.now,
 		beforeState,

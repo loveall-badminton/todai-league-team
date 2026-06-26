@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
-import type { MatchState, ScoreEventInput, Side } from '$lib/domain/types';
 import { getRequestDb } from '$lib/server/db/request';
+import type { MatchState, ScoreEventInput, Side } from '$lib/domain/types';
+import type { RequestDb } from './matchStateStore';
 import { scoreEventUndoLinks, scoreEvents } from '$lib/server/db/schema';
 import { buildScoreEventInsert, buildUndoLinkInsert } from './matchStateStore';
 
@@ -23,7 +24,7 @@ export interface InsertScoreEventParams {
 }
 
 export async function insertScoreEvent(params: InsertScoreEventParams): Promise<void> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await buildScoreEventInsert(db, {
 		eventId: params.id,
 		matchId: params.matchId,
@@ -42,7 +43,7 @@ export async function insertScoreEvent(params: InsertScoreEventParams): Promise<
 }
 
 export async function getScoreEvents(matchId: string): Promise<ScoreEvent[]> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	return db
 		.select()
 		.from(scoreEvents)
@@ -52,9 +53,10 @@ export async function getScoreEvents(matchId: string): Promise<ScoreEvent[]> {
 
 export async function getScoreEventBySeqNo(
 	matchId: string,
-	seqNo: number
+	seqNo: number,
+	dbParam?: RequestDb
 ): Promise<ScoreEvent | null> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow(dbParam);
 	const event = await db.query.scoreEvents.findFirst({
 		where: and(eq(scoreEvents.matchId, matchId), eq(scoreEvents.seqNo, seqNo))
 	});
@@ -63,17 +65,21 @@ export async function getScoreEventBySeqNo(
 
 export async function getScoreEventByIdempotencyKey(
 	matchId: string,
-	idempotencyKey: string
+	idempotencyKey: string,
+	dbParam?: RequestDb
 ): Promise<ScoreEvent | null> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow(dbParam);
 	const event = await db.query.scoreEvents.findFirst({
 		where: and(eq(scoreEvents.matchId, matchId), eq(scoreEvents.idempotencyKey, idempotencyKey))
 	});
 	return event ?? null;
 }
 
-export async function getLastUndoableScoreEvent(matchId: string): Promise<ScoreEvent | null> {
-	const db = getRequestDb();
+export async function getLastUndoableScoreEvent(
+	matchId: string,
+	dbParam?: RequestDb
+): Promise<ScoreEvent | null> {
+	const db = await getRequestDbOrThrow(dbParam);
 	const [rows, undoneLinks] = await Promise.all([
 		db
 			.select()
@@ -103,8 +109,12 @@ export async function getLastUndoableScoreEvent(matchId: string): Promise<ScoreE
 	);
 }
 
-export async function hasUndoLink(matchId: string, targetSeqNo: number): Promise<boolean> {
-	const db = getRequestDb();
+export async function hasUndoLink(
+	matchId: string,
+	targetSeqNo: number,
+	dbParam?: RequestDb
+): Promise<boolean> {
+	const db = await getRequestDbOrThrow(dbParam);
 	const link = await db.query.scoreEventUndoLinks.findFirst({
 		where: and(
 			eq(scoreEventUndoLinks.matchId, matchId),
@@ -121,6 +131,11 @@ export async function insertUndoLink(params: {
 	targetSeqNo: number;
 	createdAt: string;
 }): Promise<void> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await buildUndoLinkInsert(db, params);
+}
+
+async function getRequestDbOrThrow(dbParam?: RequestDb): Promise<RequestDb> {
+	if (dbParam) return dbParam;
+	return getRequestDb();
 }

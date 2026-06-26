@@ -1,7 +1,7 @@
 import { getCurrentGame } from '$lib/domain/scoring';
 import { eventTypeForInput } from '$lib/domain/scoreEvents';
 import type { MatchState, ScoreEventInput, ServiceState } from '$lib/domain/types';
-import { getRequestDb } from '$lib/server/db/request';
+import { getDb } from '$lib/server/db';
 import {
 	matchServiceStates,
 	matchSnapshots,
@@ -12,7 +12,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-export type RequestDb = ReturnType<typeof getRequestDb>;
+export type RequestDb = ReturnType<typeof getDb>;
 
 type ScoreEventType = (typeof scoreEvents.$inferSelect)['eventType'];
 

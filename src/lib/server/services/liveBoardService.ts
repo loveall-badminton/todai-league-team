@@ -302,10 +302,14 @@ export async function getPublicRubbers(tieId: string): Promise<PublicRubberSumma
 	return getPublicRubbersForTie(tieId, revealed);
 }
 
-async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSummary[][]> {
+export async function getBatchedPublicRubbers(
+	tieIds: string[],
+	options: { revealed?: boolean } = {}
+): Promise<PublicRubberSummary[][]> {
 	if (!tieIds.length) return [];
 
 	const db = getRequestDb();
+	const revealed = options.revealed ?? true;
 
 	// 1. Fetch all rubbers for all ties
 	const allRubbers = await db
@@ -337,16 +341,15 @@ async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSu
 	const allGameScores = matchIds.length > 0 ? await fetchLiveGameScores(matchIds) : [];
 
 	// 4. Fetch all lineup submissions
-	const allSubmissions = await db
-		.select()
-		.from(lineupSubmissions)
-		.where(inArray(lineupSubmissions.tieId, tieIds));
+	const allSubmissions = revealed
+		? await db.select().from(lineupSubmissions).where(inArray(lineupSubmissions.tieId, tieIds))
+		: [];
 
 	const submissionIds = allSubmissions.map((s) => s.id);
 
 	// 5. Fetch all lineup items
 	const allItems =
-		submissionIds.length > 0
+		revealed && submissionIds.length > 0
 			? await db.select().from(lineupItems).where(inArray(lineupItems.submissionId, submissionIds))
 			: [];
 
@@ -356,7 +359,7 @@ async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSu
 
 	// 6. Fetch all players
 	const allPlayers =
-		playerIds.length > 0
+		revealed && playerIds.length > 0
 			? await db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
 			: [];
 
@@ -368,7 +371,7 @@ async function getBatchedPublicRubbers(tieIds: string[]): Promise<PublicRubberSu
 			rubbers: rubbersByTieId.get(tieId) ?? [],
 			matches: allMatches,
 			gameScores: allGameScores,
-			revealed: true,
+			revealed,
 			submissions: submissionsByTieId.get(tieId) ?? [],
 			items: allItems,
 			players: allPlayers

@@ -1,6 +1,6 @@
 import { command, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
-import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
+import { notifyLiveBoard, notifyScoreChange } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeagueRepository';
 import {
@@ -130,8 +130,7 @@ async function applyLifecycleMatchAction(
 		actorName: null,
 		now: new Date().toISOString()
 	});
-	notifyMatch(matchId, ['score'], { score: result.scorePayload });
-	notifyLiveBoard(['score'], { score: result.scorePayload });
+	notifyScoreChange(matchId, ['score'], { score: result.scorePayload });
 }
 
 async function getMatchSeqNo(matchId: string): Promise<number> {

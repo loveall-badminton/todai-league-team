@@ -130,7 +130,11 @@ export function applyScoreEvent(params: {
 		case 'match_resumed':
 			if (state.status !== 'suspended') throw new Error('Match can be resumed only from suspended');
 			return withSeq({ ...state, status: 'playing' }, now);
-		case 'side_forfeited':
+		case 'side_forfeited': {
+			const allowed = ['scheduled', 'playing', 'interval', 'suspended'] as const;
+			if (!allowed.includes(state.status)) {
+				throw new Error('不戦敗を記録できるのは試合開始前または進行中のみです');
+			}
 			return withSeq(
 				{
 					...state,
@@ -141,7 +145,12 @@ export function applyScoreEvent(params: {
 				},
 				now
 			);
-		case 'side_retired':
+		}
+		case 'side_retired': {
+			const allowed = ['playing', 'interval', 'suspended'] as const;
+			if (!allowed.includes(state.status)) {
+				throw new Error('棄権を記録できるのは試合進行中のみです');
+			}
 			return withSeq(
 				{
 					...state,
@@ -152,6 +161,7 @@ export function applyScoreEvent(params: {
 				},
 				now
 			);
+		}
 		case 'match_confirmed':
 			if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
 				throw new Error('Only terminal matches can be confirmed');

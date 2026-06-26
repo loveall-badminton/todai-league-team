@@ -1,4 +1,4 @@
-import { getPublicRubbersForTie } from '$lib/server/services/liveBoardService';
+import { getBatchedPublicRubbers } from '$lib/server/services/liveBoardService';
 import {
 	listOfficiatingTieIds,
 	listTeams,
@@ -20,13 +20,14 @@ export async function loadLiveTasksPageData(authProfile: AuthProfile | null | un
 	]);
 
 	const officiatingTieRows = await listTiesByIds(officiatingTieIds);
+	const teamNameById = new Map(teamRows.map((team) => [team.id, team.name]));
 
 	const toSummary = (tie: (typeof myTieRows)[number]) => ({
 		id: tie.id,
 		tieCode: tie.tieCode,
 		status: tie.status,
-		teamAName: teamRows.find((team) => team.id === tie.teamAId)?.name ?? null,
-		teamBName: teamRows.find((team) => team.id === tie.teamBId)?.name ?? null
+		teamAName: tie.teamAId ? (teamNameById.get(tie.teamAId) ?? null) : null,
+		teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null
 	});
 
 	const myTies = myTieRows.filter((tie) => tie.status !== 'cancelled').map(toSummary);
@@ -34,9 +35,7 @@ export async function loadLiveTasksPageData(authProfile: AuthProfile | null | un
 		.filter((tie) => tie.status !== 'cancelled')
 		.map(toSummary);
 	const publicTieIds = [...new Set([...myTies, ...myOfficiatingTies].map((tie) => tie.id))];
-	const publicRubbers = await Promise.all(
-		publicTieIds.map((tieId) => getPublicRubbersForTie(tieId, false))
-	);
+	const publicRubbers = await getBatchedPublicRubbers(publicTieIds, { revealed: false });
 
 	return {
 		myTies,

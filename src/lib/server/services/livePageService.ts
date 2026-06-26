@@ -4,23 +4,25 @@ import { listTeams } from '$lib/server/repositories/tokyoLeagueRepository';
 import { getActiveTieBoard, getFinalsTieBoard } from '$lib/server/services/liveBoardService';
 import { calculateAllGroupStandings } from '$lib/server/services/standingService';
 import { listTies } from '$lib/server/repositories/tokyoLeagueRepository';
-import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, asc, inArray, isNotNull } from 'drizzle-orm';
 import { buildProgressionFromEvents, type ProgressionEvent } from '$lib/utils/scoreProgression';
+
+const PROGRESSION_ACTIVE_STATUSES = ['playing'] as const;
 
 export async function getScoreProgressionData() {
 	const db = getRequestDb();
-	const playingRubbers = await db
+	const activeRubbers = await db
 		.select({ id: rubbers.id, matchId: rubbers.matchId })
 		.from(rubbers)
-		.where(and(eq(rubbers.status, 'playing'), isNotNull(rubbers.matchId)));
+		.where(and(inArray(rubbers.status, PROGRESSION_ACTIVE_STATUSES), isNotNull(rubbers.matchId)));
 
-	if (!playingRubbers.length)
+	if (!activeRubbers.length)
 		return {
 			byMatchId: {} as Record<string, Array<{ gameNo: number; scoreA: number; scoreB: number }>>,
 			eventsByMatchId: {} as Record<string, ProgressionEvent[]>
 		};
 
-	const matchIds = playingRubbers.map((r) => r.matchId as string);
+	const matchIds = activeRubbers.map((r) => r.matchId as string);
 	const allEvents = await db
 		.select({
 			matchId: scoreEvents.matchId,

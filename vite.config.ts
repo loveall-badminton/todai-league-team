@@ -34,7 +34,8 @@ export default defineConfig({
 						instances: [{ browser: 'chromium', headless: true }]
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
-					exclude: ['src/lib/server/**']
+					exclude: ['src/lib/server/**'],
+					setupFiles: ['./src/lib/vitest-browser-setup.ts']
 				}
 			},
 
@@ -55,11 +56,6 @@ export default defineConfig({
 						wrangler: { configPath: './wrangler.jsonc' }
 					})
 				],
-				resolve: {
-					alias: {
-						'sveltekit-worker': './src/__mocks__/sveltekit-worker.ts'
-					}
-				},
 				test: {
 					name: 'cloudflare',
 					include: ['src/**/*.cf.{test,spec}.{js,ts}']

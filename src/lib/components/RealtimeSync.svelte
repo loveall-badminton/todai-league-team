@@ -10,6 +10,7 @@
 	} from '$lib/realtime/channels';
 	import { createLiveChannel, type LiveChannel } from '$lib/realtime/liveChannel.svelte';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
+	import { computePollDelay } from '$lib/realtime/polling';
 
 	interface Props {
 		topics: readonly LiveTopic[];
@@ -82,19 +83,30 @@
 		return () => clearTimeout(id);
 	});
 
-	// 未接続時のみポーリング (data なし)
+	// 未接続時のみジッター付きポーリング (data なし)
 	$effect(() => {
 		if (!enabled || connected) return;
-		const id = setInterval(
-			() =>
-				onUpdate({
+		let cancelled = false;
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+		const scheduleNextPoll = () => {
+			if (cancelled || connected || !enabled) return;
+			timeoutId = setTimeout(async () => {
+				if (cancelled || connected || !enabled) return;
+				await onUpdate({
 					topics: [...topics],
 					source: 'poll',
 					channel
-				}),
-			pollInterval
-		);
-		return () => clearInterval(id);
+				});
+				scheduleNextPoll();
+			}, computePollDelay(pollInterval));
+		};
+
+		scheduleNextPoll();
+		return () => {
+			cancelled = true;
+			if (timeoutId) clearTimeout(timeoutId);
+		};
 	});
 </script>
 

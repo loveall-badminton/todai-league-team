@@ -1,10 +1,11 @@
 import { asc, eq } from 'drizzle-orm';
+import { getRequestDb } from '$lib/server/db/request';
 import { createInitialMatchState } from '$lib/domain/scoring';
 import { MatchStateSchema } from '$lib/domain/schemas';
 import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types';
 import type { ScoringConfig } from '$lib/domain/types';
 import * as v from 'valibot';
-import { getRequestDb } from '$lib/server/db/request';
+import type { RequestDb } from './matchStateStore';
 import { matchSidePlayers, matchSides, matchSnapshots, matches } from '$lib/server/db/schema';
 import {
 	buildMatchServiceStateUpsert,
@@ -33,7 +34,7 @@ export interface CreateMatchWithPlayersInput {
 }
 
 export async function getMatchWithPlayers(matchId: string) {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const match = await db.query.matches.findFirst({
 		where: eq(matches.id, matchId),
 		with: {
@@ -49,8 +50,8 @@ export async function getMatchWithPlayers(matchId: string) {
 	};
 }
 
-export async function getMatchState(matchId: string): Promise<MatchState> {
-	const db = getRequestDb();
+export async function getMatchState(matchId: string, dbParam?: RequestDb): Promise<MatchState> {
+	const db = await getRequestDbOrThrow(dbParam);
 	const snapshot = await db.query.matchSnapshots.findFirst({
 		where: eq(matchSnapshots.matchId, matchId)
 	});
@@ -58,8 +59,11 @@ export async function getMatchState(matchId: string): Promise<MatchState> {
 	return v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
 }
 
-export async function getMatchPlayers(matchId: string): Promise<MatchPlayer[]> {
-	const db = getRequestDb();
+export async function getMatchPlayers(
+	matchId: string,
+	dbParam?: RequestDb
+): Promise<MatchPlayer[]> {
+	const db = await getRequestDbOrThrow(dbParam);
 	const rows = await db
 		.select()
 		.from(matchSidePlayers)
@@ -76,7 +80,7 @@ export async function getMatchPlayers(matchId: string): Promise<MatchPlayer[]> {
 }
 
 export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput): Promise<string> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	const matchId = crypto.randomUUID();
 	const sideAId = crypto.randomUUID();
 	const sideBId = crypto.randomUUID();
@@ -151,16 +155,21 @@ export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput)
 }
 
 export async function updateMatchDerivedState(state: MatchState): Promise<void> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await buildMatchUpdate(db, state);
 }
 
 export async function upsertMatchSnapshot(state: MatchState): Promise<void> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await buildMatchSnapshotUpsert(db, state);
 }
 
 export async function upsertMatchServiceState(state: MatchState): Promise<void> {
-	const db = getRequestDb();
+	const db = await getRequestDbOrThrow();
 	await buildMatchServiceStateUpsert(db, state);
+}
+
+async function getRequestDbOrThrow(dbParam?: RequestDb): Promise<RequestDb> {
+	if (dbParam) return dbParam;
+	return getRequestDb();
 }

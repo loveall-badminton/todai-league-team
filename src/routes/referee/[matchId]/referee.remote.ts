@@ -3,7 +3,7 @@ import { otherSide } from '$lib/domain/scoring';
 import { LetReasonSchema, SideSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
-import { notifyLiveBoard, notifyMatch } from '$lib/server/realtime/broadcast';
+import { notifyScoreChange } from '$lib/server/realtime/broadcast';
 import {
 	getMatchPlayers,
 	getMatchWithPlayers,
@@ -208,8 +208,7 @@ function broadcastScoreUpdate(
 		| MatchActionRealtimeResult['scorePayload']
 		| { state: MatchState; event: { type: 'cutoff' } }
 ) {
-	notifyMatch(matchId, ['score'], { score });
-	notifyLiveBoard(['score'], { score });
+	notifyScoreChange(matchId, ['score'], { score });
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

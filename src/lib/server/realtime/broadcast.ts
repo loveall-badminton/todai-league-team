@@ -1,3 +1,4 @@
+import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import {
 	ALL_LIVE_TOPICS,
@@ -7,6 +8,7 @@ import {
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
+import { invalidateLivePageCache } from '$lib/server/services/livePageCache';
 
 export function notifyLiveBoard(): void;
 export function notifyLiveBoard<TTopics extends readonly LiveTopic[]>(
@@ -17,7 +19,10 @@ export function notifyLiveBoard(
 	topics: readonly LiveTopic[] = ALL_LIVE_TOPICS,
 	data?: LiveUpdateData
 ): void {
-	console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
+	invalidateLivePageCache(topics);
+	if (dev) {
+		console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
+	}
 	dispatch(LIVE_BOARD_CHANNEL, createLiveUpdatedMessage(topics, data));
 }
 
@@ -26,8 +31,29 @@ export function notifyMatch<TTopics extends readonly LiveTopic[]>(
 	topics: TTopics,
 	data?: LiveUpdateData<TTopics[number]>
 ): void {
-	console.log('[broadcast] notifyMatch', { matchId, topics, data, at: new Date().toISOString() });
+	if (dev) {
+		console.log('[broadcast] notifyMatch', { matchId, topics, data, at: new Date().toISOString() });
+	}
 	dispatch(matchChannel(matchId), createLiveUpdatedMessage(topics, data));
+}
+
+export function notifyScoreChange<TTopics extends readonly LiveTopic[]>(
+	matchId: string,
+	topics: TTopics,
+	data?: LiveUpdateData<TTopics[number]>
+): void {
+	invalidateLivePageCache(topics);
+	if (dev) {
+		console.log('[broadcast] notifyScoreChange', {
+			matchId,
+			topics,
+			data,
+			at: new Date().toISOString()
+		});
+	}
+	const message = createLiveUpdatedMessage(topics, data);
+	dispatch(LIVE_BOARD_CHANNEL, message);
+	dispatch(matchChannel(matchId), message);
 }
 
 function dispatch(channel: string, message: LiveMessage): void {
@@ -44,11 +70,6 @@ function dispatch(channel: string, message: LiveMessage): void {
 		}
 
 		const stub = namespace.getByName(channel);
-		console.log('[broadcast] dispatching', {
-			channel,
-			message,
-			at: new Date().toISOString()
-		});
 		const task = stub
 			.fetch('https://live-board.internal/broadcast', {
 				method: 'POST',
@@ -56,11 +77,13 @@ function dispatch(channel: string, message: LiveMessage): void {
 				body: JSON.stringify(message)
 			})
 			.then((res) => {
-				console.log('[broadcast] dispatched ok', {
-					channel,
-					status: res.status,
-					at: new Date().toISOString()
-				});
+				if (dev) {
+					console.log('[broadcast] dispatched ok', {
+						channel,
+						status: res.status,
+						at: new Date().toISOString()
+					});
+				}
 			})
 			.catch((err) => {
 				console.warn('[broadcast] dispatch error', {

@@ -12,6 +12,5 @@
 		"strict": true,
 		"moduleResolution": "bundler",
 		"types": ["./worker-configuration.d.ts"]
-	},
-	"exclude": ["src/**/*.cf.test.ts", "src/**/*.cf.spec.ts"]
+	}
 }

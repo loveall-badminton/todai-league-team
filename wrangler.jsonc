@@ -9,7 +9,8 @@
 	// wrangler.adapter.jsonc 側で指定）。
 	"main": "src/worker.ts",
 	"alias": {
-		"sveltekit-worker": "./.svelte-kit/cloudflare/_worker.js"
+		"sveltekit-worker": "./.svelte-kit/cloudflare/_worker.js",
+		"$app/server": "./src/__mocks__/app-server-dummy.ts"
 	},
 	"assets": {
 		"binding": "ASSETS",
@@ -39,6 +40,10 @@
 			{
 				"name": "LiveBoard",
 				"class_name": "LiveBoard"
+			},
+			{
+				"name": "MatchActionCoordinator",
+				"class_name": "MatchActionCoordinator"
 			}
 		]
 	},
@@ -55,6 +60,10 @@
 					"to": "LiveBoard"
 				}
 			]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": ["MatchActionCoordinator"]
 		}
 	],
 	"vars": {

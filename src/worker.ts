@@ -1,8 +1,9 @@
 import sveltekitWorker from 'sveltekit-worker';
 import { routePartykitRequest } from 'partyserver';
 import { LiveBoard } from './parties/LiveBoard';
+import { MatchActionCoordinator } from './parties/MatchActionCoordinator';
 
-export { LiveBoard };
+export { LiveBoard, MatchActionCoordinator };
 
 export default {
 	async fetch(request, env, ctx) {

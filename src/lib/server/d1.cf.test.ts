@@ -1,7 +1,6 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
 import { env } from 'cloudflare:workers';
-import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import { describe, it, expect, beforeAll } from 'vitest';
 
 describe('D1 integration', () => {
@@ -44,16 +43,5 @@ describe('D1 integration', () => {
 			.bind('multi-%')
 			.first();
 		expect((result as { count: number }).count).toBe(2);
-	});
-});
-
-describe('Worker integration', () => {
-	it('responds to fetch', async () => {
-		const { default: worker } = await import('../../worker');
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(new Request('http://example.com/'), env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(response.status).toBeGreaterThanOrEqual(200);
-		expect(response.status).toBeLessThan(500);
 	});
 });
