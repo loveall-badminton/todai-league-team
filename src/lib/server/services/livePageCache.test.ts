@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+// Mock $app/environment with dev=false to test production edge-cache behavior.
+// In wrangler dev, dev=true causes edge cache to be skipped (cache.put hangs there).
+vi.mock('$app/environment', () => ({ dev: false, browser: false, building: false }));
+
 const originalCaches = globalThis.caches;
 import {
 	clearLivePageCacheForTests,
@@ -14,8 +18,7 @@ function createLivePageData(): LivePageData {
 		activeTies: { ties: [], rubbersByTieId: {} },
 		standings: { standingA: [], standingB: [], groupA: [], groupB: [], teams: [] },
 		finalsBoard: { finalsBoard: [] },
-		schedule: [],
-		progression: { byMatchId: {}, eventsByMatchId: {} }
+		schedule: []
 	};
 }
 

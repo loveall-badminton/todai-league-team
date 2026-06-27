@@ -134,8 +134,9 @@ test.describe.serial('tie extended operations', () => {
 });
 
 test.describe.serial('tie reordering', () => {
-	const TIE_1 = `E2E-RO1-${Date.now()}`;
-	const TIE_2 = `E2E-RO2-${Date.now()}`;
+	const TS = Date.now();
+	const TIE_1 = `TRO-${TS}`;
+	const TIE_2 = `TRO-${TS + 1}`;
 
 	test('creates two ties for reorder test', async ({ page }) => {
 		await page.goto('/ties');

@@ -34,6 +34,21 @@ export async function applyMatchActionWithDb(
 	db: RequestDb,
 	params: ApplyMatchActionParams
 ): Promise<{ afterState: MatchState; input: ScoreEventInput }> {
+	const { matchId, input: rawInput } = params;
+	try {
+		return await applyMatchActionWithDbImpl(db, params);
+	} catch (err) {
+		throw new Error(
+			`[matchAction:${matchId}/${rawInput.type}] ${err instanceof Error ? err.message : String(err)}`,
+			{ cause: err }
+		);
+	}
+}
+
+async function applyMatchActionWithDbImpl(
+	db: RequestDb,
+	params: ApplyMatchActionParams
+): Promise<{ afterState: MatchState; input: ScoreEventInput }> {
 	const { matchId, actorName, now } = params;
 	const duplicate = await getScoreEventByIdempotencyKey(matchId, params.input.idempotencyKey, db);
 	if (duplicate) {

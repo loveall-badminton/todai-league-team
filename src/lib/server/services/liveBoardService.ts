@@ -1,5 +1,6 @@
 import { asc, eq, inArray, isNotNull, and } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchQuery } from '$lib/server/db/utils';
 import {
 	lineupItems,
 	lineupSubmissions,
@@ -120,26 +121,28 @@ async function fetchLiveGameScores(matchIds: string[]): Promise<PublicGameScoreI
 	// Also fetch scoreABefore/scoreBBefore and side so we can recover the correct final score
 	// from legacy records where the game-winning rally was stored with scoreAAfter=0 due to a bug
 	// (afterState.currentGameNo had already advanced to the next game).
-	const events = await db
-		.select({
-			matchId: scoreEvents.matchId,
-			gameNo: scoreEvents.gameNo,
-			seqNo: scoreEvents.seqNo,
-			scoreA: scoreEvents.scoreAAfter,
-			scoreB: scoreEvents.scoreBAfter,
-			scoreABefore: scoreEvents.scoreABefore,
-			scoreBBefore: scoreEvents.scoreBBefore,
-			side: scoreEvents.side
-		})
-		.from(scoreEvents)
-		.where(
-			and(
-				inArray(scoreEvents.matchId, matchIds),
-				isNotNull(scoreEvents.gameNo),
-				isNotNull(scoreEvents.scoreAAfter)
+	const events = await batchQuery(matchIds, async (batch) =>
+		db
+			.select({
+				matchId: scoreEvents.matchId,
+				gameNo: scoreEvents.gameNo,
+				seqNo: scoreEvents.seqNo,
+				scoreA: scoreEvents.scoreAAfter,
+				scoreB: scoreEvents.scoreBAfter,
+				scoreABefore: scoreEvents.scoreABefore,
+				scoreBBefore: scoreEvents.scoreBBefore,
+				side: scoreEvents.side
+			})
+			.from(scoreEvents)
+			.where(
+				and(
+					inArray(scoreEvents.matchId, batch),
+					isNotNull(scoreEvents.gameNo),
+					isNotNull(scoreEvents.scoreAAfter)
+				)
 			)
-		)
-		.orderBy(asc(scoreEvents.seqNo));
+			.orderBy(asc(scoreEvents.seqNo))
+	);
 
 	const gameMap = new Map<string, PublicGameScoreInput>();
 	for (const e of events) {
@@ -323,18 +326,20 @@ export async function getBatchedPublicRubbers(
 	// 2. Fetch all matches
 	const allMatches =
 		matchIds.length > 0
-			? await db
-					.select({
-						id: matches.id,
-						gamesWonA: matches.gamesWonA,
-						gamesWonB: matches.gamesWonB,
-						currentScoreA: matches.currentScoreA,
-						currentScoreB: matches.currentScoreB,
-						currentGameNo: matches.currentGameNo,
-						status: matches.status
-					})
-					.from(matches)
-					.where(inArray(matches.id, matchIds))
+			? await batchQuery(matchIds, async (batch) =>
+					db
+						.select({
+							id: matches.id,
+							gamesWonA: matches.gamesWonA,
+							gamesWonB: matches.gamesWonB,
+							currentScoreA: matches.currentScoreA,
+							currentScoreB: matches.currentScoreB,
+							currentGameNo: matches.currentGameNo,
+							status: matches.status
+						})
+						.from(matches)
+						.where(inArray(matches.id, batch))
+				)
 			: [];
 
 	// 3. Fetch all game scores
@@ -360,7 +365,9 @@ export async function getBatchedPublicRubbers(
 	// 6. Fetch all players
 	const allPlayers =
 		revealed && playerIds.length > 0
-			? await db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
+			? await batchQuery(playerIds, async (batch) =>
+					db.select().from(teamPlayers).where(inArray(teamPlayers.id, batch))
+				)
 			: [];
 
 	// Group per tie

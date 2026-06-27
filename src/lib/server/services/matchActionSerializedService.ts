@@ -18,27 +18,46 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 	}
 
 	const stub = namespace.getByName(params.matchId);
-	const response = await stub.fetch(MATCH_ACTION_COORDINATOR_URL, {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({
-			matchId: params.matchId,
-			input: params.input,
-			actorName: params.actorName ?? null,
-			now: params.now,
-			beforeState: params.beforeState ?? null,
-			players: params.players ?? null
-		})
-	});
-	const raw = await response.json();
-	const parsed = v.parse(MatchActionCoordinatorResponseSchema, raw);
-	if (!parsed.ok) {
-		throw new Error(parsed.error);
+	let response: Response;
+	try {
+		response = await stub.fetch(MATCH_ACTION_COORDINATOR_URL, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				matchId: params.matchId,
+				input: params.input,
+				actorName: params.actorName ?? null,
+				now: params.now,
+				beforeState: params.beforeState ?? null,
+				players: params.players ?? null
+			})
+		});
+	} catch {
+		const db = getRequestDb();
+		return applyMatchActionWithDb(db, params);
+	}
+	let raw: unknown;
+	try {
+		raw = await response.json();
+	} catch (err) {
+		throw new Error(
+			`[DO:${params.matchId}/${params.input.type}] invalid JSON response (${response.status}): ${err instanceof Error ? err.message : String(err)}`,
+			{ cause: err }
+		);
+	}
+	const parsed = v.safeParse(MatchActionCoordinatorResponseSchema, raw);
+	if (!parsed.success) {
+		throw new Error(
+			`[DO:${params.matchId}/${params.input.type}] unexpected response shape: body=${JSON.stringify(raw).slice(0, 200)}`
+		);
+	}
+	if (!parsed.output.ok) {
+		throw new Error(parsed.output.error);
 	}
 
 	return {
-		afterState: parsed.afterState,
-		input: parsed.input as ScoreEventInput
+		afterState: parsed.output.afterState,
+		input: parsed.output.input as ScoreEventInput
 	};
 }
 

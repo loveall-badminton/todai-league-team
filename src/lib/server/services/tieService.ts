@@ -233,12 +233,12 @@ export function generateRoundRobinPairs<T>(teams: T[]): [T, T][] {
 
 async function nextTieNumber(prefix: GroupCode) {
 	const db = getRequestDb();
-	const rows = await db
+	const start = prefix.length + 2; // 1-indexed: skip "PREFIX-"
+	const [row] = await db
 		.select({
-			maxNo: sql<number>`CAST(SUBSTR(${ties.tieCode}, 3) AS INTEGER)`
+			maxNo: sql<number>`MAX(CAST(SUBSTR(${ties.tieCode}, ${start}) AS INTEGER))`
 		})
 		.from(ties)
 		.where(like(ties.tieCode, `${prefix}-%`));
-	const maxNo = rows[0]?.maxNo ?? 0;
-	return maxNo + 1;
+	return (row?.maxNo ?? 0) + 1;
 }

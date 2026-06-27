@@ -6,8 +6,7 @@
 		rubberLabel,
 		rubberStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
-	import type { PublicRubberSummary } from '$lib/server/services/liveBoardService';
-	import type { LivePageData } from '$lib/server/services/livePageService';
+	import type { LivePageData, ScoreProgressionData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import { cn } from '$lib/utils/cn';
 	import AppTabs from '$lib/components/AppTabs.svelte';
@@ -23,11 +22,11 @@
 		progressionQuery
 	}: {
 		query: QueryValue<LivePageData['activeTies']>;
-		progressionQuery: QueryValue<LivePageData['progression']>;
+		progressionQuery: QueryValue<ScoreProgressionData | null>;
 	} = $props();
 
 	function progressionPoints(
-		rubber: PublicRubberSummary,
+		rubber: TieRubber,
 		byMatchId: NonNullable<typeof progressionQuery.current>['byMatchId']
 	) {
 		if (!rubber.matchId) return [];

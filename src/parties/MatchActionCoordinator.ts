@@ -4,12 +4,15 @@ import { applyMatchActionWithDb } from '$lib/server/services/matchActionService'
 import {
 	MATCH_ACTION_COORDINATOR_URL,
 	MatchActionCoordinatorRequestSchema,
-	type MatchActionCoordinatorResponse
+	type MatchActionCoordinatorResponse,
+	type MatchActionCoordinatorSuccess
 } from '$lib/server/services/matchActionProtocol';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
 
 export class MatchActionCoordinator extends DurableObject<Env> {
+	private cachedPlayers: MatchPlayer[] | undefined;
+
 	async fetch(request: Request): Promise<Response> {
 		return this.ctx.blockConcurrencyWhile(async () => {
 			if (request.method !== 'POST' || request.url !== MATCH_ACTION_COORDINATOR_URL) {
@@ -22,9 +25,7 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 			} catch {
 				return Response.json(
 					{ ok: false, error: 'invalid json' } satisfies MatchActionCoordinatorResponse,
-					{
-						status: 400
-					}
+					{ status: 400 }
 				);
 			}
 
@@ -36,22 +37,34 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 				);
 			}
 
+			const matchId = parsed.output.matchId;
+			const clientBeforeState = parsed.output.beforeState as MatchState | undefined;
+			const clientPlayers = parsed.output.players as MatchPlayer[] | undefined;
+			const inputType = (parsed.output.input as ScoreEventInput | undefined)?.type ?? 'unknown';
+
+			const players = this.cachedPlayers ?? clientPlayers;
+			if (clientPlayers && !this.cachedPlayers) {
+				this.cachedPlayers = clientPlayers;
+			}
+
 			try {
 				const db = getDb(this.env.DB);
 				const result = await applyMatchActionWithDb(db, {
-					matchId: parsed.output.matchId,
+					matchId,
 					input: parsed.output.input as ScoreEventInput,
 					actorName: parsed.output.actorName ?? null,
 					now: parsed.output.now,
-					beforeState: (parsed.output.beforeState ?? undefined) as MatchState | undefined,
-					players: (parsed.output.players ?? undefined) as MatchPlayer[] | undefined
+					beforeState: clientBeforeState,
+					players
 				});
-				return Response.json({ ok: true, ...result } satisfies MatchActionCoordinatorResponse);
+				return Response.json({ ok: true, ...result } satisfies MatchActionCoordinatorSuccess);
 			} catch (err) {
+				const label = `DO:${matchId}/${inputType}`;
+				const message = err instanceof Error ? err.message : '操作に失敗しました';
 				return Response.json(
 					{
 						ok: false,
-						error: err instanceof Error ? err.message : '操作に失敗しました'
+						error: `[${label}] ${message}`
 					} satisfies MatchActionCoordinatorResponse,
 					{ status: 409 }
 				);

@@ -1,0 +1,69 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "todai-league-staging",
+	"compatibility_date": "2026-06-03",
+	"compatibility_flags": ["nodejs_als", "nodejs_compat"],
+	"main": "src/worker.ts",
+	"alias": {
+		"sveltekit-worker": "./.svelte-kit/cloudflare/_worker.js",
+		"$app/server": "./src/__mocks__/app-server-dummy.ts",
+		"$lib": "./src/lib"
+	},
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"workers_dev": true,
+	"preview_urls": true,
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true
+		}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "todai-league-staging",
+			"database_id": "3d75ba3e-36e6-4af4-9fcc-62c44f445e6d",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "LiveBoard",
+				"class_name": "LiveBoard"
+			},
+			{
+				"name": "MatchActionCoordinator",
+				"class_name": "MatchActionCoordinator"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["LiveRoom"]
+		},
+		{
+			"tag": "v2",
+			"renamed_classes": [
+				{
+					"from": "LiveRoom",
+					"to": "LiveBoard"
+				}
+			]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": ["MatchActionCoordinator"]
+		}
+	],
+	"vars": {
+		"BETTER_AUTH_URL": "https://todai-league-staging.qwg2pfmvzk.workers.dev"
+	}
+}
