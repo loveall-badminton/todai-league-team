@@ -13,6 +13,6 @@ export type RubberRow = {
 	playersB: string[];
 	loserLabel: string | null;
 	gamesScore: string | null;
-	gameDetails: { gameNo: number; scoreA: number; scoreB: number }[];
+	gameDetails: { gameNo: number; scoreA: number; scoreB: number; winnerSide?: 'A' | 'B' | null }[];
 	matchId?: string | null;
 };

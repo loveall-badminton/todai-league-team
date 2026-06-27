@@ -140,14 +140,18 @@ function seedSql(): string {
 	lines.push(`DELETE FROM teams;`);
 
 	// Scoring rule
-	const scoringRuleId = 'sr-bwf-21';
+	const groupScoringRuleId = 'sr-bwf-15';
+	const knockoutScoringRuleId = 'sr-bwf-21';
 	lines.push(
-		`INSERT OR IGNORE INTO scoring_rules (id, code, name, max_games, games_to_win, points_to_win, win_by, max_points, mid_game_interval_point, created_at, updated_at) VALUES ('${scoringRuleId}', 'bwf_21', 'BWF 21点制', 3, 2, 21, 2, 30, 11, '${now}', '${now}');`
+		`INSERT OR IGNORE INTO scoring_rules (id, code, name, max_games, games_to_win, points_to_win, win_by, max_points, mid_game_interval_point, created_at, updated_at) VALUES ('${groupScoringRuleId}', 'bwf_15', '予選 15点制', 3, 2, 15, 2, 21, 8, '${now}', '${now}');`
+	);
+	lines.push(
+		`INSERT OR IGNORE INTO scoring_rules (id, code, name, max_games, games_to_win, points_to_win, win_by, max_points, mid_game_interval_point, created_at, updated_at) VALUES ('${knockoutScoringRuleId}', 'bwf_21', '決勝 21点制', 3, 2, 21, 2, 30, 11, '${now}', '${now}');`
 	);
 
 	// App settings
 	lines.push(
-		`INSERT OR IGNORE INTO app_settings (id, event_name, group_stage_scoring_rule_id, knockout_scoring_rule_id, tiebreaker_scoring_rule_id, lineup_reveal_policy, default_lineup_due_minutes_before, created_at, updated_at) VALUES ('settings-001', '${eventName}', '${scoringRuleId}', '${scoringRuleId}', '${scoringRuleId}', 'on_tie_start', 10, '${now}', '${now}');`
+		`INSERT OR IGNORE INTO app_settings (id, event_name, group_stage_scoring_rule_id, knockout_scoring_rule_id, tiebreaker_scoring_rule_id, lineup_reveal_policy, default_lineup_due_minutes_before, created_at, updated_at) VALUES ('settings-001', '${eventName}', '${groupScoringRuleId}', '${knockoutScoringRuleId}', '${knockoutScoringRuleId}', 'on_tie_start', 10, '${now}', '${now}');`
 	);
 
 	// Tournament (required for matches FK)
@@ -182,11 +186,19 @@ function seedSql(): string {
 		const teamBIdx = ti * 2 + 1;
 		const teamAId = TEAM_IDS[teamAIdx];
 		const teamBId = TEAM_IDS[teamBIdx];
-		const phase = ti < TIE_COUNT / 2 ? 'group_a' : 'group_b';
+		const phase = tiePhase(ti);
 		const groupCode = ti < TIE_COUNT / 2 ? 'A' : 'B';
 		lines.push(
 			`INSERT INTO ties (id, tie_code, phase, group_code, team_a_id, team_b_id, status, team_score_a, team_score_b, display_order, created_at, updated_at) VALUES ('${id}', 'TIE-${pad(ti + 1)}', '${phase}', '${groupCode}', '${teamAId}', '${teamBId}', 'playing', 0, 0, ${ti + 1}, '${now}', '${now}');`
 		);
+	}
+
+	function scoringRuleForPhase(phase: string): string {
+		return phase.startsWith('group') ? groupScoringRuleId : knockoutScoringRuleId;
+	}
+
+	function tiePhase(ti: number): string {
+		return ti < TIE_COUNT / 2 ? 'group_a' : 'group_b';
 	}
 
 	// Collect match metadata for phased inserts (avoids circular FK: matches↔rubbers)
@@ -198,11 +210,14 @@ function seedSql(): string {
 		discipline: string;
 		teamAIdx: number;
 		teamBIdx: number;
+		phase: string;
 	}> = [];
 
 	// Phase 1: matches (rubber_id = NULL, FK-safe)
 	matchIdx = 0;
 	for (let ti = 0; ti < TIE_COUNT; ti++) {
+		const phase = tiePhase(ti);
+		const srId = scoringRuleForPhase(phase);
 		for (let ri = 0; ri < MATCHES_PER_TIE; ri++) {
 			matchIdx++;
 			const matchId = tid('match', matchIdx);
@@ -219,19 +234,21 @@ function seedSql(): string {
 				code,
 				discipline,
 				teamAIdx,
-				teamBIdx
+				teamBIdx,
+				phase
 			});
 
 			lines.push(
-				`INSERT INTO matches (id, tournament_id, court_id, discipline, match_no, display_order, scoring_mode, scoring_rule_id, status, current_game_no, current_score_a, current_score_b, games_won_a, games_won_b, last_seq_no, created_at, updated_at) VALUES ('${matchId}', '${tournamentId}', NULL, '${discipline}', ${matchIdx}, ${matchIdx}, 'best_of_3_21', '${scoringRuleId}', 'scheduled', 1, 0, 0, 0, 0, 0, '${now}', '${now}');`
+				`INSERT INTO matches (id, tournament_id, court_id, discipline, match_no, display_order, scoring_mode, scoring_rule_id, status, current_game_no, current_score_a, current_score_b, games_won_a, games_won_b, last_seq_no, created_at, updated_at) VALUES ('${matchId}', '${tournamentId}', NULL, '${discipline}', ${matchIdx}, ${matchIdx}, 'best_of_3_21', '${srId}', 'scheduled', 1, 0, 0, 0, 0, 0, '${now}', '${now}');`
 			);
 		}
 	}
 
 	// Phase 2: rubbers (match_id references existing match)
 	for (const md of matchData) {
+		const srId = scoringRuleForPhase(md.phase);
 		lines.push(
-			`INSERT INTO rubbers (id, tie_id, code, discipline, display_order, scoring_rule_id, match_id, status, created_at, updated_at) VALUES ('${md.rubberId}', '${md.tieId}', '${md.code}', '${md.discipline}', 1, '${scoringRuleId}', '${md.matchId}', 'ready', '${now}', '${now}');`
+			`INSERT INTO rubbers (id, tie_id, code, discipline, display_order, scoring_rule_id, match_id, status, created_at, updated_at) VALUES ('${md.rubberId}', '${md.tieId}', '${md.code}', '${md.discipline}', 1, '${srId}', '${md.matchId}', 'ready', '${now}', '${now}');`
 		);
 	}
 
@@ -260,6 +277,7 @@ function seedSql(): string {
 			);
 		}
 
+		const isGroup = md.phase.startsWith('group');
 		const initialState = {
 			schemaVersion: 1,
 			matchId: md.matchId,
@@ -270,10 +288,10 @@ function seedSql(): string {
 			scoring: {
 				maxGames: 3,
 				gamesToWin: 2,
-				pointsToWin: 21,
+				pointsToWin: isGroup ? 15 : 21,
 				winBy: 2,
-				maxPoints: 30,
-				midGameIntervalPoint: 11
+				maxPoints: isGroup ? 21 : 30,
+				midGameIntervalPoint: isGroup ? 8 : 11
 			},
 			currentGameNo: 1,
 			games: [
@@ -297,6 +315,9 @@ function seedSql(): string {
 		const escapedJson = JSON.stringify(initialState).replace(/'/g, "''");
 		lines.push(
 			`INSERT INTO match_snapshots (match_id, seq_no, state_json, updated_at) VALUES ('${md.matchId}', 0, '${escapedJson}', '${now}');`
+		);
+		lines.push(
+			`INSERT INTO match_service_states (match_id, seq_no, game_no, serving_side, server_player_id, receiver_player_id, server_position, receiver_position, service_side, service_number, is_first_servers_game, service_over, updated_at) VALUES ('${md.matchId}', 0, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, '${now}');`
 		);
 	}
 

@@ -14,7 +14,9 @@ function sortDocs(docs: typeof allDocs) {
 }
 
 export const load: LayoutLoad = () => {
-	const all = allDocs.map((d) => ({ ...d, _cat: category(d._meta.path) }));
+	const all = allDocs
+		.filter((d) => d.published !== false)
+		.map((d) => ({ ...d, _cat: category(d._meta.path) }));
 
 	const sections = [
 		{ title: 'はじめに', docs: sortDocs(all.filter((d) => d._cat === 'intro')) },

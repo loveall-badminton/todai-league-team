@@ -193,7 +193,8 @@ export async function getLivePageData() {
 					gameDetails: r.gameDetails.map((g) => ({
 						gameNo: g.gameNo,
 						scoreA: g.scoreA,
-						scoreB: g.scoreB
+						scoreB: g.scoreB,
+						winnerSide: g.winnerSide
 					}))
 				}))
 			])

@@ -97,7 +97,9 @@
 							: 'text-muted'
 					)}
 				>
-					{g.scoreA}–{g.scoreB}
+					<span class={g.winnerSide === 'A' ? 'font-bold' : ''}>{g.scoreA}</span>
+					–
+					<span class={g.winnerSide === 'B' ? 'font-bold' : ''}>{g.scoreB}</span>
 				</p>
 			{/each}
 		</div>
@@ -165,12 +167,25 @@
 								{@const isPlaying = rubber.status === 'playing'}
 								{@const isExpanded = expandedRubberId === rubber.id}
 								{@const points = progressionPoints(rubber, byMatchId)}
-								{#snippet playerNames(ids: string, side: 'A' | 'B')}
+								{#snippet playerNames(
+									ids: string,
+									side: 'A' | 'B',
+									winnerSide: string | null | undefined
+								)}
 									{@const names = ids.split(' / ').filter(Boolean)}
+									{@const isWinner = winnerSide === side}
 									{#if names.length > 0}
 										<div class="min-w-0 space-y-0.5">
 											{#each names as name, i (name + i)}
-												<div class={cn('truncate', side === 'A' ? '' : 'text-right')}>{name}</div>
+												<div
+													class={cn(
+														'truncate',
+														side === 'A' ? '' : 'text-right',
+														isWinner && 'font-bold'
+													)}
+												>
+													{name}
+												</div>
 											{/each}
 										</div>
 									{:else}
@@ -188,11 +203,11 @@
 										>{rubberLabel(rubber.code)}</span
 									>
 									<div class="min-w-0 flex-1">
-										{@render playerNames(rubber.sideAPlayers ?? '', 'A')}
+										{@render playerNames(rubber.sideAPlayers ?? '', 'A', rubber.winnerSide)}
 									</div>
 									<div class="shrink-0">{@render rubberScore(rubber)}</div>
 									<div class="min-w-0 flex-1">
-										{@render playerNames(rubber.sideBPlayers ?? '', 'B')}
+										{@render playerNames(rubber.sideBPlayers ?? '', 'B', rubber.winnerSide)}
 									</div>
 									<ChevronDown
 										class={cn(

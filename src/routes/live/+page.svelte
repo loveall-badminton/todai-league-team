@@ -93,7 +93,8 @@
 			rubber.gameDetails = state.games.map((g) => ({
 				gameNo: g.gameNo,
 				scoreA: g.score.A,
-				scoreB: g.score.B
+				scoreB: g.score.B,
+				winnerSide: g.winnerSide
 			}));
 			rubber.matchStatus = state.status;
 			rubber.winnerSide = state.winnerSide;

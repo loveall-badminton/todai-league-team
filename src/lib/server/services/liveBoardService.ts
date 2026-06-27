@@ -12,9 +12,15 @@ import {
 	ties
 } from '$lib/server/db/schema';
 
-export type LiveGameScore = { gameNo: number; scoreA: number; scoreB: number };
+export type LiveGameScore = {
+	gameNo: number;
+	scoreA: number;
+	scoreB: number;
+	winnerSide?: 'A' | 'B' | null;
+};
 
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
+	winnerSide: 'A' | 'B' | null;
 	matchStatus: typeof matches.$inferSelect.status | null;
 	gamesScore: string | null; // games won: "1-0"
 	pointScore: string | null; // current game points: "4-3"
@@ -23,7 +29,10 @@ export type PublicRubberSummary = typeof rubbers.$inferSelect & {
 	sideBPlayers: string | null;
 };
 
-type PublicRubberInput = Pick<typeof rubbers.$inferSelect, 'id' | 'code' | 'matchId' | 'status'>;
+type PublicRubberInput = Pick<
+	typeof rubbers.$inferSelect,
+	'id' | 'code' | 'matchId' | 'status' | 'winnerSide'
+>;
 type PublicMatchInput = Pick<
 	typeof matches.$inferSelect,
 	'id' | 'gamesWonA' | 'gamesWonB' | 'currentScoreA' | 'currentScoreB' | 'currentGameNo' | 'status'
@@ -185,6 +194,7 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 		const scores = scoreFor(match, match ? (gameScoresByMatchId.get(match.id) ?? []) : []);
 		return {
 			...rubber,
+			winnerSide: rubber.winnerSide ?? null,
 			matchStatus: match?.status ?? null,
 			status: rubberStatusForMatch(rubber.status, match),
 			gamesScore: scores.gamesScore,
@@ -223,6 +233,12 @@ function rubberStatusForMatch(
 	return currentStatus;
 }
 
+function winnerSide(scoreA: number, scoreB: number): 'A' | 'B' | null {
+	if (scoreA > scoreB) return 'A';
+	if (scoreB > scoreA) return 'B';
+	return null;
+}
+
 function scoreFor(
 	match: PublicMatchInput | null,
 	gameScores: PublicGameScoreInput[]
@@ -236,7 +252,12 @@ function scoreFor(
 	// Completed games (before current game number)
 	for (const g of matchGames) {
 		if (g.gameNo < match.currentGameNo) {
-			gameDetails.push({ gameNo: g.gameNo, scoreA: g.scoreA, scoreB: g.scoreB });
+			gameDetails.push({
+				gameNo: g.gameNo,
+				scoreA: g.scoreA,
+				scoreB: g.scoreB,
+				winnerSide: winnerSide(g.scoreA, g.scoreB)
+			});
 		}
 	}
 
@@ -258,10 +279,13 @@ function scoreFor(
 	} else if (isEnded) {
 		// Use last event's score for the final game, fall back to matches table
 		const finalLiveGameScore = matchGames.find((g) => g.gameNo === match.currentGameNo);
+		const finalScoreA = finalLiveGameScore?.scoreA ?? match.currentScoreA;
+		const finalScoreB = finalLiveGameScore?.scoreB ?? match.currentScoreB;
 		gameDetails.push({
 			gameNo: match.currentGameNo,
-			scoreA: finalLiveGameScore?.scoreA ?? match.currentScoreA,
-			scoreB: finalLiveGameScore?.scoreB ?? match.currentScoreB
+			scoreA: finalScoreA,
+			scoreB: finalScoreB,
+			winnerSide: winnerSide(finalScoreA, finalScoreB)
 		});
 	}
 

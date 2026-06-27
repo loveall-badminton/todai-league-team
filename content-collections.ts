@@ -74,6 +74,7 @@ const docs = defineCollection({
 	schema: v.object({
 		title: v.string(),
 		description: v.optional(v.string()),
+		published: v.optional(v.boolean()),
 		order: v.optional(v.number()),
 		content: v.string()
 	}),

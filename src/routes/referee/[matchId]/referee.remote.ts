@@ -11,7 +11,6 @@ import {
 } from '$lib/server/repositories/matchRepository';
 import {
 	applyMatchActionWithRealtime,
-	autoConfirmMatchIfComplete,
 	type MatchActionRealtimeResult
 } from '$lib/server/services/matchRealtimeActionService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
@@ -45,16 +44,6 @@ async function applyAction(
 	}
 
 	broadcastScoreUpdate(matchId, primary.scorePayload);
-	const followUp = await autoConfirmMatchIfComplete({
-		matchId,
-		state: primary.afterState,
-		players: primary.players,
-		actorName: null,
-		now: new Date().toISOString()
-	});
-	if (followUp) {
-		broadcastScoreUpdate(matchId, followUp.scorePayload);
-	}
 }
 
 export const start = form(

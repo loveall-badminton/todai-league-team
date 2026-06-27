@@ -5,7 +5,8 @@ const rubber = {
 	id: 'rubber-1',
 	code: 'WD1' as const,
 	matchId: 'match-1',
-	status: 'ready' as const
+	status: 'ready' as const,
+	winnerSide: null
 };
 
 const match = {
@@ -312,8 +313,8 @@ describe('createPublicRubberSummaries', () => {
 		});
 
 		expect(summaries[0].gameDetails).toEqual([
-			{ gameNo: 1, scoreA: 21, scoreB: 15 },
-			{ gameNo: 2, scoreA: 21, scoreB: 18 }
+			{ gameNo: 1, scoreA: 21, scoreB: 15, winnerSide: 'A' },
+			{ gameNo: 2, scoreA: 21, scoreB: 18, winnerSide: 'A' }
 		]);
 	});
 
@@ -342,9 +343,9 @@ describe('createPublicRubberSummaries', () => {
 		});
 
 		expect(summaries[0].gameDetails).toEqual([
-			{ gameNo: 1, scoreA: 19, scoreB: 21 },
-			{ gameNo: 2, scoreA: 21, scoreB: 16 },
-			{ gameNo: 3, scoreA: 21, scoreB: 19 }
+			{ gameNo: 1, scoreA: 19, scoreB: 21, winnerSide: 'B' },
+			{ gameNo: 2, scoreA: 21, scoreB: 16, winnerSide: 'A' },
+			{ gameNo: 3, scoreA: 21, scoreB: 19, winnerSide: 'A' }
 		]);
 	});
 
