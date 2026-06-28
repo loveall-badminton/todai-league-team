@@ -108,6 +108,9 @@
 
 	let canStart = $derived(tie.status === 'lineup_submitted' || tie.status === 'ready');
 	let canConfirm = $derived(tie.status === 'finished');
+	let realtimeTopics = $derived(
+		tie.status === 'playing' ? (['score', 'schedule'] as const) : (['schedule'] as const)
+	);
 
 	let bothReadyToReveal = $derived(
 		['submitted', 'locked'].includes(lineupBySide('A')?.submission.status ?? '') &&
@@ -190,17 +193,15 @@
 				{/if}
 			</div>
 		</Card>
-		{#if tie.status === 'playing'}
-			<RealtimeSync
-				topics={['score', 'schedule', 'standings', 'finals']}
-				onUpdate={(u) => {
-					void handleTieHeaderUpdate(u);
-					void handleTieLineupsUpdate(u);
-					void handleLiveRubbersUpdate(u);
-				}}
-				pollInterval={10000}
-			/>
-		{/if}
+		<RealtimeSync
+			topics={realtimeTopics}
+			onUpdate={(u) => {
+				void handleTieHeaderUpdate(u);
+				void handleTieLineupsUpdate(u);
+				void handleLiveRubbersUpdate(u);
+			}}
+			pollInterval={10000}
+		/>
 	</div>
 {/snippet}
 
