@@ -16,7 +16,7 @@ export type LiveGameScore = {
 	gameNo: number;
 	scoreA: number;
 	scoreB: number;
-	winnerSide?: 'A' | 'B' | null;
+	winnerSide: 'A' | 'B' | null;
 };
 
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
@@ -278,7 +278,8 @@ function scoreFor(
 		gameDetails.push({
 			gameNo: match.currentGameNo,
 			scoreA: match.currentScoreA,
-			scoreB: match.currentScoreB
+			scoreB: match.currentScoreB,
+			winnerSide: null
 		});
 	} else if (isEnded) {
 		// Use last event's score for the final game, fall back to matches table

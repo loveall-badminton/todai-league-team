@@ -19,7 +19,7 @@
 </script>
 
 <Tabs.Root
-	{value}
+	bind:value
 	onValueChange={(v) => {
 		value = v ?? '';
 		onValueChange?.(value);

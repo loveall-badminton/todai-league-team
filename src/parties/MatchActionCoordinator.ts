@@ -38,9 +38,10 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 			}
 
 			const matchId = parsed.output.matchId;
-			const clientBeforeState = parsed.output.beforeState as MatchState | undefined;
-			const clientPlayers = parsed.output.players as MatchPlayer[] | undefined;
-			const inputType = (parsed.output.input as ScoreEventInput | undefined)?.type ?? 'unknown';
+			const clientBeforeState: MatchState | undefined = parsed.output.beforeState ?? undefined;
+			const clientPlayers: MatchPlayer[] | undefined = parsed.output.players ?? undefined;
+			const input: ScoreEventInput = parsed.output.input;
+			const inputType = input.type;
 
 			const players = this.cachedPlayers ?? clientPlayers;
 			if (clientPlayers && !this.cachedPlayers) {
@@ -51,7 +52,7 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 				const db = getDb(this.env.DB);
 				const result = await applyMatchActionWithDb(db, {
 					matchId,
-					input: parsed.output.input as ScoreEventInput,
+					input,
 					actorName: parsed.output.actorName ?? null,
 					now: parsed.output.now,
 					beforeState: clientBeforeState,

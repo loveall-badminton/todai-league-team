@@ -56,7 +56,7 @@ test.describe.serial('tie extended operations', () => {
 	test('creates a tie between the two teams', async ({ page }) => {
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByRole('dialog')).toBeVisible();
+		await expect(page.getByPlaceholder('A-1')).toBeVisible();
 
 		await page.getByPlaceholder('A-1').fill(TIE_CODE_A);
 

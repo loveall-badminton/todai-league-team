@@ -128,7 +128,7 @@
 	type RefreshTarget = 'header' | 'lineups' | 'rubbers';
 
 	async function run(
-		fn: () => Promise<unknown>,
+		fn: () => Promise<void>,
 		targets: RefreshTarget[] = ['header', 'lineups', 'rubbers']
 	) {
 		try {

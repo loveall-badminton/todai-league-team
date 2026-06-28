@@ -49,7 +49,7 @@ test.describe('tie creation flow', () => {
 	test('closes dialog when dialog close button is clicked', async ({ page }) => {
 		await page.getByRole('button', { name: '新規作成' }).click();
 		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible();
+		await expect(page.getByPlaceholder('A-1')).toBeVisible();
 
 		await page.locator('button[data-dialog-close]:has(svg.lucide-x)').click();
 		await expect(dialog).not.toBeVisible();

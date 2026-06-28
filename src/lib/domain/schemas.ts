@@ -135,3 +135,88 @@ export const SuspendReasonSchema = v.picklist([
 	'referee_decision',
 	'other'
 ] as const);
+
+const ScoreEventInputBaseSchema = v.object({
+	idempotencyKey: v.string(),
+	observedSeqNo: v.number(),
+	clientSeqNo: v.optional(v.number()),
+	clientCreatedAt: v.optional(v.string())
+});
+
+export const ScoreEventInputSchema = v.variant('type', [
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('match_started'),
+		initialServerPlayerId: v.string(),
+		initialReceiverPlayerId: v.string()
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('game_started'),
+		gameNo: v.number(),
+		initialServerPlayerId: v.string(),
+		initialReceiverPlayerId: v.string()
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('rally_won'),
+		side: SideSchema
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('undo'),
+		targetSeqNo: v.optional(v.number()),
+		reason: v.optional(v.string()),
+		restoreState: v.optional(MatchStateSchema)
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('correction'),
+		gameNo: v.number(),
+		score: GameScoreSchema,
+		gamesWon: v.optional(GamesWonSchema),
+		service: v.optional(v.nullable(ServiceStateSchema)),
+		reason: v.string()
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('let_called'),
+		reason: LetReasonSchema,
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('match_suspended'),
+		reason: SuspendReasonSchema,
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('match_resumed'),
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('side_forfeited'),
+		side: SideSchema,
+		reason: v.picklist(['no_show', 'withdrawal', 'disqualification', 'other'] as const),
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('side_retired'),
+		side: SideSchema,
+		reason: v.picklist(['injury', 'illness', 'other'] as const),
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('match_confirmed'),
+		note: v.optional(v.string())
+	}),
+	v.object({
+		...ScoreEventInputBaseSchema.entries,
+		type: v.literal('match_unconfirmed'),
+		note: v.optional(v.string())
+	})
+]);

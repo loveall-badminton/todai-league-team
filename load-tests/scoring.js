@@ -60,7 +60,12 @@ export default function (data) {
 					refereeUrl + '?/remote=ards3a/rallyWon/' + encodedSide,
 					'side=' + side,
 					{
-						headers: { Cookie: cookie, Origin: BASE_URL, Accept: 'text/html' },
+						headers: {
+							Cookie: cookie,
+							Origin: BASE_URL,
+							Accept: 'text/html',
+							'Content-Type': 'application/x-www-form-urlencoded'
+						},
 						redirects: 0
 					}
 				);

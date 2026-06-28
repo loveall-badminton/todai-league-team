@@ -1,21 +1,27 @@
 import type { Handle } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
+import { createJsonCache } from '$lib/server/cache';
 import { createAuth } from '$lib/server/auth';
 import { getAuthProfile } from '$lib/server/auth/access';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { checkRateLimit, API_RATE_LIMIT, AUTH_RATE_LIMIT } from '$lib/server/ratelimit';
+import * as v from 'valibot';
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/bootstrap'];
 const PROFILE_PATHS = ['/admin', '/ties', '/scores', '/referee', '/live'];
 
 const authCache = new WeakMap<D1Database, ReturnType<typeof createAuth>>();
+type Auth = ReturnType<typeof createAuth>;
+type SessionResult = Awaited<ReturnType<Auth['api']['getSession']>>;
+type NonNullSessionResult = NonNullable<SessionResult>;
+type CachedSessionShape = v.InferOutput<typeof SessionCacheSchema>;
 
 function isMutation(method: string) {
 	return method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
 }
 
 interface SessionCacheEntry {
-	session: unknown;
+	session: SessionResult;
 	expiresAt: number;
 }
 const sessionCache = new Map<string, SessionCacheEntry>();
@@ -43,11 +49,64 @@ function getAuthCacheKey(request: Request): string | null {
 }
 
 // Cross-isolate session cache using CF Edge Cache (shared per datacenter, avoids HMAC re-verification)
-const SESSION_CACHE_NS = 'https://auth-session.internal/v1/';
+const SESSION_TTL_MS = 5000;
+const SessionCacheSchema = v.object({
+	session: v.object({
+		id: v.string(),
+		createdAt: v.union([v.string(), v.date()]),
+		updatedAt: v.union([v.string(), v.date()]),
+		userId: v.string(),
+		expiresAt: v.union([v.string(), v.date()]),
+		token: v.string(),
+		ipAddress: v.optional(v.nullable(v.string())),
+		userAgent: v.optional(v.nullable(v.string())),
+		impersonatedBy: v.optional(v.nullable(v.string()))
+	}),
+	user: v.objectWithRest(
+		{
+			id: v.string(),
+			email: v.string(),
+			name: v.string(),
+			createdAt: v.union([v.string(), v.date()]),
+			updatedAt: v.union([v.string(), v.date()]),
+			emailVerified: v.boolean(),
+			image: v.optional(v.nullable(v.string())),
+			username: v.optional(v.nullable(v.string())),
+			displayUsername: v.optional(v.nullable(v.string())),
+			banned: v.optional(v.nullable(v.boolean())),
+			role: v.optional(v.nullable(v.string())),
+			banReason: v.optional(v.nullable(v.string())),
+			banExpires: v.optional(v.nullable(v.union([v.string(), v.date()])))
+		},
+		v.unknown()
+	)
+});
 
-function getEdgeCache(): Cache | null {
-	const cacheStorage = globalThis.caches as (CacheStorage & { default?: Cache }) | undefined;
-	return cacheStorage?.default ?? null;
+function toDate(value: string | Date): Date {
+	return value instanceof Date ? value : new Date(value);
+}
+
+function normalizeCachedSession(value: CachedSessionShape): NonNullSessionResult {
+	return {
+		session: {
+			...value.session,
+			createdAt: toDate(value.session.createdAt),
+			updatedAt: toDate(value.session.updatedAt),
+			expiresAt: toDate(value.session.expiresAt)
+		},
+		user: {
+			...value.user,
+			createdAt: toDate(value.user.createdAt),
+			updatedAt: toDate(value.user.updatedAt),
+			banned: value.user.banned ?? null,
+			banExpires:
+				value.user.banExpires == null ||
+				(typeof value.user.banExpires === 'object' &&
+					Object.keys(value.user.banExpires).length === 0)
+					? value.user.banExpires
+					: toDate(value.user.banExpires)
+		}
+	};
 }
 
 function isLocalHostname(request: Request): boolean {
@@ -64,41 +123,41 @@ function isLocalHostname(request: Request): boolean {
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function edgeCacheGetSession(key: string, request: Request): Promise<any | null> {
+async function edgeCacheGetSession(key: string, request: Request): Promise<SessionResult> {
 	if (dev || isLocalHostname(request)) return null; // cache.match hangs in wrangler dev
 	try {
-		const cache = getEdgeCache();
-		if (!cache) return null;
-		const res = await cache.match(new Request(SESSION_CACHE_NS + encodeURIComponent(key)));
-		if (!res) return null;
-		return await res.json();
+		const cache = createJsonCache({
+			namespace: 'auth-session',
+			version: 1,
+			schema: SessionCacheSchema,
+			ttlSeconds: 5,
+			pathPrefix: '/__auth-cache'
+		});
+		const res = await cache.get({ parts: [key] });
+		if (!res.ok || !res.hit) return null;
+		return normalizeCachedSession(res.value);
 	} catch {
 		return null;
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function edgeCachePutSession(key: string, session: any, request: Request): void {
+function edgeCachePutSession(key: string, session: NonNullSessionResult, request: Request): void {
 	if (dev || isLocalHostname(request)) return;
 	try {
-		const cache = getEdgeCache();
-		if (!cache) return;
-		cache
-			.put(
-				new Request(SESSION_CACHE_NS + encodeURIComponent(key)),
-				new Response(JSON.stringify(session), {
-					headers: { 'content-type': 'application/json', 'cache-control': 'max-age=5' }
-				})
-			)
-			.catch(() => {});
+		const cache = createJsonCache({
+			namespace: 'auth-session',
+			version: 1,
+			schema: SessionCacheSchema,
+			ttlSeconds: 5,
+			pathPrefix: '/__auth-cache'
+		});
+		void cache.set(session, { parts: [key] }).catch(() => {});
 	} catch {
 		/* Ignore errors — cache is best-effort */
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getSessionWithCache(auth: any, request: Request): Promise<any> {
+async function getSessionWithCache(auth: Auth, request: Request): Promise<SessionResult> {
 	if (isMutation(request.method)) {
 		return auth.api.getSession({ headers: request.headers });
 	}
@@ -116,14 +175,14 @@ async function getSessionWithCache(auth: any, request: Request): Promise<any> {
 	// L2: cross-isolate edge cache — one HMAC verification populates cache for all isolates
 	const edgeCached = await edgeCacheGetSession(cacheKey, request);
 	if (edgeCached !== null) {
-		sessionCache.set(cacheKey, { session: edgeCached, expiresAt: now + 5000 });
+		sessionCache.set(cacheKey, { session: edgeCached, expiresAt: now + SESSION_TTL_MS });
 		return edgeCached;
 	}
 
 	const session = await auth.api.getSession({ headers: request.headers });
 	sessionCache.set(cacheKey, {
 		session,
-		expiresAt: now + 5000
+		expiresAt: now + SESSION_TTL_MS
 	});
 
 	if (session !== null) {

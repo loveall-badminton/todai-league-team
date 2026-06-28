@@ -1,5 +1,5 @@
 import { applyScoreEvent } from '$lib/domain/scoring';
-import { MatchStatePayloadSchema } from '$lib/domain/schemas';
+import { MatchStateSchema, ScoreEventInputSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
 import { matchSidePlayers, matchSnapshots, matches, rubbers } from '$lib/server/db/schema';
@@ -56,7 +56,7 @@ async function applyMatchActionWithDbImpl(
 		if (payload.afterState) {
 			return {
 				afterState: payload.afterState,
-				input: (payload.input as ScoreEventInput | undefined) ?? params.input
+				input: payload.input ?? params.input
 			};
 		}
 		throw new Error('Duplicate request but afterState is missing from stored payload');
@@ -70,54 +70,55 @@ async function applyMatchActionWithDbImpl(
 	let players: MatchPlayer[];
 	let match: Awaited<ReturnType<typeof db.query.matches.findFirst>>;
 
+	function toMatchPlayer(row: {
+		id: string;
+		side: 'A' | 'B';
+		playerOrder: number;
+		name: string;
+		teamName: string | null;
+	}): MatchPlayer {
+		if (row.playerOrder !== 1 && row.playerOrder !== 2) {
+			throw new Error(`Invalid player order: ${row.playerOrder}`);
+		}
+
+		return {
+			id: row.id,
+			side: row.side,
+			order: row.playerOrder,
+			name: row.name,
+			teamName: row.teamName
+		};
+	}
+
 	if (needsState || needsPlayers) {
-		const queries = [];
-		if (needsState)
-			queries.push(
-				db.query.matchSnapshots.findFirst({ where: eq(matchSnapshots.matchId, matchId) })
-			);
-		if (needsPlayers)
-			queries.push(
-				db
-					.select()
-					.from(matchSidePlayers)
-					.where(eq(matchSidePlayers.matchId, matchId))
-					.orderBy(asc(matchSidePlayers.side), asc(matchSidePlayers.playerOrder))
-			);
-		queries.push(db.query.matches.findFirst({ where: eq(matches.id, matchId) }));
+		const snapshotQuery = db.query.matchSnapshots.findFirst({
+			where: eq(matchSnapshots.matchId, matchId)
+		});
+		const playersQuery = db
+			.select()
+			.from(matchSidePlayers)
+			.where(eq(matchSidePlayers.matchId, matchId))
+			.orderBy(asc(matchSidePlayers.side), asc(matchSidePlayers.playerOrder));
+		const matchQuery = db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const results: any[] = await (db.batch as any)(queries);
-		let r = 0;
-
-		if (needsState) {
-			const snapshot = results[r++] as { stateJson: string } | undefined;
+		if (needsState && needsPlayers) {
+			const [snapshot, rows, matchRow] = await db.batch([snapshotQuery, playersQuery, matchQuery]);
 			if (!snapshot) throw new Error('Match snapshot not found');
-			beforeState = v.parse(MatchStatePayloadSchema, JSON.parse(snapshot.stateJson)) as MatchState;
-		} else {
-			beforeState = params.beforeState!;
-		}
-
-		if (needsPlayers) {
-			const rows = results[r++] as Array<{
-				id: string;
-				side: string;
-				playerOrder: number;
-				name: string;
-				teamName: string | null;
-			}>;
-			players = rows.map((row) => ({
-				id: row.id,
-				side: row.side as 'A' | 'B',
-				order: row.playerOrder as 1 | 2,
-				name: row.name,
-				teamName: row.teamName
-			}));
-		} else {
+			beforeState = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
+			players = rows.map(toMatchPlayer);
+			match = matchRow;
+		} else if (needsState) {
+			const [snapshot, matchRow] = await db.batch([snapshotQuery, matchQuery]);
+			if (!snapshot) throw new Error('Match snapshot not found');
+			beforeState = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
 			players = params.players!;
+			match = matchRow;
+		} else {
+			const [rows, matchRow] = await db.batch([playersQuery, matchQuery]);
+			beforeState = params.beforeState!;
+			players = rows.map(toMatchPlayer);
+			match = matchRow;
 		}
-
-		match = results[r] as (typeof results)[number];
 	} else {
 		beforeState = params.beforeState!;
 		players = params.players!;
@@ -233,11 +234,17 @@ function parsePayload(payloadJson: string): {
 	input?: ScoreEventInput;
 } {
 	try {
-		return v.parse(MatchStatePayloadSchema, JSON.parse(payloadJson)) as {
-			beforeState?: MatchState;
-			afterState?: MatchState;
-			input?: ScoreEventInput;
-		};
+		const raw = JSON.parse(payloadJson);
+		if (typeof raw !== 'object' || raw === null) return {};
+
+		const record = raw as Record<string, unknown>;
+		const beforeState = record.beforeState
+			? v.parse(MatchStateSchema, record.beforeState)
+			: undefined;
+		const afterState = record.afterState ? v.parse(MatchStateSchema, record.afterState) : undefined;
+		const input = record.input ? v.parse(ScoreEventInputSchema, record.input) : undefined;
+
+		return { beforeState, afterState, input };
 	} catch {
 		return {};
 	}

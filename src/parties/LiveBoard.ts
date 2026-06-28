@@ -1,19 +1,22 @@
 import { Server, type Connection } from 'partyserver';
 import { liveMessageSchema, type LiveMessage } from '$lib/realtime/channels';
+import { LivePageDataSchema } from '$lib/server/cacheSchemas';
 import type { LivePageData } from '$lib/server/services/livePageService';
 import * as v from 'valibot';
 
 const ALLOWED_INTERNAL_HOST = 'live-board.internal';
 const LIVE_PAGE_CACHE_KEY = 'cached-live-page-data';
 const CACHE_TTL_MS = 30_000;
+const LivePageCachePutSchema = v.object({ data: v.unknown() });
+
+type CachedLivePageEntry = { data: LivePageData; expiresAt: number };
 
 export class LiveBoard extends Server<Env> {
 	static options = { hibernate: true };
 
-	private cachedData: { data: LivePageData; expiresAt: number } | null = null;
+	private cachedData: CachedLivePageEntry | null = null;
 	private isFetching = false;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private waiters: ((value: any) => void)[] = [];
+	private waiters: Array<(value: CachedLivePageEntry | null) => void> = [];
 	private fetchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async onConnect(connection: Connection) {
@@ -99,7 +102,7 @@ export class LiveBoard extends Server<Env> {
 		// 5. If no cache exists at all (empty cache)
 		if (this.isFetching) {
 			// Already fetching, wait for the result
-			const newCache = await new Promise<{ data: LivePageData } | null>((resolve) => {
+			const newCache = await new Promise<CachedLivePageEntry | null>((resolve) => {
 				this.waiters.push(resolve);
 			});
 			if (newCache) {
@@ -118,9 +121,16 @@ export class LiveBoard extends Server<Env> {
 	private async handleCachePut(request: Request): Promise<Response> {
 		try {
 			const raw = await request.json();
-			const data = raw as { data: LivePageData };
+			const parsed = v.safeParse(LivePageCachePutSchema, raw);
+			if (!parsed.success) {
+				return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
+			}
+			const livePageDataResult = v.safeParse(LivePageDataSchema, parsed.output.data);
+			if (!livePageDataResult.success) {
+				return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
+			}
 			const expiresAt = Date.now() + CACHE_TTL_MS * (0.8 + Math.random() * 0.4);
-			const entry = { data: data.data, expiresAt };
+			const entry: CachedLivePageEntry = { data: livePageDataResult.output, expiresAt };
 			this.cachedData = entry; // save in memory
 			void this.ctx.storage.put(LIVE_PAGE_CACHE_KEY, entry).catch(() => {}); // save in storage asynchronously
 

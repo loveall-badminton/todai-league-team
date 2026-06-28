@@ -5,7 +5,8 @@ async function openTeamCreateForm(page: Page) {
 	await page.getByRole('button', { name: '+ 追加' }).click();
 	const createForm = page
 		.locator('form')
-		.filter({ has: page.getByRole('button', { name: '追加', exact: true }) });
+		.filter({ has: page.locator('input[name="name"]') })
+		.first();
 	await expect(createForm.locator('input[name="name"]')).toBeVisible();
 	return createForm;
 }
@@ -85,6 +86,8 @@ test.describe.serial('extended team management', () => {
 		await expect(page.getByText(UPDATED_PLAYER_NAME)).toBeVisible();
 
 		await page.getByRole('button', { name: new RegExp(UPDATED_PLAYER_NAME) }).click();
+		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
+		await expect(editForm).toBeVisible();
 		await page.getByText('選手を削除').click();
 		await page.getByRole('button', { name: '削除する' }).click();
 		await page.waitForTimeout(800);
@@ -111,11 +114,13 @@ test.describe.serial('team status and group changes', () => {
 
 	async function selectTeamFormOption(page: Page, labelText: string, optionText: string) {
 		const section = page
-			.locator('label')
-			.filter({ hasText: labelText })
+			.locator('form')
+			.filter({ hasText: 'チーム名' })
+			.getByText(labelText)
+			.locator('..')
 			.locator('button[aria-haspopup="listbox"]');
 		await section.click();
-		await page.waitForTimeout(200);
+		await expect(page.getByRole('option', { name: optionText })).toBeVisible();
 		await page.getByRole('option', { name: optionText }).click();
 	}
 

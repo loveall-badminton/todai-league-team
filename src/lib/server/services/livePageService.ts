@@ -1,13 +1,69 @@
 import { getRequestDb } from '$lib/server/db/request';
-import { rubbers, scoreEvents } from '$lib/server/db/schema';
+import type { PublicRubberSummary } from '$lib/server/services/liveBoardService';
+import { rubbers, scoreEvents, ties } from '$lib/server/db/schema';
 import { listTeams } from '$lib/server/repositories/tokyoLeagueRepository';
 import { getActiveTieBoard, getFinalsTieBoard } from '$lib/server/services/liveBoardService';
 import { calculateAllGroupStandings } from '$lib/server/services/standingService';
+import type { GroupStanding } from '$lib/server/services/standingService';
 import { listTies } from '$lib/server/repositories/tokyoLeagueRepository';
 import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { buildProgressionFromEvents, type ProgressionEvent } from '$lib/utils/scoreProgression';
 
 const PROGRESSION_ACTIVE_STATUSES = ['playing'] as const;
+
+type LivePageActiveRubber = Pick<
+	PublicRubberSummary,
+	| 'id'
+	| 'code'
+	| 'matchId'
+	| 'status'
+	| 'matchStatus'
+	| 'winnerSide'
+	| 'sideAPlayers'
+	| 'sideBPlayers'
+	| 'gamesScore'
+	| 'pointScore'
+	| 'gameDetails'
+>;
+
+type LivePageDataShape = {
+	activeTies: {
+		ties: Array<{
+			id: string;
+			phase: typeof ties.$inferSelect.phase;
+			tieCode: string;
+			venue: typeof ties.$inferSelect.venue;
+			courtBlockCode: string | null;
+			teamAName: string | null;
+			teamBName: string | null;
+			teamScoreA: number;
+			teamScoreB: number;
+			teamAId: string | null;
+			teamBId: string | null;
+			status: typeof ties.$inferSelect.status;
+		}>;
+		rubbersByTieId: Record<string, LivePageActiveRubber[]>;
+	};
+	standings: {
+		standingA: GroupStanding[];
+		standingB: GroupStanding[];
+		groupA: ScheduleData;
+		groupB: ScheduleData;
+		teams: Array<{ id: string; name: string }>;
+	};
+	finalsBoard: {
+		finalsBoard: Array<{
+			id: string;
+			phase: typeof ties.$inferSelect.phase;
+			teamAName: string | null;
+			teamBName: string | null;
+			teamScoreA: number;
+			teamScoreB: number;
+			status: typeof ties.$inferSelect.status;
+		}>;
+	};
+	schedule: ScheduleData;
+};
 
 export async function getScoreProgressionData() {
 	const db = getRequestDb();
@@ -18,11 +74,14 @@ export async function getScoreProgressionData() {
 
 	if (!activeRubbers.length)
 		return {
-			byMatchId: {} as Record<string, Array<{ gameNo: number; scoreA: number; scoreB: number }>>,
-			eventsByMatchId: {} as Record<string, ProgressionEvent[]>
+			byMatchId: {} satisfies Record<
+				string,
+				Array<{ gameNo: number; scoreA: number; scoreB: number }>
+			>,
+			eventsByMatchId: {} satisfies Record<string, ProgressionEvent[]>
 		};
 
-	const matchIds = activeRubbers.map((r) => r.matchId as string);
+	const matchIds = activeRubbers.flatMap((r) => (r.matchId ? [r.matchId] : []));
 
 	// Batch match IDs to stay under D1's 100 bind variable limit
 	// Each batch: ≤99 IN values + 1 LIMIT = ≤100 total bind vars
@@ -78,27 +137,21 @@ export async function getScoreProgressionData() {
 	return { byMatchId, eventsByMatchId };
 }
 
-async function runBatched<T extends (() => Promise<unknown>)[]>(
-	tasks: [...T],
-	batchSize = 3
-): Promise<{ [K in keyof T]: Awaited<ReturnType<T[K]>> }> {
-	const results: unknown[] = [];
-	for (let i = 0; i < tasks.length; i += batchSize) {
-		const batch = tasks.slice(i, i + batchSize);
-		const batchResults = await Promise.all(batch.map((fn) => fn()));
-		results.push(...batchResults);
-	}
-	return results as never;
+async function getLivePageParts() {
+	const [activeTiesRaw, allStandings, finalsBoardRaw, scheduleRaw, teamsRaw] = await Promise.all([
+		getActiveTieBoard(),
+		calculateAllGroupStandings(),
+		getFinalsTieBoard(),
+		listTies(),
+		listTeams()
+	]);
+
+	return { activeTiesRaw, allStandings, finalsBoardRaw, scheduleRaw, teamsRaw };
 }
 
-export async function getLivePageData() {
-	const [activeTiesRaw, allStandings, finalsBoardRaw, scheduleRaw, teamsRaw] = await runBatched([
-		getActiveTieBoard,
-		calculateAllGroupStandings,
-		getFinalsTieBoard,
-		listTies,
-		listTeams
-	]);
+export async function getLivePageData(): Promise<LivePageDataShape> {
+	const { activeTiesRaw, allStandings, finalsBoardRaw, scheduleRaw, teamsRaw } =
+		await getLivePageParts();
 
 	// 1. Map schedule to only required fields
 	const schedule = scheduleRaw.map((t) => ({
@@ -126,8 +179,7 @@ export async function getLivePageData() {
 	}));
 
 	// 3. Map standings (allStandings A & B rows)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const mapStandingRow = (row: any) => ({
+	const mapStandingRow = (row: GroupStanding): GroupStanding => ({
 		teamId: row.teamId,
 		teamName: row.teamName,
 		rank: row.rank,
@@ -140,7 +192,7 @@ export async function getLivePageData() {
 		headToHeadSummary: row.headToHeadSummary,
 		tiedTeamsRubbersWon: row.tiedTeamsRubbersWon,
 		tiedTeamsGamesWon: row.tiedTeamsGamesWon,
-		requiresTiebreaker: row.requiresTiebreaker,
+		requiresTiebreaker: !!row.requiresTiebreaker,
 		manualRank: row.manualRank
 	});
 
@@ -148,7 +200,7 @@ export async function getLivePageData() {
 	const standingB = allStandings.B.map(mapStandingRow);
 
 	// 4. Map finalsBoard
-	const finalsBoard = {
+	const finalsBoard: LivePageDataShape['finalsBoard'] = {
 		finalsBoard: finalsBoardRaw.finalsBoard.map((t) => ({
 			id: t.id,
 			phase: t.phase,
@@ -161,7 +213,7 @@ export async function getLivePageData() {
 	};
 
 	// 5. Map activeTies
-	const activeTies = {
+	const activeTies: LivePageDataShape['activeTies'] = {
 		ties: activeTiesRaw.ties.map((t) => ({
 			id: t.id,
 			phase: t.phase,
@@ -177,27 +229,29 @@ export async function getLivePageData() {
 			status: t.status
 		})),
 		rubbersByTieId: Object.fromEntries(
-			Object.entries(activeTiesRaw.rubbersByTieId).map(([tieId, rubbers]) => [
-				tieId,
-				rubbers.map((r) => ({
-					id: r.id,
-					code: r.code,
-					matchId: r.matchId,
-					status: r.status,
-					matchStatus: r.matchStatus,
-					winnerSide: r.winnerSide,
-					sideAPlayers: r.sideAPlayers,
-					sideBPlayers: r.sideBPlayers,
-					gamesScore: r.gamesScore,
-					pointScore: r.pointScore,
-					gameDetails: r.gameDetails.map((g) => ({
-						gameNo: g.gameNo,
-						scoreA: g.scoreA,
-						scoreB: g.scoreB,
-						winnerSide: g.winnerSide
+			Object.entries(activeTiesRaw.rubbersByTieId).map(
+				([tieId, rubbers]): [string, LivePageActiveRubber[]] => [
+					tieId,
+					rubbers.map((r) => ({
+						id: r.id,
+						code: r.code,
+						matchId: r.matchId,
+						status: r.status,
+						matchStatus: r.matchStatus,
+						winnerSide: r.winnerSide,
+						sideAPlayers: r.sideAPlayers,
+						sideBPlayers: r.sideBPlayers,
+						gamesScore: r.gamesScore,
+						pointScore: r.pointScore,
+						gameDetails: r.gameDetails.map((g) => ({
+							gameNo: g.gameNo,
+							scoreA: g.scoreA,
+							scoreB: g.scoreB,
+							winnerSide: g.winnerSide ?? null
+						}))
 					}))
-				}))
-			])
+				]
+			)
 		)
 	};
 
@@ -209,7 +263,7 @@ export async function getLivePageData() {
 	};
 }
 
-export type LivePageData = Awaited<ReturnType<typeof getLivePageData>>;
+export type LivePageData = LivePageDataShape;
 export type ScoreProgressionData = Awaited<ReturnType<typeof getScoreProgressionData>>;
 
 // ── Per-page data functions (lighter than full getLivePageData) ──────────────
@@ -258,8 +312,7 @@ export async function getStandingsData() {
 	const groupB = schedule.filter((t) => t.phase === 'group_b');
 	const teams = teamsRaw.map((t) => ({ id: t.id, name: t.name }));
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const mapStandingRow = (row: any) => ({
+	const mapStandingRow = (row: GroupStanding): GroupStanding => ({
 		teamId: row.teamId,
 		teamName: row.teamName,
 		rank: row.rank,
@@ -272,7 +325,7 @@ export async function getStandingsData() {
 		headToHeadSummary: row.headToHeadSummary,
 		tiedTeamsRubbersWon: row.tiedTeamsRubbersWon,
 		tiedTeamsGamesWon: row.tiedTeamsGamesWon,
-		requiresTiebreaker: row.requiresTiebreaker,
+		requiresTiebreaker: !!row.requiresTiebreaker,
 		manualRank: row.manualRank
 	});
 
@@ -295,11 +348,14 @@ export async function getScoreProgressionForTie(tieId: string) {
 
 	if (!activeRubbers.length)
 		return {
-			byMatchId: {} as Record<string, Array<{ gameNo: number; scoreA: number; scoreB: number }>>,
-			eventsByMatchId: {} as Record<string, ProgressionEvent[]>
+			byMatchId: {} satisfies Record<
+				string,
+				Array<{ gameNo: number; scoreA: number; scoreB: number }>
+			>,
+			eventsByMatchId: {} satisfies Record<string, ProgressionEvent[]>
 		};
 
-	const matchIds = activeRubbers.map((r) => r.matchId as string);
+	const matchIds = activeRubbers.flatMap((r) => (r.matchId ? [r.matchId] : []));
 	const rows = await db
 		.select({
 			matchId: scoreEvents.matchId,

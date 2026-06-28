@@ -43,7 +43,9 @@
 
 	function availableGameNos(rubber: TieRubber, points: NonNullable<(typeof byMatchId)[string]>) {
 		const fromPoints = getScoreProgressionGameNos(points);
-		const fromDetails = rubber.gameDetails.map((detail) => detail.gameNo);
+		const fromDetails = rubber.gameDetails.map(
+			(detail: TieRubber['gameDetails'][number]) => detail.gameNo
+		);
 		return [...new Set([...fromDetails, ...fromPoints])].sort((a, b) => a - b);
 	}
 
@@ -67,7 +69,9 @@
 		const lastPoint = gamePoints[gamePoints.length - 1];
 		if (lastPoint) return lastPoint;
 		if (gameNo == null) return null;
-		const detail = rubber.gameDetails.find((game) => game.gameNo === gameNo);
+		const detail = rubber.gameDetails.find(
+			(game: TieRubber['gameDetails'][number]) => game.gameNo === gameNo
+		);
 		return detail ? { scoreA: detail.scoreA, scoreB: detail.scoreB } : null;
 	}
 </script>

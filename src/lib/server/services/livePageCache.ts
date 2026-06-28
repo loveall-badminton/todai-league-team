@@ -1,14 +1,33 @@
 import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
+import { createJsonCache } from '$lib/server/cache';
+import { CACHE_TTL, LivePageDataSchema } from '$lib/server/cacheSchemas';
 import type { LiveTopic } from '$lib/realtime/channels';
 import type { LivePageData } from '$lib/server/services/livePageService';
+import * as v from 'valibot';
 
 const LIVE_PAGE_CACHE_TTL_MS = 2000;
 const LIVE_PAGE_STALE_TTL_MS = 4000;
-const LIVE_PAGE_CACHE_KEY = 'https://live-cache.internal/live-page-data';
 const DO_CACHE_NAME = 'live-page-cache';
-const LIVE_PAGE_CACHE_EXPIRY_HEADER = 'x-live-cache-expires-at';
 const livePageTopics = new Set<LiveTopic>(['score', 'schedule', 'standings', 'finals']);
+
+const livePageEdgeCache = createJsonCache({
+	namespace: 'live-page',
+	version: 1,
+	schema: LivePageDataSchema,
+	ttlSeconds: CACHE_TTL.livePage,
+	tags: ['live']
+});
+
+const DoLivePageResponseSchema = v.object({
+	ok: v.boolean(),
+	data: v.optional(LivePageDataSchema),
+	needsRefresh: v.optional(v.boolean())
+});
+
+const DoFetchNeededSchema = v.object({
+	status: v.literal('fetch-needed')
+});
 
 type LivePageCacheEntry = {
 	value: LivePageData;
@@ -116,9 +135,7 @@ export function invalidateLivePageCache(topics: readonly LiveTopic[]) {
 	cacheEntry = null;
 	invalidateCacheDo();
 	if (dev || isLocalRequest()) return; // cache.delete hangs in wrangler dev (non-standard hostname)
-	const cache = getEdgeCache();
-	if (!cache) return;
-	cache.delete(buildLivePageCacheRequest()).catch(() => {});
+	void livePageEdgeCache.delete({}).catch(() => {});
 }
 
 let lastPrewarmAt = 0;
@@ -139,21 +156,12 @@ export function clearLivePageCacheForTests() {
 async function readLivePageFromEdgeCache(now: number): Promise<LivePageCacheEntry | null> {
 	if (dev || isLocalRequest()) return null; // cache.match hangs in wrangler dev (non-standard hostname)
 	try {
-		const cache = getEdgeCache();
-		if (!cache) return null;
-
-		const response = await cache.match(buildLivePageCacheRequest());
-		if (!response) return null;
-
-		const expiresAt = Number(response.headers.get(LIVE_PAGE_CACHE_EXPIRY_HEADER) ?? 0);
-		if (!Number.isFinite(expiresAt) || expiresAt <= now) {
-			cache.delete(buildLivePageCacheRequest()).catch(() => {});
-			return null;
-		}
+		const cached = await livePageEdgeCache.get({});
+		if (!cached.ok || !cached.hit) return null;
 
 		return {
-			value: (await response.json()) as LivePageData,
-			expiresAt,
+			value: cached.value,
+			expiresAt: now + LIVE_PAGE_CACHE_TTL_MS,
 			bornAt: Date.now()
 		};
 	} catch {
@@ -164,22 +172,7 @@ async function readLivePageFromEdgeCache(now: number): Promise<LivePageCacheEntr
 function writeLivePageToEdgeCache(entry: LivePageCacheEntry): void {
 	if (dev || isLocalRequest()) return; // cache.put hangs in wrangler dev (non-standard hostname)
 	try {
-		const cache = getEdgeCache();
-		if (!cache) return;
-
-		const task = cache
-			.put(
-				buildLivePageCacheRequest(),
-				new Response(JSON.stringify(entry.value), {
-					headers: {
-						'content-type': 'application/json; charset=utf-8',
-						'cache-control': `max-age=${Math.floor(LIVE_PAGE_CACHE_TTL_MS / 1000)}`,
-						[LIVE_PAGE_CACHE_EXPIRY_HEADER]: String(entry.expiresAt)
-					}
-				})
-			)
-			.then(() => undefined)
-			.catch(() => undefined);
+		const task = livePageEdgeCache.set(entry.value, {}).catch(() => undefined);
 		try {
 			const event = getRequestEvent();
 			event.platform?.ctx?.waitUntil?.(task);
@@ -189,10 +182,6 @@ function writeLivePageToEdgeCache(entry: LivePageCacheEntry): void {
 	} catch {
 		// edge cache write is best-effort; silently ignore failures
 	}
-}
-
-function buildLivePageCacheRequest() {
-	return new Request(LIVE_PAGE_CACHE_KEY, { method: 'GET' });
 }
 
 function isLocalRequest(): boolean {
@@ -208,11 +197,6 @@ function isLocalRequest(): boolean {
 	} catch {
 		return false;
 	}
-}
-
-function getEdgeCache(): Cache | null {
-	const cacheStorage = globalThis.caches as (CacheStorage & { default?: Cache }) | undefined;
-	return cacheStorage?.default ?? null;
 }
 
 type DoResponse =
@@ -231,9 +215,8 @@ async function readLivePageFromDoDetailed(now: number): Promise<DoResponse> {
 		if (!res.ok) {
 			if (res.status === 404) {
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const body = (await res.json()) as any;
-					if (body.status === 'fetch-needed') {
+					const bodyResult = v.safeParse(DoFetchNeededSchema, await res.json());
+					if (bodyResult.success) {
 						return { status: 'fetch-needed' };
 					}
 				} catch {
@@ -242,7 +225,9 @@ async function readLivePageFromDoDetailed(now: number): Promise<DoResponse> {
 			}
 			return { status: 'error' };
 		}
-		const body = (await res.json()) as { ok: boolean; data?: LivePageData; needsRefresh?: boolean };
+		const bodyResult = v.safeParse(DoLivePageResponseSchema, await res.json());
+		if (!bodyResult.success) return { status: 'error' };
+		const body = bodyResult.output;
 		if (!body.ok || !body.data) return { status: 'error' };
 		return {
 			status: 'ok',

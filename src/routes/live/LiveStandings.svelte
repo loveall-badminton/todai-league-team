@@ -20,8 +20,13 @@
 	type StandingData = NonNullable<typeof query.current>;
 	function groupTeams(rows: StandingData['standingA'], allTeams: StandingData['teams']) {
 		return rows
-			.map((row) => allTeams.find((t: StandingData['teams'][number]) => t.id === row.teamId))
-			.filter((t): t is StandingData['teams'][number] => t != null);
+			.map((row: StandingData['standingA'][number]) =>
+				allTeams.find((t: StandingData['teams'][number]) => t.id === row.teamId)
+			)
+			.filter(
+				(t: StandingData['teams'][number] | undefined): t is StandingData['teams'][number] =>
+					t != null
+			);
 	}
 </script>
 

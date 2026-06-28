@@ -1,4 +1,4 @@
-import { MatchStateSchema } from '$lib/domain/schemas';
+import { MatchStateSchema, ScoreEventInputSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
 
@@ -8,13 +8,13 @@ const MatchPlayerSchema = v.object({
 	id: v.string(),
 	name: v.string(),
 	side: v.picklist(['A', 'B'] as const),
-	order: v.union([v.literal(1), v.literal(2), v.literal(3), v.literal(4)]),
+	order: v.union([v.literal(1), v.literal(2)]),
 	teamName: v.nullable(v.string())
 });
 
 export const MatchActionCoordinatorRequestSchema = v.object({
 	matchId: v.string(),
-	input: v.unknown(),
+	input: ScoreEventInputSchema,
 	actorName: v.optional(v.nullable(v.string())),
 	now: v.string(),
 	beforeState: v.optional(v.nullable(MatchStateSchema)),
@@ -24,7 +24,7 @@ export const MatchActionCoordinatorRequestSchema = v.object({
 export const MatchActionCoordinatorSuccessSchema = v.object({
 	ok: v.literal(true),
 	afterState: MatchStateSchema,
-	input: v.unknown()
+	input: ScoreEventInputSchema
 });
 
 export const MatchActionCoordinatorErrorSchema = v.object({

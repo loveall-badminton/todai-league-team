@@ -65,17 +65,36 @@ export function buildScoreEventInsert(
 			params.targetSeqNo ??
 			(params.input.type === 'undo' ? (params.input.targetSeqNo ?? null) : null),
 		reason: params.reason ?? reasonForInput(params.input),
-		payloadJson: JSON.stringify({
-			input: params.input,
-			beforeSummary: stateSummary(params.beforeState),
-			afterSummary: stateSummary(params.afterState),
-			beforeState: params.beforeState,
-			afterState: params.afterState
-		}),
+		payloadJson: JSON.stringify(
+			buildEventPayload(params.input, params.beforeState, params.afterState)
+		),
 		actorName: params.actorName ?? null,
 		idempotencyKey: params.input.idempotencyKey,
 		createdAt: params.now
 	});
+}
+
+function buildEventPayload(
+	input: ScoreEventInput,
+	beforeState: MatchState,
+	afterState: MatchState
+) {
+	const payload = {
+		input,
+		beforeSummary: stateSummary(beforeState),
+		afterSummary: stateSummary(afterState),
+		afterState
+	};
+
+	if (needsUndoRestoreState(input)) {
+		return { ...payload, beforeState };
+	}
+
+	return payload;
+}
+
+function needsUndoRestoreState(input: ScoreEventInput): boolean {
+	return input.type !== 'rally_won';
 }
 
 export function buildUndoLinkInsert(

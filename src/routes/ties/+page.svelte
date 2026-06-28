@@ -115,7 +115,9 @@
 
 <PageHeader title="対戦管理" actions={headerActions} />
 
-<TieCreateDialog bind:open={dialogOpen} data={tiesPage} />
+{#if dialogOpen}
+	<TieCreateDialog bind:open={dialogOpen} data={tiesPage} />
+{/if}
 
 <AppTabs value={filter} items={tabItems} onValueChange={setFilter} />
 

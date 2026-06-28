@@ -54,8 +54,12 @@
 		{ label: '使い方', path: '/docs', icon: BookOpen, roles: ['admin', 'participant', 'team'] }
 	];
 
+	function normalizeAccountType(role: string | undefined): AccountType {
+		return role === 'admin' || role === 'participant' || role === 'team' ? role : 'participant';
+	}
+
 	let currentRole = $derived(
-		(data.authProfile?.accountType ?? data.user?.role ?? 'participant') as AccountType
+		normalizeAccountType(data.authProfile?.accountType ?? data.user?.role)
 	);
 	let visibleNavItems = $derived(navItems.filter((item) => item.roles.includes(currentRole)));
 	let authPage = $derived(page.url.pathname.startsWith('/auth'));

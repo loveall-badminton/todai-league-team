@@ -72,15 +72,32 @@
 		toast.error(title || 'エラーが発生しました', { description: details.join('\n') || undefined });
 	}
 
+	function hasBodyMessage(error: unknown): error is { body?: { message?: string } } {
+		return (
+			typeof error === 'object' &&
+			error !== null &&
+			'body' in error &&
+			typeof error.body === 'object' &&
+			error.body !== null &&
+			(!('message' in error.body) || typeof error.body.message === 'string')
+		);
+	}
+
+	function hasMessage(error: unknown): error is { message?: string } {
+		return (
+			typeof error === 'object' &&
+			error !== null &&
+			(!('message' in error) || typeof error.message === 'string')
+		);
+	}
+
 	function errorMessage(error: unknown) {
 		if (error instanceof Error && error.message) return error.message;
-		if (typeof error === 'object' && error && 'body' in error) {
-			const body = (error as { body?: { message?: unknown } }).body;
-			if (typeof body?.message === 'string') return body.message;
+		if (hasBodyMessage(error) && error.body?.message) {
+			return error.body.message;
 		}
-		if (typeof error === 'object' && error && 'message' in error) {
-			const message = (error as { message?: unknown }).message;
-			if (typeof message === 'string') return message;
+		if (hasMessage(error) && error.message) {
+			return error.message;
 		}
 		return 'エラーが発生しました';
 	}
