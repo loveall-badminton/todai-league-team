@@ -88,7 +88,7 @@ describe('rubberStatusLabel', () => {
 		expect(rubberStatusLabel('ready')).toBe('準備完了');
 		expect(rubberStatusLabel('scheduled')).toBe('予定');
 		expect(rubberStatusLabel('playing')).toBe('進行中');
-		expect(rubberStatusLabel('finished')).toBe('終了');
+		expect(rubberStatusLabel('finished')).toBe('結果確認待ち');
 		expect(rubberStatusLabel('confirmed')).toBe('確定');
 		expect(rubberStatusLabel('forfeited')).toBe('棄権');
 		expect(rubberStatusLabel('retired')).toBe('リタイア');

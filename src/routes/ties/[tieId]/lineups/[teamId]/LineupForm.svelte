@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
@@ -90,7 +91,7 @@
 			player1Id: draftValue(rubber.code, 1),
 			player2Id: draftValue(rubber.code, 2)
 		}));
-		lineup.fields.set({ items });
+		untrack(() => lineup.fields.set({ items }));
 	});
 </script>
 

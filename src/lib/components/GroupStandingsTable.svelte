@@ -14,6 +14,7 @@
 		ties,
 		teams,
 		linkTies = false,
+		tieHref,
 		extraHead,
 		extraCell
 	}: {
@@ -21,9 +22,15 @@
 		ties: TieRecord[];
 		teams: EntityOption[];
 		linkTies?: boolean;
+		tieHref?: (tieId: string) => ReturnType<typeof resolve>;
 		extraHead?: Snippet;
 		extraCell?: Snippet<[GroupStanding]>;
 	} = $props();
+
+	let showTieLinks = $derived(linkTies || !!tieHref);
+	function getTieHref(tieId: string): ReturnType<typeof resolve> {
+		return tieHref ? tieHref(tieId) : resolve('/ties/[tieId]', { tieId });
+	}
 
 	function cellInfo(rowTeamId: string, colTeamId: string) {
 		return getCellInfo(rowTeamId, colTeamId, ties);
@@ -95,9 +102,9 @@
 											: cell.lost
 												? 'bg-rose-50 text-rose-700'
 												: 'bg-zinc-100 text-zinc-600'}
-										{#if linkTies}
+										{#if showTieLinks}
 											<a
-												href={resolve('/ties/[tieId]', { tieId: cell.tie.id })}
+												href={getTieHref(cell.tie.id)}
 												class={cn(
 													'inline-flex min-w-12 flex-col items-center rounded-lg px-2 py-0.5 text-xs font-semibold',
 													colorClass
@@ -118,9 +125,9 @@
 											</span>
 										{/if}
 									{:else if cell}
-										{#if linkTies}
+										{#if showTieLinks}
 											<a
-												href={resolve('/ties/[tieId]', { tieId: cell.tie.id })}
+												href={getTieHref(cell.tie.id)}
 												class="inline-flex flex-col items-center hover:opacity-80"
 											>
 												<span class="text-[10px] text-zinc-400">{cell.tie.tieCode}</span>

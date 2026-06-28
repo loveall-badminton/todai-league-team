@@ -8,8 +8,7 @@ import {
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
-import { invalidateLivePageCache, prewarmLivePageCache } from '$lib/server/services/livePageCache';
-import { getLivePageData } from '$lib/server/services/livePageService';
+import { invalidateLivePageCache } from '$lib/server/services/livePageCache';
 
 export function notifyLiveBoard(): void;
 export function notifyLiveBoard<TTopics extends readonly LiveTopic[]>(
@@ -21,7 +20,6 @@ export function notifyLiveBoard(
 	data?: LiveUpdateData
 ): void {
 	invalidateLivePageCache(topics);
-	prewarmLivePageCache(getLivePageData);
 	if (dev) {
 		console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
 	}
@@ -45,7 +43,6 @@ export function notifyScoreChange<TTopics extends readonly LiveTopic[]>(
 	data?: LiveUpdateData<TTopics[number]>
 ): void {
 	invalidateLivePageCache(topics);
-	prewarmLivePageCache(getLivePageData);
 	if (dev) {
 		console.log('[broadcast] notifyScoreChange', {
 			matchId,

@@ -64,7 +64,8 @@
 		const pathname = page.url.pathname;
 		const href = resolve(path);
 		if (href === resolve('/')) return pathname === href;
-		if (href === resolve('/live')) return pathname === href;
+		if (href === resolve('/live'))
+			return pathname.startsWith(href) && !pathname.startsWith(resolve('/live/tasks'));
 		if (href === resolve('/docs')) return pathname.startsWith(href);
 		return pathname.startsWith(href);
 	}

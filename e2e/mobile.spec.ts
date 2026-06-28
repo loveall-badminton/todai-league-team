@@ -11,7 +11,9 @@ test.describe.serial('mobile viewport', () => {
 				if (msg.type() === 'error') errors.push(msg.text());
 			});
 
-			await page.goto(path, { waitUntil: 'networkidle' });
+			// /live uses RealtimeSync polling so networkidle is never reached — use 'load' instead
+			const waitUntil = path === '/live' ? 'load' : 'networkidle';
+			await page.goto(path, { waitUntil });
 			expect(errors).toHaveLength(0);
 		});
 	}

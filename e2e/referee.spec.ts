@@ -244,6 +244,7 @@ test.describe.serial('referee scoring', () => {
 	});
 
 	test('completes a match (2 games) and confirms result', async ({ page }) => {
+		test.setTimeout(90_000);
 		// Navigate to the referee page — game 1 is already in progress
 		await page.goto(tieUrl);
 		await page.getByRole('link', { name: 'スコア入力' }).first().click();
@@ -252,9 +253,10 @@ test.describe.serial('referee scoring', () => {
 		// Game 1: score until 21 (from current score ~1-0), total ~20 more clicks
 		for (let i = 0; i < 25; i++) {
 			const btn = page.getByText('+1').first();
+			// Wait for any in-flight action to complete before checking enabled state
+			await page.waitForTimeout(300);
 			if (!(await btn.isEnabled().catch(() => false))) break;
 			await btn.click();
-			await page.waitForTimeout(150);
 		}
 
 		// Game 1 should be over — look for "次ゲーム開始" heading
@@ -285,13 +287,14 @@ test.describe.serial('referee scoring', () => {
 		// Game 2: score 21 points for Team A
 		for (let i = 0; i < 25; i++) {
 			const btn = page.getByText('+1').first();
+			// Wait for any in-flight action to complete before checking enabled state
+			await page.waitForTimeout(300);
 			if (!(await btn.isEnabled().catch(() => false))) break;
 			await btn.click();
-			await page.waitForTimeout(150);
 		}
 
-		// Match is auto-confirmed on completion
-		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
+		// Match finishes — status becomes 'finished' (admin confirms separately)
+		await expect(page.getByText('試合終了')).toBeVisible({ timeout: 10000 });
 
 		// Navigate to tie page and verify rubber shows the completed score
 		await page.goto(tieUrl);

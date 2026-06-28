@@ -5,6 +5,7 @@
 	import type { QueryValue } from '$lib/utils/types';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { resolve } from '$app/paths';
 	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
 
 	let { query }: { query: QueryValue<LivePageData['schedule']> } = $props();
@@ -46,7 +47,10 @@
 					<div class="divide-y divide-zinc-50">
 						{#each group.ties as tie (tie.id)}
 							{@const timeStr = formatTime(tie.scheduledStartAt)}
-							<div class="flex items-center gap-3 px-4 py-2.5">
+							<a
+								href={resolve('/live/ties/[tieId]', { tieId: tie.id })}
+								class="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
+							>
 								<span class="mt-0.5 h-2 w-2 shrink-0 rounded-full {statusDot(tie.status)}"></span>
 								<div class="min-w-0 flex-1">
 									{#if timeStr}
@@ -68,7 +72,7 @@
 								<span class="shrink-0 text-xs {statusText(tie.status)}">
 									{tieStatusLabel(tie.status)}
 								</span>
-							</div>
+							</a>
 						{/each}
 					</div>
 				</Card>

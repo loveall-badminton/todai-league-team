@@ -44,6 +44,8 @@ test.describe.serial('team management', () => {
 
 		const bulkTab = page.getByRole('tab', { name: '一括登録' });
 		await bulkTab.click();
+		// Wait for bits-ui tab transition to complete before asserting selection state
+		await page.waitForTimeout(300);
 		await expect(bulkTab).toHaveAttribute('aria-selected', 'true');
 
 		const namesTextarea = page.locator('textarea[name="namesText"]');

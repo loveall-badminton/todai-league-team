@@ -35,13 +35,11 @@
 	$effect(() => {
 		const form = triggerRef?.closest('form');
 		if (!form) return;
-
 		const handleReset = async () => {
 			const valueBeforeReset = value;
 			await tick();
 			value = valueBeforeReset;
 		};
-
 		form.addEventListener('reset', handleReset, { capture: true });
 		return () => form.removeEventListener('reset', handleReset, { capture: true });
 	});
@@ -71,22 +69,20 @@
 		</Select.Value>
 		<ChevronDown class="h-4 w-4 shrink-0 text-muted" />
 	</Select.Trigger>
-	<Select.Portal>
-		<Select.Content
-			class="z-50 min-w-32 overflow-hidden rounded-xl border border-border bg-white shadow-md"
-			sideOffset={4}
-		>
-			<Select.Viewport class="p-1">
-				{#each items as item (item.value)}
-					<Select.Item
-						value={item.value}
-						label={item.label}
-						class="relative flex cursor-default items-center rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-default"
-					>
-						{item.label}
-					</Select.Item>
-				{/each}
-			</Select.Viewport>
-		</Select.Content>
-	</Select.Portal>
+	<Select.Content
+		class="z-50 min-w-32 overflow-hidden rounded-xl border border-border bg-white shadow-md"
+		sideOffset={4}
+	>
+		<Select.Viewport class="p-1">
+			{#each items as item (item.value)}
+				<Select.Item
+					value={item.value}
+					label={item.label}
+					class="relative flex cursor-default items-center rounded-lg px-3 py-2 text-sm text-zinc-700 outline-none select-none data-highlighted:bg-zinc-100 data-selected:font-medium data-selected:text-default"
+				>
+					{item.label}
+				</Select.Item>
+			{/each}
+		</Select.Viewport>
+	</Select.Content>
 </Select.Root>

@@ -4,6 +4,7 @@
 	import type { LivePageData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { resolve } from '$app/paths';
 
 	let { query }: { query: QueryValue<LivePageData['standings']> } = $props();
 
@@ -56,7 +57,12 @@
 					{#snippet header()}
 						<h3 class="text-sm font-semibold text-default">{group.label}</h3>
 					{/snippet}
-					<GroupStandingsTable standings={group.rows} ties={group.ties} {teams} />
+					<GroupStandingsTable
+						standings={group.rows}
+						ties={group.ties}
+						{teams}
+						tieHref={(id) => resolve('/live/ties/[tieId]', { tieId: id })}
+					/>
 				</Card>
 			{/each}
 		</div>

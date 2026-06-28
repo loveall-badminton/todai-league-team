@@ -143,6 +143,7 @@ test.describe.serial('lineup full workflow', () => {
 	});
 
 	test('complete a match and confirm result', async ({ page }) => {
+		test.setTimeout(90_000);
 		await page.goto(tieUrl);
 		await page.waitForTimeout(2000);
 
@@ -177,9 +178,9 @@ test.describe.serial('lineup full workflow', () => {
 		// Score game 1
 		for (let i = 0; i < 25; i++) {
 			const btn = page.getByText('+1').first();
+			await page.waitForTimeout(300);
 			if (!(await btn.isEnabled().catch(() => false))) break;
 			await btn.click();
-			await page.waitForTimeout(150);
 		}
 
 		// Start game 2 if needed
@@ -210,17 +211,17 @@ test.describe.serial('lineup full workflow', () => {
 
 			for (let i = 0; i < 25; i++) {
 				const btn = page.getByText('+1').first();
+				await page.waitForTimeout(300);
 				if (!(await btn.isEnabled().catch(() => false))) break;
 				await btn.click();
-				await page.waitForTimeout(150);
 			}
 		}
 
-		// Match is auto-confirmed on completion
-		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
+		// Match finishes — status becomes 'finished' (admin confirms separately)
+		await expect(page.getByText('試合終了')).toBeVisible({ timeout: 10000 });
 
-		// Verify on tie page
+		// Verify on tie page: rubber shows '結果確認待ち' until admin confirms
 		await page.goto(tieUrl);
-		await expect(page.getByText('確定').first()).toBeVisible({ timeout: 5000 });
+		await expect(page.getByText('結果確認待ち').first()).toBeVisible({ timeout: 5000 });
 	});
 });

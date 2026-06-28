@@ -6,7 +6,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { checkRateLimit, API_RATE_LIMIT, AUTH_RATE_LIMIT } from '$lib/server/ratelimit';
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/bootstrap'];
-const PROFILE_PATHS = ['/admin', '/ties', '/scores', '/referee', '/live/tasks'];
+const PROFILE_PATHS = ['/admin', '/ties', '/scores', '/referee', '/live'];
 
 const authCache = new WeakMap<D1Database, ReturnType<typeof createAuth>>();
 

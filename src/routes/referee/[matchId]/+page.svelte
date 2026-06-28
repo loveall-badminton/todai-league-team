@@ -105,7 +105,7 @@
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
-	let prevError = $state<string | undefined>();
+	let prevError: string | undefined;
 	$effect(() => {
 		const failure = formResult as { error?: string } | undefined;
 		const err = failure?.error;
@@ -163,6 +163,20 @@
 		第{data.state.currentGameNo}ゲーム · ゲームカウント {data.state.gamesWon[leftSide]}–{data.state
 			.gamesWon[rightSide]}
 	</div>
+
+	<!-- Match finished banner -->
+	{#if ['finished', 'forfeited', 'retired'].includes(data.state.status)}
+		<Card>
+			<h2 class="font-semibold">試合終了</h2>
+			<p class="mt-1 text-sm text-muted">
+				{data.state.status === 'forfeited'
+					? '棄権により試合が終了しました'
+					: data.state.status === 'retired'
+						? 'リタイアにより試合が終了しました'
+						: '結果は管理者が確認後に確定されます'}
+			</p>
+		</Card>
+	{/if}
 
 	<!-- Start game form -->
 	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}

@@ -262,7 +262,11 @@ function scoreFor(
 	}
 
 	// Current / final game
-	const isActive = match.status === 'playing' || match.status === 'interval';
+	const isActive =
+		match.status === 'playing' ||
+		match.status === 'interval' ||
+		match.status === 'suspended' ||
+		match.status === 'cancelled';
 	const isEnded =
 		match.status === 'finished' ||
 		match.status === 'confirmed' ||
@@ -409,6 +413,61 @@ export async function getBatchedPublicRubbers(
 		});
 	});
 }
+
+export async function getTiePageData(tieId: string) {
+	const db = getRequestDb();
+	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+	if (!tie) return null;
+
+	const revealed = ['playing', 'finished', 'confirmed'].includes(tie.status);
+	const teamIds = [tie.teamAId, tie.teamBId].filter((id): id is string => !!id);
+
+	const [teamRows, rubberData] = await Promise.all([
+		teamIds.length > 0
+			? db.select().from(teams).where(inArray(teams.id, teamIds))
+			: Promise.resolve([]),
+		getPublicRubbersForTie(tieId, revealed)
+	]);
+
+	const teamNameById = new Map(teamRows.map((t) => [t.id, t.name]));
+
+	return {
+		tie: {
+			id: tie.id,
+			phase: tie.phase,
+			tieCode: tie.tieCode,
+			status: tie.status,
+			teamAId: tie.teamAId,
+			teamBId: tie.teamBId,
+			teamAName: tie.teamAId ? (teamNameById.get(tie.teamAId) ?? null) : null,
+			teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null,
+			teamScoreA: tie.teamScoreA,
+			teamScoreB: tie.teamScoreB,
+			venue: tie.venue,
+			courtBlockCode: tie.courtBlockCode,
+			scheduledStartAt: tie.scheduledStartAt
+		},
+		rubbers: rubberData.map((r) => ({
+			id: r.id,
+			code: r.code,
+			matchId: r.matchId,
+			status: r.status,
+			matchStatus: r.matchStatus,
+			winnerSide: r.winnerSide,
+			sideAPlayers: r.sideAPlayers,
+			sideBPlayers: r.sideBPlayers,
+			gamesScore: r.gamesScore,
+			pointScore: r.pointScore,
+			gameDetails: r.gameDetails.map((g) => ({
+				gameNo: g.gameNo,
+				scoreA: g.scoreA,
+				scoreB: g.scoreB,
+				winnerSide: g.winnerSide
+			}))
+		}))
+	};
+}
+export type TiePageData = NonNullable<Awaited<ReturnType<typeof getTiePageData>>>;
 
 export async function getActiveTieBoard() {
 	const db = getRequestDb();

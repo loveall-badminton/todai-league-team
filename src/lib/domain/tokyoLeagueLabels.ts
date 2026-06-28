@@ -64,7 +64,7 @@ export const rubberStatusLabel = (status: string) => {
 		ready: '準備完了',
 		scheduled: '予定',
 		playing: '進行中',
-		finished: '終了',
+		finished: '結果確認待ち',
 		confirmed: '確定',
 		forfeited: '棄権',
 		retired: 'リタイア',

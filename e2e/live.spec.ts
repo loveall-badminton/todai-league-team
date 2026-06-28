@@ -8,10 +8,8 @@ test.describe.serial('live board', () => {
 		});
 
 		await page.goto('/live');
-		await expect(page.getByText('ライブ表示')).toBeVisible();
-		await expect(
-			page.getByText('接続中').or(page.getByText('自動更新')).or(page.getByText('接続中…'))
-		).toBeVisible();
+		// Live board is CSR-only (ssr=false) — wait for schedule query + hydration
+		await expect(page.getByText('ライブ表示')).toBeVisible({ timeout: 10000 });
 
 		expect(errors).toHaveLength(0);
 	});

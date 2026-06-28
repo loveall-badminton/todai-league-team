@@ -177,8 +177,8 @@ test.describe.serial('referee forfeit', () => {
 		await page.getByRole('button', { name: '棄権を確定する' }).click();
 		await page.waitForTimeout(1500);
 
-		// Match should now be terminal
-		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
+		// Match is now in forfeited state — +1 button disabled, admin confirms separately
+		await expect(page.getByText('+1').first()).toBeDisabled({ timeout: 5000 });
 	});
 
 	test('retire a match and confirm result', async ({ page }) => {
@@ -232,8 +232,8 @@ test.describe.serial('referee forfeit', () => {
 		await page.getByRole('button', { name: 'リタイアを確定する' }).click();
 		await page.waitForTimeout(1500);
 
-		// Match should now be terminal
-		await expect(page.getByText('結果確定')).toBeVisible({ timeout: 5000 });
+		// Match is now in retired state — +1 button disabled, admin confirms separately
+		await expect(page.getByText('+1').first()).toBeDisabled({ timeout: 5000 });
 
 		// Verify on tie page
 		await page.goto(tieUrl);
