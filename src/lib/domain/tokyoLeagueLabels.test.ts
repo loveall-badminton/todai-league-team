@@ -166,11 +166,11 @@ describe('courtDisplayLabel', () => {
 	});
 
 	test('formats court numbers from JSON array with venue', () => {
-		expect(courtDisplayLabel('first_gym', '[1,2,3]')).toBe('第一体育館 1面・2面・3面');
+		expect(courtDisplayLabel('first_gym', '[1,2,3]')).toBe('第一体育館 1コート・2コート・3コート');
 	});
 
 	test('formats court numbers from JSON array without venue', () => {
-		expect(courtDisplayLabel(null, '[4,5]')).toBe('4面・5面');
+		expect(courtDisplayLabel(null, '[4,5]')).toBe('4コート・5コート');
 	});
 
 	test('falls back to COURT_BLOCKS label for named block code', () => {
@@ -199,11 +199,11 @@ describe('courtBlockLabel', () => {
 	});
 
 	test('formats JSON court array as コートN面 list', () => {
-		expect(courtBlockLabel('[2,3,4]')).toBe('コート2面・3面・4面');
+		expect(courtBlockLabel('[2,3,4]')).toBe('2コート・3コート・4コート');
 	});
 
 	test('formats single court JSON array', () => {
-		expect(courtBlockLabel('[6]')).toBe('コート6面');
+		expect(courtBlockLabel('[6]')).toBe('6コート');
 	});
 
 	test('maps named block code to its label', () => {

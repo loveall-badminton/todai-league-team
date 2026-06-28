@@ -38,8 +38,8 @@
 	)}
 >
 	{#if copied}
-		<Check class="h-4 w-4" />
+		<Check class="size-4" />
 	{:else}
-		<Clipboard class="h-4 w-4" />
+		<Clipboard class="size-4" />
 	{/if}
 </button>

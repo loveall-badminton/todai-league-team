@@ -111,7 +111,7 @@ export const courtDisplayLabel = (
 		const raw = JSON.parse(courtBlockCode);
 		const result = v.safeParse(CourtNumbersSchema, raw);
 		if (result.success && result.output.length > 0) {
-			return `${vLabel ?? ''} ${result.output.map((c) => `${c}面`).join('・')}`.trim();
+			return `${vLabel ?? ''} ${result.output.map((c) => `${c}コート`).join('・')}`.trim();
 		}
 	} catch {
 		const block = COURT_BLOCKS.find((b) => b.code === courtBlockCode);
@@ -126,7 +126,7 @@ export const courtBlockLabel = (code: string | null | undefined) => {
 		const raw = JSON.parse(code);
 		const result = v.safeParse(CourtNumbersSchema, raw);
 		if (result.success && result.output.length > 0) {
-			return `コート${result.output.map((c) => `${c}面`).join('・')}`;
+			return result.output.map((c) => `${c}コート`).join('・');
 		}
 	} catch {
 		// ignore

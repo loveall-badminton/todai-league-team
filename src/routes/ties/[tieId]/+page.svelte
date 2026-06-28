@@ -44,6 +44,7 @@
 	} from './tiePageHelpers';
 	import TieWorkflowStepper from './TieWorkflowStepper.svelte';
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
+	import TieNotifyPanel from '$lib/components/TieNotifyPanel.svelte';
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import {
 		shouldRefreshTieHeaderData,
@@ -436,6 +437,13 @@
 		/>
 	</Card>
 {/if}
+
+<TieNotifyPanel
+	{tie}
+	teamAName={teamA?.name ?? null}
+	teamBName={teamB?.name ?? null}
+	rubbers={rubbers.map(toRubberRow)}
+/>
 
 {#snippet lineupPanel(side: 'A' | 'B', team: EntityOption | null, teamId: string | null)}
 	{@const lineup = lineupBySide(side)}
