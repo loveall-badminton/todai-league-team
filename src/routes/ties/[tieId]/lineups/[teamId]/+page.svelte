@@ -132,7 +132,7 @@
 			<p class="text-sm text-muted">選手が登録されていません</p>
 		</div>
 	{:else}
-		<Card class="overflow-hidden">
+		<Card class="overflow-hidden" flush>
 			<LineupForm
 				rubberDefinitions={RUBBER_DEFINITIONS}
 				{draftValue}

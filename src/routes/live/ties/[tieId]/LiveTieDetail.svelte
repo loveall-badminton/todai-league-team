@@ -9,6 +9,7 @@
 		rubberStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
 	import AppTabs from '$lib/components/AppTabs.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import { ChevronDown } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
 	import { filterScorePointsByGame, getScoreProgressionGameNos } from '$lib/utils/scoreProgression';
@@ -134,30 +135,28 @@
 {/snippet}
 
 <!-- Tie header -->
-<div class="mb-4 rounded-2xl border border-border-subtle bg-white px-5 pt-4 pb-3">
-	<div class="flex items-start justify-between gap-2">
-		<div class="min-w-0">
-			<p class="text-xs font-medium text-muted">
-				{phaseLabel(tie.phase)} · {tie.tieCode}
-			</p>
-			<p class="mt-0.5 text-[11px] text-muted">
-				コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
-			</p>
+<Card class="mb-4" flush>
+	<div class="px-5 pt-4 pb-3">
+		<p class="text-xs font-medium text-muted">
+			{phaseLabel(tie.phase)} · {tie.tieCode}
+		</p>
+		<p class="mt-0.5 text-[11px] text-muted">
+			コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
+		</p>
+		<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+			<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
+			<div class="text-center">
+				<p class="text-3xl leading-none font-bold text-emerald-700 tabular-nums">
+					{tie.teamScoreA}<span class="mx-1 text-emerald-300">–</span>{tie.teamScoreB}
+				</p>
+			</div>
+			<p class="min-w-0 truncate text-right font-semibold">{tie.teamBName ?? '未定'}</p>
 		</div>
 	</div>
-	<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-		<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
-		<div class="text-center">
-			<p class="text-3xl leading-none font-bold text-emerald-700 tabular-nums">
-				{tie.teamScoreA}<span class="mx-1 text-emerald-300">–</span>{tie.teamScoreB}
-			</p>
-		</div>
-		<p class="min-w-0 truncate text-right font-semibold">{tie.teamBName ?? '未定'}</p>
-	</div>
-</div>
+</Card>
 
 <!-- Rubber list -->
-<div class="overflow-hidden rounded-2xl border border-border-subtle bg-white">
+<Card class="overflow-hidden" flush>
 	{#each rubbers as rubber (rubber.id)}
 		{@const isPlaying = rubber.status === 'playing'}
 		{@const isExpanded = expandedRubberId === rubber.id}
@@ -230,4 +229,4 @@
 			</div>
 		{/if}
 	{/each}
-</div>
+</Card>

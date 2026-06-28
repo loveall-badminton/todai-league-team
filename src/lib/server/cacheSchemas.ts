@@ -123,6 +123,7 @@ export const ScheduleDataSchema = v.array(
 		teamBId: NullableString,
 		winnerTeamId: NullableString,
 		scheduledStartAt: NullableString,
+		lineupDueAt: NullableString,
 		teamAName: NullableString,
 		teamBName: NullableString,
 		status: TieStatusSchema,

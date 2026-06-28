@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import Card from '$lib/components/Card.svelte';
 	import { resolve } from '$app/paths';
-	import { ArrowRight, ClipboardList, Shield } from '@lucide/svelte';
-	import Badge from '$lib/components/Badge.svelte';
+	import {
+		AlarmClock,
+		ArrowRight,
+		CheckCircle2,
+		Clock,
+		Shield,
+		ClipboardList
+	} from '@lucide/svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
+	import Card from '$lib/components/Card.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import { statusBadgeColor } from '$lib/utils/statusStyles';
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import type { PageProps } from './$types';
@@ -17,6 +22,19 @@
 
 	let myTeamId = $derived(data.authProfile?.teamId ?? null);
 	let isTeamAccount = $derived(data.authProfile?.accountType === 'team' && !!myTeamId);
+
+	let pendingLineups = $derived(data.myTies.filter((t) => t.status === 'lineup_pending'));
+	let submittedLineups = $derived(
+		data.myTies.filter(
+			(t) => t.status === 'lineup_submitted' || t.status === 'ready' || t.status === 'playing'
+		)
+	);
+	let otherTies = $derived(
+		data.myTies.filter(
+			(t) =>
+				!pendingLineups.includes(t) && !submittedLineups.includes(t) && t.status !== 'cancelled'
+		)
+	);
 
 	const handleRealtimeUpdate = createRealtimeQueryFlow({
 		refresh: () => invalidateAll(),
@@ -29,10 +47,7 @@
 	<title>オーダー/審判 | 東大リーグ団体戦</title>
 </svelte:head>
 
-<PageHeader
-	title="オーダー/審判"
-	description="このページをこまめに確認して、オーダー提出や審判担当の対戦を見逃さないようにしてください。"
->
+<PageHeader title="オーダー/審判">
 	{#snippet actions()}
 		{#if isTeamAccount}
 			<RealtimeSync topics={['score', 'schedule']} onUpdate={(u) => void handleRealtimeUpdate(u)} />
@@ -40,51 +55,134 @@
 	{/snippet}
 </PageHeader>
 
-{#if isTeamAccount}
-	<div class="grid gap-4 sm:grid-cols-2">
-		<Card>
-			<div class="mb-3 flex items-center gap-2">
-				<ClipboardList class="h-4 w-4 text-muted-foreground" />
+{#if !isTeamAccount}
+	<Card class="p-6">
+		<p class="text-sm text-muted-foreground">
+			チームアカウントでログインすると、オーダー提出と審判担当が表示されます。
+		</p>
+	</Card>
+{:else}
+	<div class="space-y-6">
+		<!-- Lineup section -->
+		<section class="space-y-3">
+			<div class="flex items-center gap-2">
+				<ClipboardList class="size-4 text-muted-foreground" />
 				<h2 class="text-sm font-semibold text-default">オーダー提出</h2>
 			</div>
-			{#if data.myTies.some((t) => t.status === 'lineup_pending')}
-				<p class="mb-3 text-xs text-muted">
-					オーダーは時間に余裕をもって提出してください。
-					スムーズな大会運営へのご協力をお願いします。
-				</p>
-			{/if}
+
 			{#if data.myTies.length === 0}
 				<p class="text-sm text-muted">提出すべきオーダーはありません</p>
 			{:else}
 				<div class="space-y-2">
-					{#each data.myTies as tie (tie.id)}
+					<!-- Urgent: pending -->
+					{#each pendingLineups as tie (tie.id)}
+						<div class="overflow-hidden rounded-xl border border-amber-300 bg-amber-50">
+							<div class="flex items-start justify-between gap-3 px-4 py-3">
+								<div class="min-w-0 flex-1">
+									<div class="flex flex-wrap items-center gap-1.5">
+										<span class="text-sm font-semibold text-zinc-900">{tie.tieCode}</span>
+										<span
+											class="inline-flex items-center rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+										>
+											未提出
+										</span>
+									</div>
+									<p class="mt-0.5 truncate text-xs text-zinc-600">
+										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
+									</p>
+									<div class="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
+										{#if tie.scheduledStartAt}
+											<span class="inline-flex items-center gap-1 font-medium text-zinc-500">
+												<Clock class="size-3 shrink-0" />
+												開始: {tie.scheduledStartAt}
+											</span>
+										{/if}
+										{#if tie.lineupDueAt}
+											<span class="inline-flex items-center gap-1 font-semibold text-amber-700">
+												<AlarmClock class="size-3 shrink-0" />
+												期限: {tie.lineupDueAt}
+											</span>
+										{/if}
+									</div>
+								</div>
+								<AppButton
+									href={resolve('/ties/[tieId]/lineups/[teamId]', {
+										tieId: tie.id,
+										teamId: myTeamId!
+									})}
+									variant="primary"
+									size="sm"
+									class="shrink-0"
+								>
+									提出する
+									<ArrowRight class="size-3" />
+								</AppButton>
+							</div>
+						</div>
+					{/each}
+
+					<!-- Submitted / playing -->
+					{#each submittedLineups as tie (tie.id)}
 						<a
 							href={resolve('/ties/[tieId]/lineups/[teamId]', {
 								tieId: tie.id,
 								teamId: myTeamId!
 							})}
-							class="flex items-center justify-between rounded-xl border border-border-subtle px-3 py-2.5 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+							class="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 transition-colors hover:bg-emerald-50"
 						>
-							<div class="min-w-0">
-								<p class="text-sm font-medium text-default">{tie.tieCode}</p>
-								<p class="truncate text-xs text-muted-foreground">
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-center gap-1.5">
+									<span class="text-sm font-medium text-zinc-800">{tie.tieCode}</span>
+									<span
+										class="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+									>
+										<CheckCircle2 class="size-2.5" />
+										{tieStatusLabel(tie.status)}
+									</span>
+								</div>
+								<p class="mt-0.5 truncate text-xs text-zinc-500">
+									{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
+								</p>
+								{#if tie.scheduledStartAt}
+									<span class="mt-1 inline-flex items-center gap-1 text-[11px] text-zinc-400">
+										<Clock class="size-3 shrink-0" />
+										{tie.scheduledStartAt}
+									</span>
+								{/if}
+							</div>
+							<ArrowRight class="size-4 shrink-0 text-zinc-300" />
+						</a>
+					{/each}
+
+					<!-- Other statuses (finished/confirmed) -->
+					{#each otherTies as tie (tie.id)}
+						<a
+							href={resolve('/ties/[tieId]/lineups/[teamId]', {
+								tieId: tie.id,
+								teamId: myTeamId!
+							})}
+							class="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3 text-muted transition-colors hover:bg-zinc-50"
+						>
+							<div class="min-w-0 flex-1">
+								<span class="text-sm font-medium text-zinc-600">{tie.tieCode}</span>
+								<p class="mt-0.5 truncate text-xs text-zinc-400">
 									{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 								</p>
 							</div>
-							<Badge color={statusBadgeColor(tie.status)}>
-								{tieStatusLabel(tie.status)}
-							</Badge>
+							<span class="shrink-0 text-xs text-zinc-400">{tieStatusLabel(tie.status)}</span>
 						</a>
 					{/each}
 				</div>
 			{/if}
-		</Card>
+		</section>
 
-		<Card>
-			<div class="mb-3 flex items-center gap-2">
-				<Shield class="h-4 w-4 text-muted-foreground" />
+		<!-- Referee section -->
+		<section class="space-y-3">
+			<div class="flex items-center gap-2">
+				<Shield class="size-4 text-muted-foreground" />
 				<h2 class="text-sm font-semibold text-default">審判担当</h2>
 			</div>
+
 			{#if data.myOfficiatingTies.length === 0}
 				<p class="text-sm text-muted">審判担当の対戦はありません</p>
 			{:else}
@@ -92,40 +190,60 @@
 					{#each data.myOfficiatingTies as tie (tie.id)}
 						{@const rubbers = data.publicRubbersByTieId[tie.id] ?? []}
 						{@const playableRubbers = rubbers.filter((r) => r.matchId)}
-						<div>
-							<p class="mb-1 text-xs font-medium text-muted-foreground">
-								{tie.tieCode} — {tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
-							</p>
-							{#if playableRubbers.length === 0}
-								<p class="text-xs text-muted">試合の準備ができるまでお待ちください</p>
-							{:else}
-								<div class="space-y-1">
-									{#each playableRubbers as rubber (rubber.id)}
-										<AppButton
-											href={resolve('/referee/[matchId]', { matchId: rubber.matchId! })}
-											variant="secondary"
-											size="sm"
-											class="w-full justify-between"
-										>
-											<span>{rubberLabel(rubber.code)}</span>
-											<span class="text-muted"
-												>{rubberStatusLabel(rubber.status)}
-												<ArrowRight class="inline size-3" /></span
-											>
-										</AppButton>
-									{/each}
+						<Card class="overflow-hidden" flush>
+							<div class="border-b border-border-subtle bg-zinc-50/60 px-4 py-3">
+								<p class="text-sm font-semibold text-zinc-900">{tie.tieCode}</p>
+								<div class="mt-0.5 flex flex-wrap items-center gap-3">
+									<p class="text-xs text-zinc-500">
+										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
+									</p>
+									{#if tie.scheduledStartAt}
+										<span class="inline-flex items-center gap-1 text-[11px] text-zinc-400">
+											<Clock class="size-3 shrink-0" />
+											{tie.scheduledStartAt}
+										</span>
+									{/if}
 								</div>
-							{/if}
-						</div>
+							</div>
+							<div class="divide-y divide-zinc-50">
+								{#if playableRubbers.length === 0}
+									<p class="px-4 py-3 text-xs text-muted">試合の準備ができるまでお待ちください</p>
+								{:else}
+									{#each playableRubbers as rubber (rubber.id)}
+										{@const isPlaying = rubber.status === 'playing'}
+										{@const isDone = ['finished', 'confirmed', 'cancelled'].includes(rubber.status)}
+										<a
+											href={resolve('/referee/[matchId]', { matchId: rubber.matchId! })}
+											class="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50
+												{isPlaying ? 'bg-emerald-50/40' : ''}"
+										>
+											<span
+												class="w-10 shrink-0 text-xs font-semibold
+													{isPlaying ? 'text-emerald-700' : isDone ? 'text-zinc-300' : 'text-zinc-600'}"
+											>
+												{rubberLabel(rubber.code)}
+											</span>
+											<span
+												class="flex-1 text-xs
+													{isPlaying ? 'font-medium text-emerald-600' : isDone ? 'text-zinc-400' : 'text-zinc-500'}"
+											>
+												{rubberStatusLabel(rubber.status)}
+											</span>
+											{#if !isDone}
+												<ArrowRight
+													class="size-3.5 shrink-0 {isPlaying
+														? 'text-emerald-400'
+														: 'text-zinc-300'}"
+												/>
+											{/if}
+										</a>
+									{/each}
+								{/if}
+							</div>
+						</Card>
 					{/each}
 				</div>
 			{/if}
-		</Card>
+		</section>
 	</div>
-{:else}
-	<Card class="p-6">
-		<p class="text-sm text-muted-foreground">
-			チームアカウントでログインすると、オーダー提出と審判担当が表示されます。
-		</p>
-	</Card>
 {/if}

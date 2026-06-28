@@ -27,7 +27,9 @@ export async function loadLiveTasksPageData(authProfile: AuthProfile | null | un
 		tieCode: tie.tieCode,
 		status: tie.status,
 		teamAName: tie.teamAId ? (teamNameById.get(tie.teamAId) ?? null) : null,
-		teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null
+		teamBName: tie.teamBId ? (teamNameById.get(tie.teamBId) ?? null) : null,
+		scheduledStartAt: tie.scheduledStartAt,
+		lineupDueAt: tie.lineupDueAt
 	});
 
 	const myTies = myTieRows.filter((tie) => tie.status !== 'cancelled').map(toSummary);

@@ -5,8 +5,10 @@
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getSchedulePageData } from './live.remote';
+	import { page } from '$app/state';
 
 	const scheduleQuery = getSchedulePageData();
+	let myTeamId = $derived(page.data.authProfile?.teamId ?? null);
 	// Use .current (sync reactive getter) instead of await to avoid component suspension
 	let schedule = $derived({ current: scheduleQuery.current ?? null });
 	let playingCount = $derived(
@@ -50,4 +52,4 @@
 
 <PageHeader title="ライブ表示" actions={headerActions} />
 
-<LiveSchedule query={schedule} />
+<LiveSchedule query={schedule} {myTeamId} />

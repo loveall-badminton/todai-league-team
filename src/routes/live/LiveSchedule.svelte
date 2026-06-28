@@ -6,17 +6,30 @@
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { resolve } from '$app/paths';
+	import { Clock, ArrowRight, CircleCheck, CircleAlert } from '@lucide/svelte';
+	import { goto } from '$app/navigation';
+
 	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
 
-	let { query }: { query: QueryValue<LivePageData['schedule']> } = $props();
-
-	function formatTime(val: string | null | undefined): string | null {
-		return val || null;
-	}
+	let {
+		query,
+		myTeamId = null
+	}: { query: QueryValue<LivePageData['schedule']>; myTeamId?: string | null } = $props();
 
 	let grouped = $derived(
 		query.current == null ? null : groupTiesByPhase<ScheduleTie>(query.current)
 	);
+
+	function isMyTie(tie: ScheduleTie): boolean {
+		if (!myTeamId) return false;
+		return tie.teamAId === myTeamId || tie.teamBId === myTeamId;
+	}
+
+	function showDeadline(tie: ScheduleTie): boolean {
+		return (
+			!!tie.lineupDueAt && (tie.status === 'lineup_pending' || tie.status === 'lineup_submitted')
+		);
+	}
 </script>
 
 {#if query.current == null}
@@ -46,19 +59,68 @@
 					{/snippet}
 					<div class="divide-y divide-zinc-50">
 						{#each group.ties as tie (tie.id)}
-							{@const timeStr = formatTime(tie.scheduledStartAt)}
+							{@const myTie = isMyTie(tie)}
+							{@const needsDeadline = showDeadline(tie)}
+							{@const lineupSubmitted = tie.status === 'lineup_submitted'}
 							<a
 								href={resolve('/live/ties/[tieId]', { tieId: tie.id })}
-								class="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
+								class="relative flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 active:bg-zinc-100
+									{myTie ? 'bg-blue-50/60' : ''}"
 							>
+								{#if myTie}
+									<span class="absolute inset-y-0 left-0 w-0.5 rounded-full bg-blue-400"></span>
+								{/if}
 								<span class="mt-0.5 h-2 w-2 shrink-0 rounded-full {statusDot(tie.status)}"></span>
 								<div class="min-w-0 flex-1">
-									{#if timeStr}
-										<p class="text-[10px] font-medium text-muted tabular-nums">{timeStr}</p>
-									{/if}
-									<p class="truncate text-sm font-medium text-zinc-900">
+									<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+										{#if tie.scheduledStartAt}
+											<span
+												class="inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums
+													{myTie ? 'text-blue-600' : 'text-zinc-500'}"
+											>
+												<Clock class="size-3 shrink-0" />
+												{tie.scheduledStartAt}
+											</span>
+										{/if}
+									</div>
+									<p
+										class="truncate text-sm font-medium {myTie ? 'text-zinc-900' : 'text-zinc-700'}"
+									>
 										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 									</p>
+									{#if needsDeadline && myTie}
+										<div class="mt-0.5 flex flex-wrap items-center gap-2">
+											<p
+												class="inline-flex items-center gap-1 text-[11px] font-medium
+													{lineupSubmitted ? 'text-emerald-600' : 'text-amber-600'}"
+											>
+												{#if lineupSubmitted}
+													<CircleCheck class="size-3 shrink-0" />
+													提出済
+												{:else}
+													<CircleAlert class="size-3 shrink-0" />
+													オーダーは{tie.lineupDueAt}までに提出
+												{/if}
+											</p>
+											{#if myTie && myTeamId && !lineupSubmitted}
+												<button
+													type="button"
+													onclick={(e) => {
+														e.preventDefault();
+														void goto(
+															resolve('/ties/[tieId]/lineups/[teamId]', {
+																tieId: tie.id,
+																teamId: myTeamId!
+															})
+														);
+													}}
+													class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-200"
+												>
+													<ArrowRight class="size-3 shrink-0" /> 提出する
+												</button>
+											{/if}
+										</div>
+									{/if}
 								</div>
 								{#if ['playing', 'interval', 'suspended', 'finished', 'confirmed'].includes(tie.status)}
 									<span
