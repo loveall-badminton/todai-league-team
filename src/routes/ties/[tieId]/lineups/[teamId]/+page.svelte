@@ -17,6 +17,7 @@
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import { loadLocalLineupDraft, saveLocalLineupDraft } from '../lineupDraftStorage';
+	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -65,6 +66,11 @@
 		draftItems = localDraft;
 		toast.info('この端末に保存した下書きを復元しました');
 	});
+
+	const { remainingMin: calcRemainingMin } = useLineupClock();
+	let remainingMin = $derived(
+		data.tie.lineupDueAt && !isLocked ? calcRemainingMin(data.tie.lineupDueAt) : null
+	);
 </script>
 
 <svelte:head>
@@ -84,11 +90,24 @@
 		title={data.team.name}
 		description={data.opponentTeam ? `vs ${data.opponentTeam.name}` : 'オーダー入力'}
 	/>
-	<span
-		class="mt-2 inline-flex rounded-full px-3 py-1 text-sm font-medium {statusBadgeClass(status)}"
-	>
-		{submissionStatusLabel(status)}
-	</span>
+	<div class="mt-2 flex items-center gap-3">
+		<span class="inline-flex rounded-full px-3 py-1 text-sm font-medium {statusBadgeClass(status)}">
+			{submissionStatusLabel(status)}
+		</span>
+		{#if remainingMin !== null}
+			<span
+				class="text-xs {remainingMin <= 0
+					? 'text-muted-foreground'
+					: remainingMin <= 1
+						? 'text-red-600 font-medium'
+						: remainingMin <= 5
+							? 'text-amber-600'
+							: 'text-muted-foreground'}"
+			>
+				{remainingMin > 0 ? `あと ${remainingMin} 分` : '期限超過'}
+			</span>
+		{/if}
+	</div>
 </header>
 
 <!-- Locked/revealed: read-only display -->

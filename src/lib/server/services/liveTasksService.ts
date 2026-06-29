@@ -6,6 +6,19 @@ import {
 	listTiesForTeam
 } from '$lib/server/repositories/tokyoLeagueRepository';
 import type { AuthProfile } from '$lib/server/auth/access';
+import { getRequestDb } from '$lib/server/db/request';
+import { ties } from '$lib/server/db/schema';
+import { and, eq, or } from 'drizzle-orm';
+
+export async function loadPendingLineupBanner(teamId: string) {
+	const db = getRequestDb();
+	return db
+		.select({ id: ties.id, tieCode: ties.tieCode, lineupDueAt: ties.lineupDueAt })
+		.from(ties)
+		.where(
+			and(or(eq(ties.teamAId, teamId), eq(ties.teamBId, teamId)), eq(ties.status, 'lineup_pending'))
+		);
+}
 
 export async function loadLiveTasksPageData(authProfile: AuthProfile | null | undefined) {
 	if (authProfile?.accountType !== 'team' || !authProfile.teamId) {

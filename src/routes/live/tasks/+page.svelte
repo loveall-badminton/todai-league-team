@@ -17,11 +17,14 @@
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import type { PageProps } from './$types';
+	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 
 	let { data }: PageProps = $props();
 
 	let myTeamId = $derived(data.authProfile?.teamId ?? null);
 	let isTeamAccount = $derived(data.authProfile?.accountType === 'team' && !!myTeamId);
+
+	const { remainingMin } = useLineupClock();
 
 	let pendingLineups = $derived(data.myTies.filter((t) => t.status === 'lineup_pending'));
 	let submittedLineups = $derived(
@@ -98,9 +101,21 @@
 											</span>
 										{/if}
 										{#if tie.lineupDueAt}
-											<span class="inline-flex items-center gap-1 font-semibold text-amber-700">
+											{@const min = remainingMin(tie.lineupDueAt)}
+											<span
+												class="inline-flex items-center gap-1 font-semibold {min !== null &&
+												min <= 5
+													? 'text-red-700'
+													: 'text-amber-700'}"
+											>
 												<AlarmClock class="size-3 shrink-0" />
-												期限: {tie.lineupDueAt}
+												{#if min === null}
+													期限あり
+												{:else if min > 0}
+													あと {min} 分
+												{:else}
+													期限超過
+												{/if}
 											</span>
 										{/if}
 									</div>
