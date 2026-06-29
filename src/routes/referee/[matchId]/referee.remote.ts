@@ -7,7 +7,8 @@ import { notifyScoreChange } from '$lib/server/realtime/broadcast';
 import {
 	getMatchPlayers,
 	getMatchWithPlayers,
-	getMatchState
+	getMatchState,
+	updateMatchResultVerification
 } from '$lib/server/repositories/matchRepository';
 import {
 	applyMatchActionWithRealtime,
@@ -75,7 +76,7 @@ export const start = form(
 
 export const startGame = form(
 	v.object({
-		gameNo: v.pipe(v.string(), v.transform(Number), v.integer()),
+		gameNo: v.pipe(v.string(), v.toNumber(), v.integer()),
 		initialServerPlayerId: v.string(),
 		initialReceiverPlayerId: v.string()
 	}),
@@ -191,11 +192,79 @@ export const cutoff = form(async () => {
 	broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
 });
 
+export const saveRefereeName = form(
+	v.object({ refereeName: v.pipe(v.string(), v.trim(), v.nonEmpty()) }),
+	async ({ refereeName }) => {
+		const event = getRequestEvent();
+		const matchId = event.params.matchId!;
+		await requireRefereeMatchAccess(matchId);
+		const state = await getMatchState(matchId);
+		if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
+			return { error: '試合終了後に入力してください' };
+		}
+		await updateMatchResultVerification(matchId, {
+			refereeName,
+			updatedAt: new Date().toISOString()
+		});
+	}
+);
+
+export const confirmWinner = form(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	await requireRefereeMatchAccess(matchId);
+	const [state, match] = await Promise.all([getMatchState(matchId), getMatchWithPlayers(matchId)]);
+	if (!match) return { error: '試合が見つかりません' };
+	if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
+		return { error: '試合終了後に確認してください' };
+	}
+	if (!state.winnerSide) {
+		return { error: '勝者が未確定の試合は確認できません' };
+	}
+	if (!match.match.refereeName?.trim()) {
+		return { error: '先に審判名を入力してください' };
+	}
+	await updateMatchResultVerification(matchId, {
+		winnerConfirmedAt: new Date().toISOString(),
+		winnerConfirmedBySide: state.winnerSide,
+		updatedAt: new Date().toISOString()
+	});
+	const afterState = await getMatchState(matchId);
+	broadcastScoreUpdate(matchId, {
+		state: afterState,
+		event: { type: 'winner_confirmed' } as const
+	});
+});
+
+export const unconfirmWinner = form(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	await requireRefereeMatchAccess(matchId);
+	const [state, match] = await Promise.all([getMatchState(matchId), getMatchWithPlayers(matchId)]);
+	if (!match) return { error: '試合が見つかりません' };
+	if (state.status === 'confirmed') {
+		return { error: '運営承認後は勝者確認を取り消せません' };
+	}
+	if (!match.match.winnerConfirmedAt) {
+		return { error: 'まだ勝者確認されていません' };
+	}
+	await updateMatchResultVerification(matchId, {
+		winnerConfirmedAt: null,
+		winnerConfirmedBySide: null,
+		updatedAt: new Date().toISOString()
+	});
+	const afterState = await getMatchState(matchId);
+	broadcastScoreUpdate(matchId, {
+		state: afterState,
+		event: { type: 'winner_unconfirmed' } as const
+	});
+});
+
 function broadcastScoreUpdate(
 	matchId: string,
 	score:
 		| MatchActionRealtimeResult['scorePayload']
-		| { state: MatchState; event: { type: 'cutoff' } }
+		| { state: MatchState; event: { type: 'cutoff' | 'winner_confirmed' | 'winner_unconfirmed' } }
 ) {
 	notifyScoreChange(matchId, ['score'], { score });
 }

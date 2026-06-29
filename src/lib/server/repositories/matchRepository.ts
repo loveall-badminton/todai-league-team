@@ -50,6 +50,19 @@ export async function getMatchWithPlayers(matchId: string) {
 	};
 }
 
+export async function updateMatchResultVerification(
+	matchId: string,
+	values: {
+		refereeName?: string | null;
+		winnerConfirmedAt?: string | null;
+		winnerConfirmedBySide?: 'A' | 'B' | null;
+		updatedAt: string;
+	}
+): Promise<void> {
+	const db = await getRequestDbOrThrow();
+	await db.update(matches).set(values).where(eq(matches.id, matchId));
+}
+
 export async function getMatchState(matchId: string, dbParam?: RequestDb): Promise<MatchState> {
 	const db = await getRequestDbOrThrow(dbParam);
 	const snapshot = await db.query.matchSnapshots.findFirst({

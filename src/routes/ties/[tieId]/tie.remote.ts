@@ -18,6 +18,7 @@ import { error } from '@sveltejs/kit';
 import { applyMatchActionWithRealtime } from '$lib/server/services/matchRealtimeActionService';
 import * as v from 'valibot';
 import { getTieHeaderData, getTieLineupsData } from './tiePageData';
+import { getMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 
 export const getLiveRubbers = query(v.string(), async (tieId) => {
 	requireAdmin();
@@ -79,6 +80,15 @@ export const deleteTie = command(async () => {
 
 export const confirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
 	requireAdmin();
+	const match = await getMatchWithPlayers(matchId);
+	if (!match) error(404, 'Match not found');
+	const verificationReady =
+		!!match.match.refereeName?.trim() &&
+		!!match.match.winnerConfirmedAt &&
+		!!match.match.winnerConfirmedBySide;
+	if (!verificationReady) {
+		error(400, '試合確定には審判名、勝者確認、運営承認の3点が必要です');
+	}
 	await applyLifecycleMatchAction(matchId, 'match_confirmed');
 });
 

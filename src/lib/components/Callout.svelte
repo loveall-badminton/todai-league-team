@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils/cn';
-	import { AlertTriangle, Info, Lightbulb, ShieldAlert } from '@lucide/svelte';
+	import { Info, Lightbulb, ShieldAlert, TriangleAlert } from '@lucide/svelte';
 
 	type Variant = 'info' | 'warning' | 'danger' | 'tip';
 
@@ -14,7 +14,7 @@
 
 	const icons: Record<Variant, typeof Info> = {
 		info: Info,
-		warning: AlertTriangle,
+		warning: TriangleAlert,
 		danger: ShieldAlert,
 		tip: Lightbulb
 	};

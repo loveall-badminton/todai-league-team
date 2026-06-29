@@ -8,6 +8,9 @@ export type RubberRow = {
 	code: string;
 	status: string;
 	matchStatus?: string | null;
+	refereeName?: string | null;
+	winnerConfirmedAt?: string | null;
+	winnerConfirmedBySide?: 'A' | 'B' | null;
 	winnerSide: 'A' | 'B' | null;
 	playersA: string[];
 	playersB: string[];

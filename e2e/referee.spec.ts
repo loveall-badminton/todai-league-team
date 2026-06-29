@@ -295,6 +295,19 @@ test.describe.serial('referee scoring', () => {
 
 		// Match finishes — status becomes 'finished' (admin confirms separately)
 		await expect(page.getByText('試合終了')).toBeVisible({ timeout: 10000 });
+		await expect(page.getByRole('button', { name: '試合結果を確認' })).toBeDisabled();
+		await page.getByPlaceholder('審判の名前を入力').fill('審判 花子');
+		await page.getByRole('button', { name: '保存' }).click();
+		await expect(page.getByPlaceholder('審判の名前を入力')).toHaveValue('審判 花子');
+		await expect(page.getByRole('button', { name: '試合結果を確認' })).toBeEnabled();
+		await page.getByRole('button', { name: '試合結果を確認' }).click();
+		await expect(page.getByRole('button', { name: '確認を取り消す' })).toBeVisible({
+			timeout: 5000
+		});
+		await page.getByRole('button', { name: '確認を取り消す' }).click();
+		await expect(page.getByRole('button', { name: '試合結果を確認' })).toBeVisible({
+			timeout: 5000
+		});
 
 		// Navigate to tie page and verify rubber shows the completed score
 		await page.goto(tieUrl);

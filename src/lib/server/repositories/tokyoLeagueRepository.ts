@@ -3,6 +3,7 @@ import { getRequestDb } from '$lib/server/db/request';
 import {
 	appSettings,
 	groupStandingOverrides,
+	matches,
 	officiatingAssignments,
 	rankingTiebreakers,
 	rubbers,
@@ -397,11 +398,15 @@ export async function getTieWithRubbers(tieId: string) {
 	const rubberRows = await db
 		.select()
 		.from(rubbers)
+		.leftJoin(matches, eq(rubbers.matchId, matches.id))
 		.where(eq(rubbers.tieId, tie.id))
 		.orderBy(asc(rubbers.displayOrder));
 	const summary = summarizeTieSummaries(
 		[tie],
-		rubberRows.map((rubber) => ({ tieId: rubber.tieId, winnerSide: rubber.winnerSide }))
+		rubberRows.map(({ rubbers: rubber }) => ({
+			tieId: rubber.tieId,
+			winnerSide: rubber.winnerSide
+		}))
 	).get(tie.id);
 	return {
 		tie: summary
@@ -412,7 +417,13 @@ export async function getTieWithRubbers(tieId: string) {
 					winnerTeamId: summary.winnerTeamId
 				}
 			: tie,
-		rubbers: rubberRows
+		rubbers: rubberRows.map(({ rubbers: rubber, matches: match }) => ({
+			...rubber,
+			matchStatus: match?.status ?? null,
+			refereeName: match?.refereeName ?? null,
+			winnerConfirmedAt: match?.winnerConfirmedAt ?? null,
+			winnerConfirmedBySide: match?.winnerConfirmedBySide ?? null
+		}))
 	};
 }
 

@@ -10,6 +10,7 @@
 	import RefereeAdvancedControls from './RefereeAdvancedControls.svelte';
 	import RefereeCourtDiagram from './RefereeCourtDiagram.svelte';
 	import RefereeEventLog from './RefereeEventLog.svelte';
+	import RefereeMatchFinishedCard from './RefereeMatchFinishedCard.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
 	import { rallyWon, start, startGame, undo } from './referee.remote';
 	import { loadJsonFromLocalStorage, saveJsonToLocalStorage } from '$lib/utils/localStorage';
@@ -49,6 +50,12 @@
 	let sideBPlayers = $derived(data.players.filter((player) => player.side === 'B'));
 	let sideAName = $derived(data.match.sides.find((side) => side.side === 'A')?.displayName ?? 'A');
 	let sideBName = $derived(data.match.sides.find((side) => side.side === 'B')?.displayName ?? 'B');
+	let savedRefereeName = $derived(data.match.refereeName ?? '');
+	let winnerConfirmed = $derived(!!data.match.winnerConfirmedAt);
+	let hasRefereeName = $derived(!!savedRefereeName.trim());
+	let winnerSideName = $derived(
+		data.state.winnerSide === 'A' ? sideAName : data.state.winnerSide === 'B' ? sideBName : null
+	);
 
 	let previousGameWinner = $derived(
 		data.state.games.find((g) => g.gameNo === data.state.currentGameNo - 1)?.winnerSide
@@ -106,6 +113,7 @@
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
 	let prevError: string | undefined;
+	let prevSavedRefereeName: string | null = null;
 	$effect(() => {
 		const failure = formResult as { error?: string } | undefined;
 		const err = failure?.error;
@@ -113,6 +121,14 @@
 			toast.error(err);
 			prevError = err;
 		}
+	});
+
+	$effect(() => {
+		const savedName = data.match.refereeName?.trim() ?? '';
+		if (!savedName) return;
+		if (savedName === prevSavedRefereeName) return;
+		toast.success('審判名を保存しました');
+		prevSavedRefereeName = savedName;
 	});
 </script>
 
@@ -166,16 +182,14 @@
 
 	<!-- Match finished banner -->
 	{#if ['finished', 'forfeited', 'retired'].includes(data.state.status)}
-		<Card>
-			<h2 class="font-semibold">試合終了</h2>
-			<p class="mt-1 text-sm text-muted">
-				{data.state.status === 'forfeited'
-					? '棄権により試合が終了しました'
-					: data.state.status === 'retired'
-						? 'リタイアにより試合が終了しました'
-						: '結果は管理者が確認後に確定されます'}
-			</p>
-		</Card>
+		<RefereeMatchFinishedCard
+			status={data.state.status as 'finished' | 'forfeited' | 'retired'}
+			refereeName={savedRefereeName}
+			{winnerSideName}
+			{winnerConfirmed}
+			{hasRefereeName}
+			{isLocked}
+		/>
 	{/if}
 
 	<!-- Start game form -->

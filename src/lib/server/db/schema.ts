@@ -414,6 +414,12 @@ export const matches = sqliteTable(
 		actualStartAt: text('actual_start_at'),
 		actualEndAt: text('actual_end_at'),
 
+		refereeName: text('referee_name'),
+		winnerConfirmedAt: text('winner_confirmed_at'),
+		winnerConfirmedBySide: text('winner_confirmed_by_side', {
+			enum: ['A', 'B']
+		}),
+
 		createdAt: text('created_at')
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`),

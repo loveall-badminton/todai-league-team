@@ -98,6 +98,9 @@
 			matchId: rubber.matchId,
 			status,
 			matchStatus: statusSrc,
+			refereeName: rubber.refereeName,
+			winnerConfirmedAt: rubber.winnerConfirmedAt,
+			winnerConfirmedBySide: rubber.winnerConfirmedBySide,
 			winnerSide: rubber.winnerSide,
 			playersA: lineupPlayers(rubber.code, 'A').map(playerName),
 			playersB: lineupPlayers(rubber.code, 'B').map(playerName),
@@ -382,6 +385,16 @@
 		</td>
 		<td class="px-4 py-3">
 			<div class="flex flex-wrap items-center gap-2">
+				{#if row.refereeName}
+					<span class="text-xs text-zinc-700">審判: {row.refereeName}</span>
+				{/if}
+				{#if row.matchId && row.matchStatus !== 'confirmed' && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
+					<span class="text-xs text-muted">
+						{row.refereeName ? '審判署名済' : '審判署名待ち'} / {row.winnerConfirmedAt
+							? '勝者確認済'
+							: '勝者確認待ち'}
+					</span>
+				{/if}
 				{#if row.matchId}
 					<AppButton
 						variant="secondary"
@@ -406,7 +419,7 @@
 						confirmVariant="warning"
 						confirmClass="border border-amber-300"
 					/>
-				{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
+				{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '') && row.refereeName && row.winnerConfirmedAt && row.winnerConfirmedBySide}
 					<ConfirmDialog
 						onConfirm={async () => {
 							await confirmMatch({ matchId: row.matchId! });
