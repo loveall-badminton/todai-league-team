@@ -24,10 +24,30 @@ test.describe.serial('referee scoring', () => {
 		await expect(page.getByText(name)).toBeVisible({ timeout: 10000 });
 	}
 
+	async function openTeamCreateForm(page: Page) {
+		const input = page.locator('input[name="name"]').first();
+		await page.getByRole('button', { name: '+ 追加' }).click();
+		if (!(await input.isVisible().catch(() => false))) {
+			await page.getByRole('button', { name: '+ 追加' }).click();
+		}
+		await expect(input).toBeVisible();
+		return input;
+	}
+
 	async function selectBitsUiTrigger(page: Page, sectionLabel: string) {
 		const section = page.locator('span').filter({ hasText: sectionLabel }).locator('..');
 		await section.locator('button[aria-haspopup="listbox"]').click();
 		await page.waitForTimeout(200);
+	}
+
+	async function openTieCreateDialog(page: Page) {
+		const input = page.getByPlaceholder('A-1');
+		await page.getByRole('button', { name: '新規作成' }).click();
+		if (!(await input.isVisible().catch(() => false))) {
+			await page.getByRole('button', { name: '新規作成' }).click();
+		}
+		await expect(input).toBeVisible();
+		return input;
 	}
 
 	async function selectLineupPlayer(
@@ -47,8 +67,8 @@ test.describe.serial('referee scoring', () => {
 
 	test('creates two teams with players', async ({ page }) => {
 		await page.goto('/teams');
-		await page.getByRole('button', { name: '+ 追加' }).click();
-		await page.locator('input[name="name"]').fill(TEAM_A);
+		const teamAInput = await openTeamCreateForm(page);
+		await teamAInput.fill(TEAM_A);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		const teamAUrl = page.url();
@@ -58,8 +78,8 @@ test.describe.serial('referee scoring', () => {
 		}
 
 		await page.goto('/teams');
-		await page.getByRole('button', { name: '+ 追加' }).click();
-		await page.locator('input[name="name"]').fill(TEAM_B);
+		const teamBInput = await openTeamCreateForm(page);
+		await teamBInput.fill(TEAM_B);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		const teamBUrl = page.url();
@@ -71,10 +91,9 @@ test.describe.serial('referee scoring', () => {
 
 	test('creates a tie with teams assigned', async ({ page }) => {
 		await page.goto('/ties');
-		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByRole('dialog')).toBeVisible();
+		const tieCodeInput = await openTieCreateDialog(page);
 
-		await page.getByPlaceholder('A-1').fill(TIE_CODE);
+		await tieCodeInput.fill(TIE_CODE);
 
 		// Select team A
 		await selectBitsUiTrigger(page, 'A側チーム');

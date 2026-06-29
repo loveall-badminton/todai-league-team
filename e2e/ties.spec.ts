@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 
 const TIE_CODE = `T-${Date.now()}`;
 
+async function openTieCreateDialog(page: import('@playwright/test').Page) {
+	const input = page.getByPlaceholder('A-1');
+	await page.getByRole('button', { name: '新規作成' }).click();
+	if (!(await input.isVisible().catch(() => false))) {
+		await page.getByRole('button', { name: '新規作成' }).click();
+	}
+	await expect(input).toBeVisible();
+	return input;
+}
+
 test.describe('tie creation flow', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/ties');
@@ -13,26 +23,24 @@ test.describe('tie creation flow', () => {
 	});
 
 	test('opens create dialog when "新規作成" is clicked', async ({ page }) => {
-		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByRole('dialog')).toBeVisible();
+		await openTieCreateDialog(page);
 		await expect(page.getByRole('button', { name: '作成', exact: true })).toBeVisible();
 	});
 
 	test('closes dialog with cancel button', async ({ page }) => {
-		await page.getByRole('button', { name: '新規作成' }).click();
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible();
-		await page.getByText('キャンセル').click();
+		await openTieCreateDialog(page);
+		const dialog = page.getByRole('dialog', { name: '対戦を作成' });
+		await dialog.getByText('キャンセル').click();
 		await expect(dialog).not.toBeVisible();
 	});
 
 	test('creates a tie and redirects to its page', async ({ page }) => {
-		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByRole('dialog')).toBeVisible();
+		const tieCodeInput = await openTieCreateDialog(page);
+		const dialog = page.getByRole('dialog', { name: '対戦を作成' });
 
-		await page.getByPlaceholder('A-1').fill(TIE_CODE);
+		await tieCodeInput.fill(TIE_CODE);
 
-		await page.getByRole('button', { name: '作成', exact: true }).click();
+		await dialog.getByRole('button', { name: '作成', exact: true }).click();
 		await page.waitForTimeout(1000);
 
 		const currentUrl = page.url();
@@ -47,20 +55,18 @@ test.describe('tie creation flow', () => {
 	});
 
 	test('closes dialog when dialog close button is clicked', async ({ page }) => {
-		await page.getByRole('button', { name: '新規作成' }).click();
-		const dialog = page.getByRole('dialog');
-		await expect(page.getByPlaceholder('A-1')).toBeVisible();
+		await openTieCreateDialog(page);
+		const dialog = page.getByRole('dialog', { name: '対戦を作成' });
 
 		await page.locator('button[data-dialog-close]:has(svg.lucide-x)').click();
 		await expect(dialog).not.toBeVisible();
 	});
 
 	test('cancel button in dialog footer closes the dialog', async ({ page }) => {
-		await page.getByRole('button', { name: '新規作成' }).click();
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible();
+		await openTieCreateDialog(page);
+		const dialog = page.getByRole('dialog', { name: '対戦を作成' });
 
-		await page.locator('button:has-text("キャンセル")').click();
+		await dialog.getByRole('button', { name: 'キャンセル' }).click();
 		await expect(dialog).not.toBeVisible();
 	});
 });

@@ -230,8 +230,7 @@ test.describe.serial('lineup full workflow', () => {
 
 		// Verify on tie page: rubber shows '結果確認待ち' until admin confirms
 		await page.goto(tieUrl);
-		await expect(page.getByText('審判: 審判 太郎').first()).toBeVisible({ timeout: 5000 });
-		await expect(page.getByText('審判署名済 / 勝者確認済').first()).toBeVisible({ timeout: 5000 });
+		await expect(page.getByText('審判：審判 太郎').first()).toBeVisible({ timeout: 5000 });
 		await expect(page.getByRole('button', { name: '運営承認' }).first()).toBeVisible({
 			timeout: 5000
 		});

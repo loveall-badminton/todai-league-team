@@ -9,6 +9,8 @@
 		checked = $bindable(false),
 		disabled = false,
 		label,
+		variant = 'default',
+		labelClass = '',
 		class: className = '',
 		onCheckedChange
 	}: {
@@ -17,9 +19,24 @@
 		checked?: boolean;
 		disabled?: boolean;
 		label?: string;
+		variant?: 'default' | 'danger';
+		labelClass?: string;
 		class?: string;
 		onCheckedChange?: () => void;
 	} = $props();
+
+	const variantStyles = {
+		default: {
+			uncheckedBox: 'border-zinc-300 bg-white',
+			checkedBox: 'border-zinc-950 bg-zinc-950',
+			label: 'text-zinc-700'
+		},
+		danger: {
+			uncheckedBox: 'border-red-300 bg-white',
+			checkedBox: 'border-red-600 bg-red-600',
+			label: 'text-red-900'
+		}
+	} as const;
 </script>
 
 <Checkbox.Root
@@ -33,7 +50,7 @@
 	<div
 		class={cn(
 			'flex size-4 shrink-0 items-center justify-center rounded border',
-			checked ? 'border-zinc-950 bg-zinc-950' : 'border-zinc-300 bg-white',
+			checked ? variantStyles[variant].checkedBox : variantStyles[variant].uncheckedBox,
 			disabled && 'opacity-50'
 		)}
 	>
@@ -42,6 +59,8 @@
 		{/if}
 	</div>
 	{#if label}
-		<span class={cn('text-sm text-zinc-700', disabled && 'opacity-50')}>{label}</span>
+		<span class={cn('text-sm', variantStyles[variant].label, disabled && 'opacity-50', labelClass)}
+			>{label}</span
+		>
 	{/if}
 </Checkbox.Root>

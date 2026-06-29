@@ -72,11 +72,14 @@ export const unrevealLineups = command(async () => {
 	await runAdminMutation(() => unrevealLineupsService(tieId), notifyTieLineupChange);
 });
 
-export const deleteTie = command(async () => {
-	const tieId = requireAdminTieId();
-	await deleteTieRepo(tieId);
-	notifyTieStructureChange(tieId);
-});
+export const deleteTie = command(
+	v.object({ force: v.optional(v.boolean()) }),
+	async ({ force }) => {
+		const tieId = requireAdminTieId();
+		await deleteTieRepo(tieId, { force: force ?? false });
+		notifyTieStructureChange(tieId);
+	}
+);
 
 export const confirmMatch = command(v.object({ matchId: v.string() }), async ({ matchId }) => {
 	requireAdmin();

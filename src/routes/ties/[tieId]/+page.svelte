@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import AppButton from '$lib/components/AppButton.svelte';
+	import AppCheckbox from '$lib/components/AppCheckbox.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -70,6 +71,7 @@
 	let players = $derived(tieLineups.players);
 	let teamA = $derived(tieHeader.teamA);
 	let teamB = $derived(tieHeader.teamB);
+	let forceDelete = $state(false);
 
 	const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name ?? '未定';
 	const playerName = (id: string) => players.find((p) => p.id === id)?.name ?? id;
@@ -244,8 +246,10 @@
 
 	<span class="ml-auto">
 		<ConfirmDialog
-			onConfirm={async () => {
-				await deleteTie();
+			confirmPayload={() => forceDelete}
+			onConfirm={async (payload) => {
+				await deleteTie({ force: Boolean(payload) });
+				forceDelete = false;
 				goto(resolve('/ties'));
 			}}
 			triggerLabel="対戦を削除"
@@ -255,7 +259,11 @@
 			description={`「${tie.tieCode}」を削除します。種目やオーダーのデータもすべて削除されます。この操作は取り消せません。`}
 			confirmVariant="danger"
 			confirmLabel="削除する"
-		/>
+		>
+			<div class="mt-4 rounded-xl border border-red-200 bg-red-50/60 p-3">
+				<AppCheckbox bind:checked={forceDelete} label="強制削除する" variant="danger" />
+			</div>
+		</ConfirmDialog>
 	</span>
 </div>
 
@@ -386,14 +394,7 @@
 		<td class="px-4 py-3">
 			<div class="flex flex-wrap items-center gap-2">
 				{#if row.refereeName}
-					<span class="text-xs text-zinc-700">審判: {row.refereeName}</span>
-				{/if}
-				{#if row.matchId && row.matchStatus !== 'confirmed' && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '')}
-					<span class="text-xs text-muted">
-						{row.refereeName ? '審判署名済' : '審判署名待ち'} / {row.winnerConfirmedAt
-							? '勝者確認済'
-							: '勝者確認待ち'}
-					</span>
+					<span class="text-xs text-zinc-700">審判：{row.refereeName}</span>
 				{/if}
 				{#if row.matchId}
 					<AppButton

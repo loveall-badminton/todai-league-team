@@ -113,15 +113,18 @@ test.describe.serial('team status and group changes', () => {
 	let teamUrl: string;
 
 	async function selectTeamFormOption(page: Page, labelText: string, optionText: string) {
-		const section = page
-			.locator('form')
-			.filter({ hasText: 'チーム名' })
+		const form = page.locator('form').filter({ hasText: 'チーム名' });
+		const section = form
 			.getByText(labelText)
 			.locator('..')
 			.locator('button[aria-haspopup="listbox"]');
+		const option = page.getByRole('option', { name: optionText }).last();
 		await section.click();
-		await expect(page.getByRole('option', { name: optionText })).toBeVisible();
-		await page.getByRole('option', { name: optionText }).click();
+		if (!(await option.isVisible().catch(() => false))) {
+			await section.click();
+		}
+		await expect(option).toBeVisible();
+		await option.click();
 	}
 
 	test('creates a team for status test', async ({ page }) => {
@@ -141,6 +144,7 @@ test.describe.serial('team status and group changes', () => {
 		await page
 			.locator('form')
 			.filter({ hasText: 'チーム名' })
+			.first()
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();
@@ -154,6 +158,7 @@ test.describe.serial('team status and group changes', () => {
 		await page
 			.locator('form')
 			.filter({ hasText: 'チーム名' })
+			.first()
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();
@@ -167,6 +172,7 @@ test.describe.serial('team status and group changes', () => {
 		await page
 			.locator('form')
 			.filter({ hasText: 'チーム名' })
+			.first()
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();
@@ -180,6 +186,7 @@ test.describe.serial('team status and group changes', () => {
 		await page
 			.locator('form')
 			.filter({ hasText: 'チーム名' })
+			.first()
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();

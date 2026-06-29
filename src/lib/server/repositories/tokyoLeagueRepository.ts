@@ -13,7 +13,7 @@ import {
 	ties
 } from '$lib/server/db/schema';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
-import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNotNull, or } from 'drizzle-orm';
 
 export type Team = typeof teams.$inferSelect;
 export type TeamPlayer = typeof teamPlayers.$inferSelect;
@@ -285,8 +285,19 @@ export async function deleteTeamPlayer(playerId: string) {
 	await db.delete(teamPlayers).where(eq(teamPlayers.id, playerId));
 }
 
-export async function deleteTie(tieId: string) {
+export async function deleteTie(tieId: string, options?: { force?: boolean }) {
 	const db = getRequestDb();
+	if (options?.force) {
+		const linkedMatches = await db
+			.select({ matchId: rubbers.matchId })
+			.from(rubbers)
+			.where(and(eq(rubbers.tieId, tieId), isNotNull(rubbers.matchId)));
+
+		const matchIds = linkedMatches.map((row) => row.matchId).filter((id): id is string => !!id);
+		if (matchIds.length > 0) {
+			await db.delete(matches).where(inArray(matches.id, matchIds));
+		}
+	}
 	await db.delete(ties).where(eq(ties.id, tieId));
 }
 

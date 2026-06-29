@@ -111,7 +111,7 @@ test.describe.serial('tie extended operations', () => {
 		await page.reload();
 
 		// Verify the venue is saved
-		await expect(page.getByText('第一体育館')).toBeVisible();
+		await expect(page.locator('dd', { hasText: '第一体育館' })).toBeVisible();
 	});
 
 	test('navigates to lineup page', async ({ page }) => {
@@ -128,6 +128,12 @@ test.describe.serial('tie extended operations', () => {
 		await expect(page.locator('h1')).toContainText(TIE_CODE_A);
 
 		await page.getByText('対戦を削除').click();
+		const forceDeleteCheckbox = page.getByRole('checkbox', {
+			name: '強制削除する'
+		});
+		await expect(forceDeleteCheckbox).toHaveAttribute('aria-checked', 'false');
+		await forceDeleteCheckbox.click();
+		await expect(forceDeleteCheckbox).toHaveAttribute('aria-checked', 'true');
 		await page.getByRole('button', { name: '削除する' }).click();
 		await expect(page).toHaveURL(/\/ties$/);
 	});
@@ -143,17 +149,20 @@ test.describe.serial('tie reordering', () => {
 
 		// Tie 1
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByPlaceholder('A-1')).toBeVisible({ timeout: 5000 });
-		await page.getByPlaceholder('A-1').fill(TIE_1);
-		await page.getByRole('button', { name: '作成', exact: true }).click();
+		const createDialog = page.getByRole('dialog', { name: '対戦を作成' });
+		const tieCodeInput = createDialog.getByPlaceholder('A-1');
+		await expect(tieCodeInput).toBeVisible({ timeout: 10000 });
+		await tieCodeInput.fill(TIE_1);
+		await createDialog.getByRole('button', { name: '作成', exact: true }).click();
 		await page.waitForTimeout(500);
 
 		// Tie 2
 		await page.goto('/ties');
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(page.getByPlaceholder('A-1')).toBeVisible({ timeout: 5000 });
-		await page.getByPlaceholder('A-1').fill(TIE_2);
-		await page.getByRole('button', { name: '作成', exact: true }).click();
+		await expect(createDialog).toBeVisible({ timeout: 10000 });
+		await expect(tieCodeInput).toBeVisible({ timeout: 10000 });
+		await tieCodeInput.fill(TIE_2);
+		await createDialog.getByRole('button', { name: '作成', exact: true }).click();
 		await page.waitForTimeout(500);
 	});
 

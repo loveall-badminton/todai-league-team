@@ -11,6 +11,7 @@
 		formObj = undefined,
 		hiddenFields = [],
 		onConfirm = undefined,
+		confirmPayload = undefined,
 		triggerLabel,
 		triggerVariant = 'primary',
 		triggerSize = 'md',
@@ -21,13 +22,15 @@
 		description,
 		confirmLabel = '実行する',
 		confirmVariant = 'primary',
-		confirmClass = ''
+		confirmClass = '',
+		children
 	}: {
 		formObj?:
 			| { method: HTMLFormAttributes['method']; action: HTMLFormAttributes['action'] }
 			| undefined;
 		hiddenFields?: { name: string; value: string }[];
-		onConfirm?: (() => void | Promise<void>) | undefined;
+		onConfirm?: ((payload?: unknown) => void | Promise<void>) | undefined;
+		confirmPayload?: (() => unknown | Promise<unknown>) | undefined;
 		triggerLabel: string;
 		triggerVariant?: Variant;
 		triggerSize?: Size;
@@ -39,15 +42,17 @@
 		confirmLabel?: string;
 		confirmVariant?: Variant;
 		confirmClass?: string;
+		children?: import('svelte').Snippet;
 	} = $props();
 
 	let open = $state(false);
 	let formEl: HTMLFormElement | undefined = $state();
 
-	function confirm() {
+	async function confirm() {
+		const payload = confirmPayload ? await confirmPayload() : undefined;
 		open = false;
 		if (onConfirm) {
-			onConfirm();
+			await onConfirm(payload);
 			return;
 		}
 		formEl?.requestSubmit();
@@ -106,11 +111,12 @@
 					>{description}</Dialog.Description
 				>
 			{/if}
+			{@render children?.()}
 			<div class="mt-6 flex justify-end gap-2">
-				<Dialog.Close
-					class="rounded-xl border border-border px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-muted"
-				>
-					キャンセル
+				<Dialog.Close>
+					{#snippet child({ props })}
+						<AppButton {...props} type="button" variant="secondary">キャンセル</AppButton>
+					{/snippet}
 				</Dialog.Close>
 				<AppButton type="button" onclick={confirm} variant={confirmVariant} class={confirmClass}>
 					{confirmLabel}

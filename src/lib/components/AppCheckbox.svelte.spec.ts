@@ -32,6 +32,18 @@ describe('AppCheckbox.svelte', () => {
 		expect(onCheckedChange).toHaveBeenCalledTimes(1);
 	});
 
+	it('applies danger variant styles', async () => {
+		const result = render(AppCheckbox, { label: '危険', checked: true, variant: 'danger' });
+
+		const box = result.container.querySelector<HTMLDivElement>('[role="checkbox"] > div');
+		const label = result.container.querySelector<HTMLSpanElement>('span');
+		if (!box) throw new Error('checkbox box が見つかりません');
+		if (!label) throw new Error('checkbox label が見つかりません');
+
+		await expect.element(page.elementLocator(box)).toHaveClass('bg-red-600');
+		await expect.element(page.elementLocator(label)).toHaveClass('text-red-900');
+	});
+
 	it('keeps disabled checkbox from toggling', async () => {
 		const onCheckedChange = vi.fn();
 		render(AppCheckbox, { label: '停止中', checked: false, disabled: true, onCheckedChange });
