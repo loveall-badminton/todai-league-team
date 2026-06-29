@@ -3,7 +3,11 @@
 	import Card from '$lib/components/Card.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
+	import { matchChannel } from '$lib/realtime/channels';
+	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { cn } from '$lib/utils/cn';
+	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
@@ -33,6 +37,7 @@
 	);
 
 	let isLocked = $derived(data.state.status === 'confirmed');
+	let isScoringLocked = $derived(isLocked || !!data.match.winnerConfirmedAt);
 
 	const undoableEventTypes = ['rally_won', 'match_started', 'game_started'];
 	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
@@ -55,6 +60,14 @@
 	let hasRefereeName = $derived(!!savedRefereeName.trim());
 	let winnerSideName = $derived(
 		data.state.winnerSide === 'A' ? sideAName : data.state.winnerSide === 'B' ? sideBName : null
+	);
+	let scoreText = $derived(
+		data.state.games.some((g) => g.winnerSide !== null)
+			? data.state.games
+					.filter((g) => g.winnerSide !== null)
+					.map((g) => `${g.score[leftSide]}-${g.score[rightSide]}`)
+					.join(', ')
+			: null
 	);
 
 	let previousGameWinner = $derived(
@@ -112,6 +125,11 @@
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
+	const handleRealtimeUpdate = createRealtimeQueryFlow({
+		refresh: () => invalidateAll(),
+		debounceMs: 0
+	});
+
 	let prevError: string | undefined;
 	let prevSavedRefereeName: string | null = null;
 	$effect(() => {
@@ -131,6 +149,12 @@
 		prevSavedRefereeName = savedName;
 	});
 </script>
+
+<RealtimeSync
+	topics={['score']}
+	channel={matchChannel(data.state.matchId)}
+	onUpdate={(u) => void handleRealtimeUpdate(u)}
+/>
 
 {#snippet scoreCard(
 	side: 'A' | 'B',
@@ -159,7 +183,7 @@
 						'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
 						accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 					)}
-					disabled={data.state.status !== 'playing' || isLocked}
+					disabled={data.state.status !== 'playing' || isScoringLocked}
 					onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 				>
 					+1
@@ -189,6 +213,8 @@
 			{winnerConfirmed}
 			{hasRefereeName}
 			{isLocked}
+			{isScoringLocked}
+			{scoreText}
 		/>
 	{/if}
 
@@ -297,7 +323,7 @@
 		<AppButton
 			class="flex w-full flex-col rounded-xl bg-zinc-950 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-muted disabled:opacity-50"
 			type="submit"
-			disabled={!lastUndoableEvent || isLocked}
+			disabled={!lastUndoableEvent || isScoringLocked}
 		>
 			<span class="flex items-center gap-1 text-xs text-zinc-300">
 				<Undo2 class="size-3" />取り消し
@@ -323,7 +349,7 @@
 	<RefereeScoresheet events={data.events} games={data.state.games} players={data.players} />
 
 	<!-- Advanced controls -->
-	{#if !isLocked}
+	{#if !isScoringLocked}
 		<RefereeAdvancedControls {sideAName} {sideBName} />
 	{/if}
 

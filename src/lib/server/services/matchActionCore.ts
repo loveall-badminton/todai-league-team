@@ -220,11 +220,22 @@ async function prepareUndoInput(
 	}
 
 	const payload = parsePayload(targetEvent.payloadJson);
-	if (!payload.beforeState) throw new Error('Undo target does not contain beforeState');
+	let beforeState = payload.beforeState;
+
+	// rally_won events don't store beforeState to save space, but afterState of
+	// the previous event is identical to beforeState of targetEvent.
+	if (!beforeState && targetEvent.seqNo > 1) {
+		const prevEvent = await getScoreEventBySeqNo(matchId, targetEvent.seqNo - 1, db);
+		if (prevEvent) {
+			beforeState = parsePayload(prevEvent.payloadJson).afterState;
+		}
+	}
+
+	if (!beforeState) throw new Error('Undo target does not contain beforeState');
 	return {
 		...input,
 		targetSeqNo: targetEvent.seqNo,
-		restoreState: payload.beforeState
+		restoreState: beforeState
 	};
 }
 

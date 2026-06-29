@@ -64,6 +64,7 @@
 							{@const lineupSubmitted = tie.status === 'lineup_submitted'}
 							<a
 								href={resolve('/live/ties/[tieId]', { tieId: tie.id })}
+								data-sveltekit-preload-data="tap"
 								class="relative flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 active:bg-zinc-100
 									{myTie ? 'bg-blue-50/60' : ''}"
 							>

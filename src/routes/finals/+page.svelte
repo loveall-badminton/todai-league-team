@@ -128,6 +128,7 @@
 				{#each semis as tie (tie.id)}
 					<a
 						href={resolve('/ties/[tieId]', { tieId: tie.id })}
+						data-sveltekit-preload-data="tap"
 						class="flex items-center justify-between rounded-xl border border-border bg-white p-4 hover:border-zinc-400"
 					>
 						<div class="min-w-0">
@@ -155,6 +156,7 @@
 				{#each finals as tie (tie.id)}
 					<a
 						href={resolve('/ties/[tieId]', { tieId: tie.id })}
+						data-sveltekit-preload-data="tap"
 						class="flex items-center justify-between rounded-xl border border-border bg-white p-4 hover:border-zinc-400"
 					>
 						<div class="min-w-0">

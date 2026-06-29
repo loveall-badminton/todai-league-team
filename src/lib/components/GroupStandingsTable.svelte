@@ -105,6 +105,7 @@
 										{#if showTieLinks}
 											<a
 												href={getTieHref(cell.tie.id)}
+												data-sveltekit-preload-data="tap"
 												class={cn(
 													'inline-flex min-w-12 flex-col items-center rounded-lg px-2 py-0.5 text-xs font-semibold',
 													colorClass
@@ -128,6 +129,7 @@
 										{#if showTieLinks}
 											<a
 												href={getTieHref(cell.tie.id)}
+												data-sveltekit-preload-data="tap"
 												class="inline-flex flex-col items-center hover:opacity-80"
 											>
 												<span class="text-[10px] text-zinc-400">{cell.tie.tieCode}</span>

@@ -62,6 +62,7 @@
 		{#each playing as tie (tie.id)}
 			<a
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				data-sveltekit-preload-data="tap"
 				class="flex items-center justify-between rounded-xl border border-border p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
 			>
 				<div class="min-w-0">
@@ -92,6 +93,7 @@
 		{#each recentTies as tie (tie.id)}
 			<a
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				data-sveltekit-preload-data="tap"
 				class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
 			>
 				<div class="w-16 flex-none">

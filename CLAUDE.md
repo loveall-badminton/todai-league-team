@@ -20,6 +20,8 @@ pnpm test:coverage    # vitest coverage
 pnpm gen              # wrangler types → worker-configuration.d.ts (needed before check/build)
 pnpm db:push          # push schema to D1
 pnpm db:studio        # drizzle-kit studio
+pnpm db:migrate:staging  # apply pending migrations to staging D1 (remote)
+pnpm db:migrate:prod     # apply pending migrations to production D1 (remote)
 ```
 
 `pnpm check` must be run with wrangler types already generated. `pnpm gen` handles that automatically; CI uses `pnpm gen:check` (no side effects).

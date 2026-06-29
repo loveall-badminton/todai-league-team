@@ -12,10 +12,20 @@
 		winnerConfirmed: boolean;
 		hasRefereeName: boolean;
 		isLocked: boolean;
+		isScoringLocked: boolean;
+		scoreText: string | null;
 	}
 
-	let { status, refereeName, winnerSideName, winnerConfirmed, hasRefereeName, isLocked }: Props =
-		$props();
+	let {
+		status,
+		refereeName,
+		winnerSideName,
+		winnerConfirmed,
+		hasRefereeName,
+		isLocked,
+		isScoringLocked,
+		scoreText
+	}: Props = $props();
 	let initialRefereeName = $derived(refereeName);
 </script>
 
@@ -37,11 +47,11 @@
 					id="referee-name"
 					placeholder="審判の名前を入力"
 					required
-					disabled={isLocked}
+					disabled={isScoringLocked}
 				/>
 			</div>
 			<div class="self-end">
-				<AppButton type="submit" disabled={isLocked || saveRefereeName.pending > 0}>
+				<AppButton type="submit" disabled={isScoringLocked || saveRefereeName.pending > 0}>
 					{saveRefereeName.pending > 0 ? '保存中…' : '保存'}
 				</AppButton>
 			</div>
@@ -65,7 +75,7 @@
 							variant="success"
 							class="w-full"
 							size="lg"
-							disabled={isLocked || !hasRefereeName}
+							disabled={isScoringLocked || !hasRefereeName}
 						>
 							<span class="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-emerald-600">
 								勝者
@@ -73,6 +83,9 @@
 							試合結果を確認
 						</AppButton>
 					</form>
+					{#if scoreText}
+						<p class="text-center text-xs text-muted-foreground">（{scoreText}）</p>
+					{/if}
 				{/if}
 			</div>
 		{/if}

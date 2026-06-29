@@ -25,7 +25,7 @@
 
 <Card class="overflow-hidden">
 	{#each scoresheetByGame as game, gi (gi)}
-		<div class={cn(gi > 0 && 'border-t border-border')}>
+		<div class={cn('pb-4', gi > 0 && 'border-t border-border pt-4')}>
 			<div class="mb-3 flex items-center justify-between">
 				<p class="text-xs font-medium tracking-wide text-muted">第{game.gameNo}ゲーム</p>
 				{#if game.winnerSide}

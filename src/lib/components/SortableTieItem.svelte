@@ -106,6 +106,7 @@
 			</button>
 			<a
 				href={resolve('/ties/[tieId]', { tieId: tie.id })}
+				data-sveltekit-preload-data="tap"
 				class="hidden shrink-0 items-center border-l border-zinc-100 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 sm:flex"
 			>
 				詳細 <ArrowRight class="inline size-3" />
@@ -119,6 +120,7 @@
 						<AppButton variant="primary">保存</AppButton>
 						<a
 							href={resolve('/ties/[tieId]', { tieId: tie.id })}
+							data-sveltekit-preload-data="tap"
 							class="text-xs text-zinc-400 hover:text-zinc-700 hover:underline"
 						>
 							詳細を開く <ArrowRight class="inline size-3" />

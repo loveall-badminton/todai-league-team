@@ -214,6 +214,7 @@
 										{@const isDone = ['finished', 'confirmed', 'cancelled'].includes(rubber.status)}
 										<a
 											href={resolve('/referee/[matchId]', { matchId: rubber.matchId! })}
+											data-sveltekit-preload-data="tap"
 											class="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50
 												{isPlaying ? 'bg-emerald-50/40' : ''}"
 										>
