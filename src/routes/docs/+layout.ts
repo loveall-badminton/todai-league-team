@@ -20,10 +20,10 @@ export const load: LayoutLoad = () => {
 
 	const sections = [
 		{ title: 'はじめに', docs: sortDocs(all.filter((d) => d._cat === 'intro')) },
-		{ title: '管理者マニュアル', docs: sortDocs(all.filter((d) => d._cat === 'admin')) },
-		{ title: '審判マニュアル', docs: sortDocs(all.filter((d) => d._cat === 'referee')) },
 		{ title: '出場チームマニュアル', docs: sortDocs(all.filter((d) => d._cat === 'team')) },
-		{ title: '観戦者向け', docs: sortDocs(all.filter((d) => d._cat === 'public')) }
+		{ title: '観戦者向け', docs: sortDocs(all.filter((d) => d._cat === 'public')) },
+		{ title: '管理者マニュアル', docs: sortDocs(all.filter((d) => d._cat === 'admin')) },
+		{ title: '審判マニュアル', docs: sortDocs(all.filter((d) => d._cat === 'referee')) }
 	].filter((s) => s.docs.length > 0);
 
 	return { sections };
