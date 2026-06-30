@@ -39,7 +39,7 @@ import {
 	unlockLineup,
 	unrevealLineups,
 	validateLineup,
-	validateLineupWarnings
+	validateLineupRules
 } from './lineupService';
 import { createRankingTiebreaker } from './rankingTiebreakerService';
 import {
@@ -98,71 +98,53 @@ async function seedTeams() {
 			updatedAt: now
 		}
 	]);
+	const male = { gender: 'male' as const, createdAt: now, updatedAt: now };
+	const female = { gender: 'female' as const, createdAt: now, updatedAt: now };
 	await cfTestDb.db.insert(teamPlayers).values([
-		{ id: 'a-m1', teamId: 'team-a', name: 'A 男1', gender: 'male', createdAt: now, updatedAt: now },
-		{ id: 'a-m2', teamId: 'team-a', name: 'A 男2', gender: 'male', createdAt: now, updatedAt: now },
-		{
-			id: 'a-f1',
-			teamId: 'team-a',
-			name: 'A 女1',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		},
-		{
-			id: 'a-f2',
-			teamId: 'team-a',
-			name: 'A 女2',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		},
-		{ id: 'b-m1', teamId: 'team-b', name: 'B 男1', gender: 'male', createdAt: now, updatedAt: now },
-		{ id: 'b-m2', teamId: 'team-b', name: 'B 男2', gender: 'male', createdAt: now, updatedAt: now },
-		{
-			id: 'b-f1',
-			teamId: 'team-b',
-			name: 'B 女1',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		},
-		{
-			id: 'b-f2',
-			teamId: 'team-b',
-			name: 'B 女2',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		},
-		{ id: 'c-m1', teamId: 'team-c', name: 'C 男1', gender: 'male', createdAt: now, updatedAt: now },
-		{ id: 'c-m2', teamId: 'team-c', name: 'C 男2', gender: 'male', createdAt: now, updatedAt: now },
-		{
-			id: 'c-f1',
-			teamId: 'team-c',
-			name: 'C 女1',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		},
-		{
-			id: 'c-f2',
-			teamId: 'team-c',
-			name: 'C 女2',
-			gender: 'female',
-			createdAt: now,
-			updatedAt: now
-		}
+		{ id: 'a-m1', teamId: 'team-a', name: 'A 男1', ...male },
+		{ id: 'a-m2', teamId: 'team-a', name: 'A 男2', ...male },
+		{ id: 'a-m3', teamId: 'team-a', name: 'A 男3', ...male },
+		{ id: 'a-m4', teamId: 'team-a', name: 'A 男4', ...male },
+		{ id: 'a-m5', teamId: 'team-a', name: 'A 男5', ...male },
+		{ id: 'a-m6', teamId: 'team-a', name: 'A 男6', ...male },
+		{ id: 'a-m7', teamId: 'team-a', name: 'A 男7', ...male },
+		{ id: 'a-f1', teamId: 'team-a', name: 'A 女1', ...female },
+		{ id: 'a-f2', teamId: 'team-a', name: 'A 女2', ...female },
+		{ id: 'a-f3', teamId: 'team-a', name: 'A 女3', ...female }
+	]);
+	await cfTestDb.db.insert(teamPlayers).values([
+		{ id: 'b-m1', teamId: 'team-b', name: 'B 男1', ...male },
+		{ id: 'b-m2', teamId: 'team-b', name: 'B 男2', ...male },
+		{ id: 'b-m3', teamId: 'team-b', name: 'B 男3', ...male },
+		{ id: 'b-m4', teamId: 'team-b', name: 'B 男4', ...male },
+		{ id: 'b-m5', teamId: 'team-b', name: 'B 男5', ...male },
+		{ id: 'b-m6', teamId: 'team-b', name: 'B 男6', ...male },
+		{ id: 'b-m7', teamId: 'team-b', name: 'B 男7', ...male },
+		{ id: 'b-f1', teamId: 'team-b', name: 'B 女1', ...female },
+		{ id: 'b-f2', teamId: 'team-b', name: 'B 女2', ...female },
+		{ id: 'b-f3', teamId: 'team-b', name: 'B 女3', ...female }
+	]);
+	await cfTestDb.db.insert(teamPlayers).values([
+		{ id: 'c-m1', teamId: 'team-c', name: 'C 男1', ...male },
+		{ id: 'c-m2', teamId: 'team-c', name: 'C 男2', ...male },
+		{ id: 'c-m3', teamId: 'team-c', name: 'C 男3', ...male },
+		{ id: 'c-m4', teamId: 'team-c', name: 'C 男4', ...male },
+		{ id: 'c-m5', teamId: 'team-c', name: 'C 男5', ...male },
+		{ id: 'c-m6', teamId: 'team-c', name: 'C 男6', ...male },
+		{ id: 'c-m7', teamId: 'team-c', name: 'C 男7', ...male },
+		{ id: 'c-f1', teamId: 'team-c', name: 'C 女1', ...female },
+		{ id: 'c-f2', teamId: 'team-c', name: 'C 女2', ...female },
+		{ id: 'c-f3', teamId: 'team-c', name: 'C 女3', ...female }
 	]);
 }
 
 function completeLineup(prefix: 'a' | 'b' | 'c') {
 	return [
 		item('WD1', `${prefix}-f1`, `${prefix}-f2`),
-		item('XD1', `${prefix}-m1`, `${prefix}-f1`),
-		item('MD3', `${prefix}-m1`, `${prefix}-m2`),
-		item('MD2', `${prefix}-m1`, `${prefix}-m2`),
-		item('MD1', `${prefix}-m1`, `${prefix}-m2`)
+		item('XD1', `${prefix}-m1`, `${prefix}-f3`),
+		item('MD3', `${prefix}-m2`, `${prefix}-m3`),
+		item('MD2', `${prefix}-m4`, `${prefix}-m5`),
+		item('MD1', `${prefix}-m6`, `${prefix}-m7`)
 	];
 }
 
@@ -274,8 +256,8 @@ describe('lineupService DB flows', () => {
 		);
 	});
 
-	test('reports gender and duplicate-player warnings without DB access', () => {
-		const warnings = validateLineupWarnings(
+	test('errors on gender and duplicate-player violations without DB access', () => {
+		const errors = validateLineupRules(
 			[
 				item('WD1', 'male-1', 'female-1'),
 				item('XD1', 'female-1', 'female-2'),
@@ -288,7 +270,7 @@ describe('lineupService DB flows', () => {
 			]
 		);
 
-		expect(warnings).toEqual(
+		expect(errors).toEqual(
 			expect.arrayContaining([
 				'女子ダブルスに男性が含まれています',
 				'ミックスダブルスが男女ペアではありません',

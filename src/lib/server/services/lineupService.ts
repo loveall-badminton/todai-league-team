@@ -58,7 +58,7 @@ export async function validateLineup(params: {
 		}
 	}
 
-	warnings.push(...validateLineupWarnings(params.items, players));
+	errors.push(...validateLineupRules(params.items, players));
 
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, params.tieId) });
 	if (tie?.lineupDueAt) {
@@ -70,7 +70,7 @@ export async function validateLineup(params: {
 	return { errors: [...new Set(errors)], warnings: [...new Set(warnings)] };
 }
 
-export function validateLineupWarnings(
+export function validateLineupRules(
 	items: LineupItemInput[],
 	players: LineupPlayerForValidation[]
 ) {
