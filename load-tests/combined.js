@@ -36,26 +36,69 @@ export const options = {
 var BASE_URL = __ENV.BASE_URL || 'http://localhost:4173';
 var ADMIN_EMAIL = 'testadmin@accounts.local';
 var ADMIN_PASSWORD = 'TestAdmin123';
+// Number of distinct viewer sessions. Each VU picks a token by index so that
+// concurrent live_viewers carry different session cookies — matching production
+// where each spectator/participant has their own account.
+var VIEWER_ACCOUNT_COUNT = parseInt(__ENV.VIEWER_ACCOUNT_COUNT || '100');
 var ALL_MATCHES = JSON.parse(open(__ENV.ASSIGNMENTS_PATH || './match-assignments.json'));
 
-function login() {
+function extractToken(res) {
+	var setCookie = res.headers['Set-Cookie'] || res.headers['set-cookie'] || [];
+	if (typeof setCookie === 'string') setCookie = [setCookie];
+	if (!Array.isArray(setCookie)) return null;
+	for (var i = 0; i < setCookie.length; i++) {
+		var m = setCookie[i].match(/(?:__Secure-)?better-auth\.session_token=([^;]+)/);
+		if (m) return decodeURIComponent(m[1]);
+	}
+	return null;
+}
+
+function loginAs(email, password) {
 	var res = http.post(
 		BASE_URL + '/api/auth/sign-in/email',
-		JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+		JSON.stringify({ email: email, password: password }),
 		{ headers: { 'Content-Type': 'application/json', Origin: BASE_URL } }
 	);
-	var setCookie = res.headers['Set-Cookie'] || res.headers['set-cookie'] || '';
-	var match = setCookie.match(/(?:__Secure-)?better-auth\.session_token=([^;]+)/);
-	if (!match) throw new Error('Login failed');
-	return match[1];
+	return extractToken(res);
+}
+
+function createViewerAndLogin(index) {
+	var email = 'load-viewer-' + index + '@accounts.local';
+	var password = 'LoadTest123';
+	// sign-up is idempotent: 409 if the account already exists from a previous run
+	http.post(
+		BASE_URL + '/api/auth/sign-up/email',
+		JSON.stringify({ email: email, password: password, name: 'Load Viewer ' + index }),
+		{ headers: { 'Content-Type': 'application/json', Origin: BASE_URL } }
+	);
+	return loginAs(email, password);
 }
 
 export function setup() {
-	return { token: login() };
+	// Admin token for referee mutations. Referee POSTs bypass the session cache
+	// (hooks.server.ts skips cache for mutations) so a single shared token is fine.
+	var refereeToken = loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+	if (!refereeToken) throw new Error('Admin login failed');
+
+	// Distinct viewer tokens for realistic GET cache behavior on /live
+	var viewerTokens = [];
+	for (var i = 0; i < VIEWER_ACCOUNT_COUNT; i++) {
+		var token = createViewerAndLogin(i);
+		if (token) viewerTokens.push(token);
+	}
+	if (viewerTokens.length === 0) {
+		console.warn('No viewer accounts created; falling back to admin session for live viewers');
+		viewerTokens.push(refereeToken);
+	}
+
+	console.log('Setup: ' + viewerTokens.length + ' viewer sessions, 1 referee session');
+	return { viewerTokens: viewerTokens, refereeToken: refereeToken };
 }
 
 export function liveViewer(data) {
-	var cookie = '__Secure-better-auth.session_token=' + data.token;
+	// Each VU uses a distinct token; wraps around if VUs > VIEWER_ACCOUNT_COUNT
+	var token = data.viewerTokens[(__VU - 1) % data.viewerTokens.length];
+	var cookie = '__Secure-better-auth.session_token=' + token;
 
 	group('live page view', function () {
 		var res = http.get(BASE_URL + '/live', {
@@ -75,7 +118,7 @@ export function liveViewer(data) {
 }
 
 export function referee(data) {
-	var cookie = '__Secure-better-auth.session_token=' + data.token;
+	var cookie = '__Secure-better-auth.session_token=' + data.refereeToken;
 	var vuIdx = __VU - 1;
 	var myMatches = [];
 
