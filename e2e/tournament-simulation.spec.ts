@@ -1,12 +1,41 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const TS = Date.now();
+
+type PlayerEntry = { name: string; gender: 'male' | 'female' | 'unknown' };
+
+function makePlayers(prefix: string): PlayerEntry[] {
+	return [
+		{ name: `${prefix}-P1-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P2-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P3-${TS}`, gender: 'male' }, // XD1 male
+		{ name: `${prefix}-P4-${TS}`, gender: 'female' }, // XD1 female
+		{ name: `${prefix}-P5-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P6-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P7-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P8-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P9-${TS}`, gender: 'unknown' },
+		{ name: `${prefix}-P10-${TS}`, gender: 'unknown' }
+	];
+}
+
 const TEAMS = {
-	A1: { name: `SIM-A1-${TS}`, player1: `SIM-A1-P1-${TS}`, player2: `SIM-A1-P2-${TS}` },
-	A2: { name: `SIM-A2-${TS}`, player1: `SIM-A2-P1-${TS}`, player2: `SIM-A2-P2-${TS}` },
-	B1: { name: `SIM-B1-${TS}`, player1: `SIM-B1-P1-${TS}`, player2: `SIM-B1-P2-${TS}` },
-	B2: { name: `SIM-B2-${TS}`, player1: `SIM-B2-P1-${TS}`, player2: `SIM-B2-P2-${TS}` }
+	A1: { name: `SIM-A1-${TS}`, players: makePlayers('SIM-A1') },
+	A2: { name: `SIM-A2-${TS}`, players: makePlayers('SIM-A2') },
+	B1: { name: `SIM-B1-${TS}`, players: makePlayers('SIM-B1') },
+	B2: { name: `SIM-B2-${TS}`, players: makePlayers('SIM-B2') }
 };
+
+// Each rubber gets unique players; XD1 slot 0 = female (p[3]), slot 1 = male (p[2])
+function makeLineup(players: PlayerEntry[]): [string, string][] {
+	return [
+		[players[0].name, players[1].name], // 女子ダブルス (WD1)
+		[players[3].name, players[2].name], // ミックスダブルス (XD1) — female slot0, male slot1
+		[players[4].name, players[5].name], // 男子ダブルス3 (MD3)
+		[players[6].name, players[7].name], // 男子ダブルス2 (MD2)
+		[players[8].name, players[9].name] // 男子ダブルス1 (MD1)
+	];
+}
 
 const RUBBER_LABELS = [
 	'女子ダブルス',
@@ -17,7 +46,7 @@ const RUBBER_LABELS = [
 ];
 
 test.describe.serial('tournament simulation', () => {
-	async function addPlayer(page: Page, name: string, teamUrl: string) {
+	async function addPlayer(page: Page, name: string, teamUrl: string, gender: string = 'unknown') {
 		await page.goto(teamUrl);
 		const form = page.locator('form').filter({ hasText: '氏名' });
 		const input = form.locator('input[name="name"]');
@@ -29,6 +58,12 @@ test.describe.serial('tournament simulation', () => {
 			setter.call(el, value);
 			el.dispatchEvent(new Event('input', { bubbles: true }));
 		}, name);
+		if (gender !== 'unknown') {
+			await form.locator('button[data-select-trigger]').click();
+			await page.waitForTimeout(200);
+			await page.getByRole('option', { name: gender === 'male' ? '男性' : '女性' }).click();
+			await page.waitForTimeout(200);
+		}
 		await form.evaluate((f: HTMLFormElement) => f.requestSubmit());
 		await expect(page.getByText(name)).toBeVisible({ timeout: 10000 });
 	}
@@ -37,29 +72,36 @@ test.describe.serial('tournament simulation', () => {
 		await page
 			.locator('label')
 			.filter({ hasText: labelText })
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: optionText }).click();
 		await page.waitForTimeout(200);
 	}
 
-	async function selectPlayersForRubbers(page: Page, players: string[]) {
-		for (const label of RUBBER_LABELS) {
+	async function selectPlayersForRubbers(page: Page, lineup: [string, string][]) {
+		for (let i = 0; i < RUBBER_LABELS.length; i++) {
+			const label = RUBBER_LABELS[i];
+			const [p1, p2] = lineup[i];
 			const section = page.locator('p').filter({ hasText: label }).first().locator('..');
-			const triggers = section.locator('button[aria-haspopup="listbox"]');
+			const triggers = section.locator('button[data-select-trigger]');
 			await triggers.nth(0).click();
 			await page.waitForTimeout(200);
-			await page.getByRole('option', { name: players[0] }).click();
+			await page.getByRole('option', { name: p1 }).click();
 			await page.waitForTimeout(200);
 			await triggers.nth(1).click();
 			await page.waitForTimeout(200);
-			await page.getByRole('option', { name: players[1] }).click();
+			await page.getByRole('option', { name: p2 }).click();
 			await page.waitForTimeout(200);
 		}
 	}
 
-	async function submitLineup(page: Page, teamName: string, players: string[], tieId: string) {
+	async function submitLineup(
+		page: Page,
+		teamName: string,
+		lineup: [string, string][],
+		tieId: string
+	) {
 		await page.goto(`/ties/${tieId}`);
 		await page.waitForTimeout(1500);
 		const panel = page
@@ -71,7 +113,7 @@ test.describe.serial('tournament simulation', () => {
 		await panel.getByRole('link', { name: '入力ページ' }).click();
 		await page.waitForURL(/\/ties\/.+\/lineups\/.+/, { timeout: 5000 });
 		await page.waitForTimeout(1000);
-		await selectPlayersForRubbers(page, players);
+		await selectPlayersForRubbers(page, lineup);
 		await page.getByRole('button', { name: '提出する' }).click();
 		await page.waitForTimeout(1500);
 		await expect(page.getByText('オーダーを提出しました').first()).toBeVisible({ timeout: 5000 });
@@ -98,6 +140,7 @@ test.describe.serial('tournament simulation', () => {
 	test('setup: create 4 teams with players', async ({ page }) => {
 		for (const [key, team] of Object.entries(TEAMS)) {
 			await page.goto('/teams');
+			await page.waitForTimeout(500);
 			await page.getByRole('button', { name: '+ 追加' }).click();
 			await page.locator('input[name="name"]').fill(team.name);
 			const group = key.startsWith('A') ? 'Aリーグ' : 'Bリーグ';
@@ -105,8 +148,7 @@ test.describe.serial('tournament simulation', () => {
 			await page.getByRole('button', { name: '追加', exact: true }).click();
 			await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 			const url = page.url();
-			await addPlayer(page, team.player1, url);
-			await addPlayer(page, team.player2, url);
+			for (const p of team.players) await addPlayer(page, p.name, url, p.gender);
 		}
 	});
 
@@ -142,8 +184,8 @@ test.describe.serial('tournament simulation', () => {
 	test('submit lineups and score for group A tie', async ({ page }) => {
 		test.setTimeout(300_000);
 		const tieId = await getTieId(page, TEAMS.A1.name, TEAMS.A2.name);
-		await submitLineup(page, TEAMS.A1.name, [TEAMS.A1.player1, TEAMS.A1.player2], tieId);
-		await submitLineup(page, TEAMS.A2.name, [TEAMS.A2.player1, TEAMS.A2.player2], tieId);
+		await submitLineup(page, TEAMS.A1.name, makeLineup(TEAMS.A1.players), tieId);
+		await submitLineup(page, TEAMS.A2.name, makeLineup(TEAMS.A2.players), tieId);
 
 		// Approve lineups and start the tie
 		await page.goto(`/ties/${tieId}`);
@@ -168,8 +210,8 @@ test.describe.serial('tournament simulation', () => {
 	test('submit lineups and score for group B tie', async ({ page }) => {
 		test.setTimeout(300_000);
 		const tieId = await getTieId(page, TEAMS.B1.name, TEAMS.B2.name);
-		await submitLineup(page, TEAMS.B1.name, [TEAMS.B1.player1, TEAMS.B1.player2], tieId);
-		await submitLineup(page, TEAMS.B2.name, [TEAMS.B2.player1, TEAMS.B2.player2], tieId);
+		await submitLineup(page, TEAMS.B1.name, makeLineup(TEAMS.B1.players), tieId);
+		await submitLineup(page, TEAMS.B2.name, makeLineup(TEAMS.B2.players), tieId);
 
 		// Approve lineups and start the tie
 		await page.goto(`/ties/${tieId}`);
@@ -246,7 +288,7 @@ test.describe.serial('tournament simulation', () => {
 			];
 			for (const label of labels) {
 				const section = page.locator('p').filter({ hasText: label }).first().locator('..');
-				const triggers = section.locator('button[aria-haspopup="listbox"]');
+				const triggers = section.locator('button[data-select-trigger]');
 				await triggers.nth(0).click();
 				await page.waitForTimeout(200);
 				await page.getByRole('option', { name: players[0] }).click();
@@ -278,17 +320,15 @@ test.describe.serial('tournament simulation', () => {
 
 		const tieId = tieUrl.split('/').pop()!;
 		// Find players for each team by checking which team placeholder matches
-		const aPlayer1 = TEAMS.A1.player1;
-		const aPlayer2 = TEAMS.A1.player2;
-		const bPlayer1 = TEAMS.B1.player1;
-		const bPlayer2 = TEAMS.B1.player2;
+		const aLineup = makeLineup(TEAMS.A1.players);
+		const bLineup = makeLineup(TEAMS.B1.players);
 
 		if (teamAName.includes('SIM-A') || teamBName.includes('SIM-B')) {
-			await submitLineup(page, teamAName, [aPlayer1, aPlayer2], tieId);
-			await submitLineup(page, teamBName, [bPlayer1, bPlayer2], tieId);
+			await submitLineup(page, teamAName, aLineup, tieId);
+			await submitLineup(page, teamBName, bLineup, tieId);
 		} else {
-			await submitLineup(page, teamAName, [bPlayer1, bPlayer2], tieId);
-			await submitLineup(page, teamBName, [aPlayer1, aPlayer2], tieId);
+			await submitLineup(page, teamAName, bLineup, tieId);
+			await submitLineup(page, teamBName, aLineup, tieId);
 		}
 
 		// Approve lineups and start tie
@@ -326,7 +366,7 @@ test.describe.serial('tournament simulation', () => {
 				.locator('span')
 				.filter({ hasText: '1st サーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();
@@ -334,7 +374,7 @@ test.describe.serial('tournament simulation', () => {
 				.locator('span')
 				.filter({ hasText: '1st レシーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();
@@ -361,7 +401,7 @@ test.describe.serial('tournament simulation', () => {
 				.locator('span')
 				.filter({ hasText: '1st サーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();
@@ -369,7 +409,7 @@ test.describe.serial('tournament simulation', () => {
 				.locator('span')
 				.filter({ hasText: '1st レシーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();

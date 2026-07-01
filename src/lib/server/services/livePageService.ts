@@ -50,6 +50,17 @@ type LivePageDataShape = {
 		groupA: ScheduleData;
 		groupB: ScheduleData;
 		teams: Array<{ id: string; name: string }>;
+		finalsTies: Array<{
+			id: string;
+			tieCode: string;
+			phase: typeof ties.$inferSelect.phase;
+			teamAId: string | null;
+			teamBId: string | null;
+			teamAName: string | null;
+			teamBName: string | null;
+			winnerTeamId: string | null;
+			status: typeof ties.$inferSelect.status;
+		}>;
 	};
 	finalsBoard: {
 		finalsBoard: Array<{
@@ -256,9 +267,23 @@ export async function getLivePageData(): Promise<LivePageDataShape> {
 		)
 	};
 
+	const finalsTies = schedule
+		.filter((t) => ['final', 'third_place', 'fifth_place'].includes(t.phase))
+		.map((t) => ({
+			id: t.id,
+			tieCode: t.tieCode,
+			phase: t.phase,
+			teamAId: t.teamAId,
+			teamBId: t.teamBId,
+			teamAName: t.teamAName,
+			teamBName: t.teamBName,
+			winnerTeamId: t.winnerTeamId,
+			status: t.status
+		}));
+
 	return {
 		activeTies,
-		standings: { standingA, standingB, groupA, groupB, teams },
+		standings: { standingA, standingB, groupA, groupB, teams, finalsTies },
 		finalsBoard,
 		schedule
 	};
@@ -315,6 +340,20 @@ export async function getStandingsData() {
 	const groupB = schedule.filter((t) => t.phase === 'group_b');
 	const teams = teamsRaw.map((t) => ({ id: t.id, name: t.name }));
 
+	const finalsTies = schedule
+		.filter((t) => ['final', 'third_place', 'fifth_place'].includes(t.phase))
+		.map((t) => ({
+			id: t.id,
+			tieCode: t.tieCode,
+			phase: t.phase,
+			teamAId: t.teamAId,
+			teamBId: t.teamBId,
+			teamAName: t.teamAName,
+			teamBName: t.teamBName,
+			winnerTeamId: t.winnerTeamId,
+			status: t.status
+		}));
+
 	const mapStandingRow = (row: GroupStanding): GroupStanding => ({
 		teamId: row.teamId,
 		teamName: row.teamName,
@@ -337,7 +376,8 @@ export async function getStandingsData() {
 		standingB: allStandings.B.map(mapStandingRow),
 		groupA,
 		groupB,
-		teams
+		teams,
+		finalsTies
 	};
 }
 export type StandingsData = Awaited<ReturnType<typeof getStandingsData>>;

@@ -12,7 +12,7 @@ test.describe.serial('group operations', () => {
 		await page
 			.locator('label')
 			.filter({ hasText: labelText })
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: optionText }).click();
@@ -21,6 +21,7 @@ test.describe.serial('group operations', () => {
 	test('creates 4 teams and assigns to groups', async ({ page }) => {
 		for (const [key, name] of Object.entries(TEAMS)) {
 			await page.goto('/teams');
+			await page.waitForTimeout(500);
 			await page.getByRole('button', { name: '+ 追加' }).click();
 			await page.locator('input[name="name"]').fill(name);
 

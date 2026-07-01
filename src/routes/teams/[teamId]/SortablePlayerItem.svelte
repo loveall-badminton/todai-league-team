@@ -7,6 +7,7 @@
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import type { TeamPlayer } from '$lib/server/repositories/tokyoLeagueRepository';
+	import { toast } from 'svelte-sonner';
 	import { updatePlayer } from './team.remote';
 
 	let {
@@ -106,7 +107,8 @@
 							isEditing = false;
 						}
 					} catch (error) {
-						console.error(error);
+						const message = error instanceof Error ? error.message : '選手情報の更新に失敗しました';
+						toast.error(message);
 					}
 				})}
 				class="space-y-3"

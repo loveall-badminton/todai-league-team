@@ -25,6 +25,7 @@ export default defineConfig({
 		},
 		{
 			name: 'chromium',
+			testIgnore: ['**/full-simulation.spec.ts'],
 			use: {
 				...devices['Desktop Chrome'],
 				storageState: 'e2e/.auth/user.json'

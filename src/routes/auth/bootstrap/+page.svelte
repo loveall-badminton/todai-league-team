@@ -8,11 +8,18 @@
 	import type { PageProps } from './$types';
 	import { createAdmin } from './bootstrap.remote';
 	import AuthBootstrapForm from './AuthBootstrapForm.svelte';
+	import { goto } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 
 	$effect(() => {
-		const msg = createAdmin.result?.data?.message;
+		const result = createAdmin.result;
+		if (!result) return;
+		if ('ok' in result) {
+			goto(resolve('/auth/login'));
+			return;
+		}
+		const msg = result.data?.message;
 		if (msg) toast.error(msg);
 	});
 </script>

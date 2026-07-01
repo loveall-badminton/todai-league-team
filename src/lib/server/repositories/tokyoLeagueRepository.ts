@@ -330,31 +330,36 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 
 	const tieIds = tieRows.map((tie) => tie.id);
 
-	const [rubberRows, allAssignments] =
-		tieIds.length > 0
-			? ((await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)([
-					db
-						.select({
-							tieId: rubbers.tieId,
-							winnerSide: rubbers.winnerSide
-						})
-						.from(rubbers)
-						.where(inArray(rubbers.tieId, tieIds)),
-					db
-						.select()
-						.from(officiatingAssignments)
-						.where(
-							and(
-								inArray(officiatingAssignments.tieId, tieIds),
-								eq(officiatingAssignments.role, 'umpire_team')
-							)
-						)
-						.orderBy(asc(officiatingAssignments.createdAt))
-				])) as [
-					Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[],
-					(typeof officiatingAssignments.$inferSelect)[]
-				])
-			: [[], []];
+	// D1 limits bind parameters per statement; chunk to stay within bounds.
+	const CHUNK_SIZE = 99;
+	const rubberRows: Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[] = [];
+	const allAssignments: (typeof officiatingAssignments.$inferSelect)[] = [];
+	for (let i = 0; i < tieIds.length; i += CHUNK_SIZE) {
+		const chunk = tieIds.slice(i, i + CHUNK_SIZE);
+		const [chunkRubbers, chunkAssignments] = (await (
+			db.batch as unknown as (q: unknown[]) => Promise<unknown>
+		)([
+			db
+				.select({ tieId: rubbers.tieId, winnerSide: rubbers.winnerSide })
+				.from(rubbers)
+				.where(inArray(rubbers.tieId, chunk)),
+			db
+				.select()
+				.from(officiatingAssignments)
+				.where(
+					and(
+						inArray(officiatingAssignments.tieId, chunk),
+						eq(officiatingAssignments.role, 'umpire_team')
+					)
+				)
+				.orderBy(asc(officiatingAssignments.createdAt))
+		])) as [
+			Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[],
+			(typeof officiatingAssignments.$inferSelect)[]
+		];
+		rubberRows.push(...chunkRubbers);
+		allAssignments.push(...chunkAssignments);
+	}
 
 	const summaryByTieId = summarizeTieSummaries(tieRows, rubberRows);
 

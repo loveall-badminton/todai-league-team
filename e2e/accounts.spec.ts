@@ -22,6 +22,7 @@ test.describe.serial('account management', () => {
 
 	test('edits account name', async ({ page }) => {
 		await page.goto('/settings/accounts');
+		await page.waitForTimeout(500);
 
 		const row = page.getByRole('table').locator('tr').filter({ hasText: ACCOUNT_ID });
 		await row.getByRole('button', { name: '編集' }).click();
@@ -40,6 +41,7 @@ test.describe.serial('account management', () => {
 
 	test('deletes an account', async ({ page }) => {
 		await page.goto('/settings/accounts');
+		await page.waitForTimeout(500);
 
 		const row = page.getByRole('table').locator('tr').filter({ hasText: ACCOUNT_ID });
 		await row.getByRole('button', { name: '削除' }).click();

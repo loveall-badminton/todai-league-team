@@ -12,7 +12,7 @@ test.describe.serial('finals operations', () => {
 		await page
 			.locator('label')
 			.filter({ hasText: 'リーグ' })
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		const label = group === 'A' ? 'Aリーグ' : 'Bリーグ';
@@ -22,6 +22,7 @@ test.describe.serial('finals operations', () => {
 	test('creates 4 teams with group assignments', async ({ page }) => {
 		for (const [key, name] of Object.entries(TEAMS)) {
 			await page.goto('/teams');
+			await page.waitForTimeout(500);
 			await page.getByRole('button', { name: '+ 追加' }).click();
 			await page.locator('input[name="name"]').fill(name);
 
@@ -36,6 +37,7 @@ test.describe.serial('finals operations', () => {
 	test('generates round-robin for both groups', async ({ page }) => {
 		for (const group of ['A', 'B']) {
 			await page.goto(`/groups/${group}`);
+			await page.waitForTimeout(500);
 			await page.getByRole('button', { name: '総当たり生成' }).click();
 			await page.waitForTimeout(1000);
 		}

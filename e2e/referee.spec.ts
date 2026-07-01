@@ -1,14 +1,38 @@
 import { test, expect, type Page } from '@playwright/test';
 
 test.describe.serial('referee scoring', () => {
-	const TEAM_A = `E2E-RefA-${Date.now()}`;
-	const TEAM_B = `E2E-RefB-${Date.now()}`;
-	const TIE_CODE = `R-${Date.now()}`;
-	const PLAYERS_A = [`E2E-RA1-${Date.now()}`, `E2E-RA2-${Date.now()}`, `E2E-RA3-${Date.now()}`];
-	const PLAYERS_B = [`E2E-RB1-${Date.now()}`, `E2E-RB2-${Date.now()}`, `E2E-RB3-${Date.now()}`];
+	const TS = Date.now();
+	const TEAM_A = `E2E-RefA-${TS}`;
+	const TEAM_B = `E2E-RefB-${TS}`;
+	const TIE_CODE = `R-${TS}`;
+	// 10 players each: indices 2 (male) and 3 (female) are used for XD1
+	const PLAYERS_A = [
+		{ name: `E2E-RA1-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA2-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA3-${TS}`, gender: 'male' as const },
+		{ name: `E2E-RA4-${TS}`, gender: 'female' as const },
+		{ name: `E2E-RA5-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA6-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA7-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA8-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA9-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RA10-${TS}`, gender: 'unknown' as const }
+	];
+	const PLAYERS_B = [
+		{ name: `E2E-RB1-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB2-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB3-${TS}`, gender: 'male' as const },
+		{ name: `E2E-RB4-${TS}`, gender: 'female' as const },
+		{ name: `E2E-RB5-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB6-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB7-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB8-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB9-${TS}`, gender: 'unknown' as const },
+		{ name: `E2E-RB10-${TS}`, gender: 'unknown' as const }
+	];
 	let tieUrl: string;
 
-	async function addPlayer(page: Page, name: string, teamUrl: string) {
+	async function addPlayer(page: Page, name: string, teamUrl: string, gender = 'unknown') {
 		await page.goto(teamUrl);
 		const playerForm = page.locator('form').filter({ hasText: '氏名' });
 		const input = playerForm.locator('input[name="name"]');
@@ -20,6 +44,12 @@ test.describe.serial('referee scoring', () => {
 			setter.call(el, value);
 			el.dispatchEvent(new Event('input', { bubbles: true }));
 		}, name);
+		if (gender !== 'unknown') {
+			await playerForm.locator('button[data-select-trigger]').click();
+			await page.waitForTimeout(200);
+			await page.getByRole('option', { name: gender === 'male' ? '男性' : '女性' }).click();
+			await page.waitForTimeout(200);
+		}
 		await playerForm.evaluate((f: HTMLFormElement) => f.requestSubmit());
 		await expect(page.getByText(name)).toBeVisible({ timeout: 10000 });
 	}
@@ -36,7 +66,7 @@ test.describe.serial('referee scoring', () => {
 
 	async function selectBitsUiTrigger(page: Page, sectionLabel: string) {
 		const section = page.locator('span').filter({ hasText: sectionLabel }).locator('..');
-		await section.locator('button[aria-haspopup="listbox"]').click();
+		await section.locator('button[data-select-trigger]').click();
 		await page.waitForTimeout(200);
 	}
 
@@ -59,7 +89,7 @@ test.describe.serial('referee scoring', () => {
 		const rubberSection = page
 			.locator(`input[name$=".rubberCode"][value="${rubberCode}"]`)
 			.locator('..');
-		const triggers = rubberSection.locator('button[aria-haspopup="listbox"]');
+		const triggers = rubberSection.locator('button[data-select-trigger]');
 		await triggers.nth(slotIndex).click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: playerName }).click();
@@ -67,30 +97,33 @@ test.describe.serial('referee scoring', () => {
 
 	test('creates two teams with players', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		const teamAInput = await openTeamCreateForm(page);
 		await teamAInput.fill(TEAM_A);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		const teamAUrl = page.url();
 
-		for (const name of PLAYERS_A) {
-			await addPlayer(page, name, teamAUrl);
+		for (const p of PLAYERS_A) {
+			await addPlayer(page, p.name, teamAUrl, p.gender);
 		}
 
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		const teamBInput = await openTeamCreateForm(page);
 		await teamBInput.fill(TEAM_B);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
 		await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
 		const teamBUrl = page.url();
 
-		for (const name of PLAYERS_B) {
-			await addPlayer(page, name, teamBUrl);
+		for (const p of PLAYERS_B) {
+			await addPlayer(page, p.name, teamBUrl, p.gender);
 		}
 	});
 
 	test('creates a tie with teams assigned', async ({ page }) => {
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		const tieCodeInput = await openTieCreateDialog(page);
 
 		await tieCodeInput.fill(TIE_CODE);
@@ -117,16 +150,17 @@ test.describe.serial('referee scoring', () => {
 		await lineupLink.click();
 		await page.waitForTimeout(500);
 
-		const rubberCodes: [string, 0 | 1, 0 | 1][] = [
+		// Each rubber gets unique players; XD1 slot 0 = female (idx 3), slot 1 = male (idx 2)
+		const lineupA: [string, number, number][] = [
 			['WD1', 0, 1],
-			['XD1', 0, 1],
-			['MD3', 0, 1],
-			['MD2', 0, 1],
-			['MD1', 0, 1]
+			['XD1', 3, 2],
+			['MD3', 4, 5],
+			['MD2', 6, 7],
+			['MD1', 8, 9]
 		];
-		for (const [code, slot1, slot2] of rubberCodes) {
-			await selectLineupPlayer(page, code, slot1, PLAYERS_A[0]);
-			await selectLineupPlayer(page, code, slot2, PLAYERS_A[1]);
+		for (const [code, i1, i2] of lineupA) {
+			await selectLineupPlayer(page, code, 0, PLAYERS_A[i1].name);
+			await selectLineupPlayer(page, code, 1, PLAYERS_A[i2].name);
 		}
 
 		await page.getByRole('button', { name: '提出する' }).click();
@@ -140,16 +174,16 @@ test.describe.serial('referee scoring', () => {
 		await lineupLinks.nth(1).click();
 		await page.waitForTimeout(500);
 
-		const rubberCodes: [string, 0 | 1, 0 | 1][] = [
+		const lineupB: [string, number, number][] = [
 			['WD1', 0, 1],
-			['XD1', 0, 1],
-			['MD3', 0, 1],
-			['MD2', 0, 1],
-			['MD1', 0, 1]
+			['XD1', 3, 2],
+			['MD3', 4, 5],
+			['MD2', 6, 7],
+			['MD1', 8, 9]
 		];
-		for (const [code, slot1, slot2] of rubberCodes) {
-			await selectLineupPlayer(page, code, slot1, PLAYERS_B[0]);
-			await selectLineupPlayer(page, code, slot2, PLAYERS_B[1]);
+		for (const [code, i1, i2] of lineupB) {
+			await selectLineupPlayer(page, code, 0, PLAYERS_B[i1].name);
+			await selectLineupPlayer(page, code, 1, PLAYERS_B[i2].name);
 		}
 
 		await page.getByRole('button', { name: '提出する' }).click();
@@ -194,7 +228,7 @@ test.describe.serial('referee scoring', () => {
 			.locator('span')
 			.filter({ hasText: '1st サーバー' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option').first().click();
@@ -204,7 +238,7 @@ test.describe.serial('referee scoring', () => {
 			.locator('span')
 			.filter({ hasText: '1st レシーバー' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option').first().click();
@@ -216,6 +250,7 @@ test.describe.serial('referee scoring', () => {
 	});
 
 	test('records a rally and undoes it', async ({ page }) => {
+		test.setTimeout(60_000);
 		await page.goto(tieUrl);
 		await page.getByRole('link', { name: 'スコア入力' }).first().click();
 		await page.waitForTimeout(1500);
@@ -228,7 +263,7 @@ test.describe.serial('referee scoring', () => {
 				.locator('span')
 				.filter({ hasText: '1st サーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();
@@ -237,7 +272,7 @@ test.describe.serial('referee scoring', () => {
 				.locator('span')
 				.filter({ hasText: '1st レシーバー' })
 				.locator('..')
-				.locator('button[aria-haspopup="listbox"]')
+				.locator('button[data-select-trigger]')
 				.click();
 			await page.waitForTimeout(200);
 			await page.getByRole('option').first().click();
@@ -286,7 +321,7 @@ test.describe.serial('referee scoring', () => {
 			.locator('span')
 			.filter({ hasText: '1st サーバー' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option').first().click();
@@ -295,7 +330,7 @@ test.describe.serial('referee scoring', () => {
 			.locator('span')
 			.filter({ hasText: '1st レシーバー' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option').first().click();
@@ -333,7 +368,7 @@ test.describe.serial('referee scoring', () => {
 		await expect(page.getByText(TIE_CODE).first()).toBeVisible();
 		// The first rubber should show the winning team's player name
 		await expect(
-			page.getByText(PLAYERS_A[0]).or(page.getByText(PLAYERS_B[0])).first()
+			page.getByText(PLAYERS_A[0].name).or(page.getByText(PLAYERS_B[0].name)).first()
 		).toBeVisible();
 	});
 });

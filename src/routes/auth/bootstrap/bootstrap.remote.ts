@@ -1,7 +1,7 @@
 import { form } from '$app/server';
 import { normalizeAccountId } from '$lib/server/auth/accountIds';
 import { bootstrapAdminAccount } from '$lib/server/auth/accountManagement';
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { APIError } from 'better-auth';
 import { userCount } from '$lib/server/auth/userCount';
 import { createAdminSchema } from './bootstrap.schema';
@@ -47,6 +47,6 @@ export const createAdmin = form(
 			return fail(500, { message: '初回管理者の作成に失敗しました。', accountId, name });
 		}
 
-		redirect(303, '/auth/login');
+		return { ok: true as const };
 	}
 );

@@ -10,6 +10,7 @@ test.describe.serial('tie extended operations', () => {
 
 	test('creates two teams with players', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 
 		// Team A
 		await page.getByRole('button', { name: '+ 追加' }).click();
@@ -33,6 +34,7 @@ test.describe.serial('tie extended operations', () => {
 
 		// Team B
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await page.locator('input[name="name"]').fill(TEAM_B);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
@@ -55,6 +57,7 @@ test.describe.serial('tie extended operations', () => {
 
 	test('creates a tie between the two teams', async ({ page }) => {
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '新規作成' }).click();
 		await expect(page.getByPlaceholder('A-1')).toBeVisible();
 
@@ -65,7 +68,7 @@ test.describe.serial('tie extended operations', () => {
 			.locator('span')
 			.filter({ hasText: 'A側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM_A }).click();
@@ -75,7 +78,7 @@ test.describe.serial('tie extended operations', () => {
 			.locator('span')
 			.filter({ hasText: 'B側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM_B }).click();
@@ -91,6 +94,7 @@ test.describe.serial('tie extended operations', () => {
 
 	test('edits tie schedule info', async ({ page }) => {
 		await page.goto(tieUrl);
+		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(TIE_CODE_A);
 
 		await page.getByRole('button', { name: '編集' }).click();
@@ -101,7 +105,7 @@ test.describe.serial('tie extended operations', () => {
 			.locator('span')
 			.filter({ hasText: '体育館・コート' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: '第一体育館' }).click();
@@ -125,6 +129,7 @@ test.describe.serial('tie extended operations', () => {
 
 	test('deletes the tie', async ({ page }) => {
 		await page.goto(tieUrl);
+		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(TIE_CODE_A);
 
 		await page.getByText('対戦を削除').click();
@@ -146,23 +151,23 @@ test.describe.serial('tie reordering', () => {
 
 	test('creates two ties for reorder test', async ({ page }) => {
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 
 		// Tie 1
 		await page.getByRole('button', { name: '新規作成' }).click();
-		const createDialog = page.getByRole('dialog', { name: '対戦を作成' });
-		const tieCodeInput = createDialog.getByPlaceholder('A-1');
+		const tieCodeInput = page.getByPlaceholder('A-1');
 		await expect(tieCodeInput).toBeVisible({ timeout: 10000 });
 		await tieCodeInput.fill(TIE_1);
-		await createDialog.getByRole('button', { name: '作成', exact: true }).click();
+		await page.getByRole('button', { name: '作成', exact: true }).click();
 		await page.waitForTimeout(500);
 
 		// Tie 2
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '新規作成' }).click();
-		await expect(createDialog).toBeVisible({ timeout: 10000 });
 		await expect(tieCodeInput).toBeVisible({ timeout: 10000 });
 		await tieCodeInput.fill(TIE_2);
-		await createDialog.getByRole('button', { name: '作成', exact: true }).click();
+		await page.getByRole('button', { name: '作成', exact: true }).click();
 		await page.waitForTimeout(500);
 	});
 

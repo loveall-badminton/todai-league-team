@@ -15,6 +15,7 @@ async function openTieCreateDialog(page: import('@playwright/test').Page) {
 test.describe('tie creation flow', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		await expect(page).toHaveURL(/\/ties/);
 	});
 

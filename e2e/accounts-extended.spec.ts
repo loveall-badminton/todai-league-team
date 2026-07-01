@@ -11,7 +11,7 @@ test.describe.serial('extended account management', () => {
 		const btn = page
 			.locator('label')
 			.filter({ hasText: labelText })
-			.locator('button[aria-haspopup="listbox"]');
+			.locator('button[data-select-trigger]');
 		await btn.click();
 		await page.waitForTimeout(200);
 	}
@@ -67,6 +67,7 @@ test.describe.serial('extended account management', () => {
 	test('creates a team account', async ({ page }) => {
 		// Create a team first so the team dropdown has options
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await page.locator('input[name="name"]').fill(`e2e-acctteam-${Date.now()}`);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
@@ -85,7 +86,7 @@ test.describe.serial('extended account management', () => {
 			.locator('label')
 			.filter({ hasText: 'チーム' })
 			.nth(1)
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(300);
 		await page.getByRole('option').first().click();
@@ -104,6 +105,7 @@ test.describe.serial('extended account management', () => {
 	test('edits account display name', async ({ page }) => {
 		const UPDATED_NAME = `${ADMIN_NAME}-改`;
 		await page.goto('/settings/accounts');
+		await page.waitForTimeout(500);
 
 		const row = page.locator('tr').filter({ hasText: ADMIN_ID });
 		await row.getByRole('button', { name: '編集' }).click();
@@ -128,6 +130,7 @@ test.describe.serial('extended account management', () => {
 
 	test('deletes the team account', async ({ page }) => {
 		await page.goto('/settings/accounts');
+		await page.waitForTimeout(500);
 
 		const row = page.locator('tr').filter({ hasText: TEAM_ACCOUNT_ID });
 		await row.getByRole('button', { name: '削除' }).click();
@@ -139,6 +142,7 @@ test.describe.serial('extended account management', () => {
 
 	test('deletes the admin test account', async ({ page }) => {
 		await page.goto('/settings/accounts');
+		await page.waitForTimeout(500);
 
 		const row = page.locator('tr').filter({ hasText: ADMIN_ID });
 		await row.getByRole('button', { name: '削除' }).click();

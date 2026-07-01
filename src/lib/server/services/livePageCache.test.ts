@@ -16,7 +16,7 @@ import type { LivePageData } from './livePageService';
 function createLivePageData(): LivePageData {
 	return {
 		activeTies: { ties: [], rubbersByTieId: {} },
-		standings: { standingA: [], standingB: [], groupA: [], groupB: [], teams: [] },
+		standings: { standingA: [], standingB: [], groupA: [], groupB: [], teams: [], finalsTies: [] },
 		finalsBoard: { finalsBoard: [] },
 		schedule: []
 	};

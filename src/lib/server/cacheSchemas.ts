@@ -150,6 +150,18 @@ const StandingRowSchema = v.object({
 	manualRank: v.nullish(v.number())
 });
 
+const FinalsTieSchema = v.object({
+	id: v.string(),
+	tieCode: v.string(),
+	phase: TiePhaseSchema,
+	teamAId: NullableString,
+	teamBId: NullableString,
+	teamAName: NullableString,
+	teamBName: NullableString,
+	winnerTeamId: NullableString,
+	status: TieStatusSchema
+});
+
 export const StandingsDataSchema = v.object({
 	standingA: v.array(StandingRowSchema),
 	standingB: v.array(StandingRowSchema),
@@ -160,10 +172,11 @@ export const StandingsDataSchema = v.object({
 			id: v.string(),
 			name: v.string()
 		})
-	)
+	),
+	finalsTies: v.array(FinalsTieSchema)
 });
 
-const ActiveTieRubberSchema = v.object({
+export const ActiveTieRubberSchema = v.object({
 	id: v.string(),
 	code: RubberCodeSchema,
 	matchId: NullableString,

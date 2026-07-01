@@ -74,7 +74,7 @@ export function validateLineupRules(
 	items: LineupItemInput[],
 	players: LineupPlayerForValidation[]
 ) {
-	const warnings: string[] = [];
+	const violations: string[] = [];
 	const playerMap = new Map(players.map((player) => [player.id, player]));
 
 	for (const item of items) {
@@ -86,15 +86,15 @@ export function validateLineupRules(
 			RUBBER_DEFINITIONS.find((r) => r.code === code)?.label ?? code;
 
 		if (item.rubberCode === 'WD1' && [player1.gender, player2.gender].includes('male')) {
-			warnings.push(`${labelOf('WD1')}に男性が含まれています`);
+			violations.push(`${labelOf('WD1')}に男性が含まれています`);
 		}
 		if (item.rubberCode.startsWith('MD') && [player1.gender, player2.gender].includes('female')) {
-			warnings.push(`${labelOf(item.rubberCode)}に女性が含まれています`);
+			violations.push(`${labelOf(item.rubberCode)}に女性が含まれています`);
 		}
 		if (item.rubberCode === 'XD1') {
 			const genders = new Set([player1.gender, player2.gender]);
 			if (!genders.has('male') || !genders.has('female')) {
-				warnings.push(`${labelOf('XD1')}が男女ペアではありません`);
+				violations.push(`${labelOf('XD1')}が男女ペアではありません`);
 			}
 		}
 	}
@@ -107,10 +107,10 @@ export function validateLineupRules(
 		}
 	}
 	if ([...appearances.values()].some((count) => count > 1)) {
-		warnings.push('同一選手が複数種目に出場しています');
+		violations.push('同一選手が複数種目に出場しています');
 	}
 
-	return [...new Set(warnings)];
+	return [...new Set(violations)];
 }
 
 export async function saveLineupDraft(params: {

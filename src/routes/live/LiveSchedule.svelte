@@ -62,30 +62,49 @@
 							{@const myTie = isMyTie(tie)}
 							{@const needsDeadline = showDeadline(tie)}
 							{@const lineupSubmitted = tie.status === 'lineup_submitted'}
+							{@const hasScore = [
+								'playing',
+								'interval',
+								'suspended',
+								'finished',
+								'confirmed'
+							].includes(tie.status)}
 							<a
 								href={resolve('/live/ties/[tieId]', { tieId: tie.id })}
 								data-sveltekit-preload-data="tap"
-								class="relative flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 active:bg-zinc-100
+								class="relative flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100
 									{myTie ? 'bg-blue-50/60' : ''}"
 							>
 								{#if myTie}
 									<span class="absolute inset-y-0 left-0 w-0.5 rounded-full bg-blue-400"></span>
 								{/if}
-								<span class="mt-0.5 h-2 w-2 shrink-0 rounded-full {statusDot(tie.status)}"></span>
+								<span
+									class="h-2 w-2 shrink-0 self-start mt-1.5 rounded-full {statusDot(tie.status)}"
+								></span>
+								<!-- main content -->
 								<div class="min-w-0 flex-1">
-									<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+									<!-- meta row: tieCode + time -->
+									<div class="flex items-center gap-1.5 text-[11px] text-muted">
+										<span class="font-semibold {myTie ? 'text-blue-600' : 'text-zinc-500'}">
+											{tie.tieCode}
+										</span>
 										{#if tie.scheduledStartAt}
+											<span class="text-zinc-300">·</span>
 											<span
-												class="inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums
-													{myTie ? 'text-blue-600' : 'text-zinc-500'}"
+												class="inline-flex items-center gap-0.5 tabular-nums {myTie
+													? 'text-blue-500'
+													: 'text-zinc-400'}"
 											>
 												<Clock class="size-3 shrink-0" />
 												{tie.scheduledStartAt}
 											</span>
 										{/if}
 									</div>
+									<!-- team name -->
 									<p
-										class="truncate text-sm font-medium {myTie ? 'text-zinc-900' : 'text-zinc-700'}"
+										class="truncate text-sm font-semibold {myTie
+											? 'text-zinc-900'
+											: 'text-zinc-700'}"
 									>
 										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 									</p>
@@ -123,18 +142,22 @@
 										</div>
 									{/if}
 								</div>
-								{#if ['playing', 'interval', 'suspended', 'finished', 'confirmed'].includes(tie.status)}
-									<span
-										class="shrink-0 text-sm font-bold tabular-nums {tie.status === 'playing'
-											? 'text-emerald-700'
-											: 'text-muted-emphasis'}"
-									>
-										{tie.teamScoreA}–{tie.teamScoreB}
+								<!-- right: score + status stacked -->
+								<div class="flex shrink-0 flex-col items-end gap-0.5">
+									{#if hasScore}
+										<span
+											class="text-base font-bold tabular-nums leading-tight {tie.status ===
+											'playing'
+												? 'text-emerald-700'
+												: 'text-muted-emphasis'}"
+										>
+											{tie.teamScoreA}–{tie.teamScoreB}
+										</span>
+									{/if}
+									<span class="text-[11px] {statusText(tie.status)}">
+										{tieStatusLabel(tie.status)}
 									</span>
-								{/if}
-								<span class="shrink-0 text-xs {statusText(tie.status)}">
-									{tieStatusLabel(tie.status)}
-								</span>
+								</div>
 							</a>
 						{/each}
 					</div>

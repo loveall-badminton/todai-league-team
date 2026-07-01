@@ -43,10 +43,11 @@ test.describe('settings extended', () => {
 
 	test('changes lineup reveal policy', async ({ page }) => {
 		await page.goto('/settings');
+		await page.waitForTimeout(500);
 		await expect(page).toHaveURL(/\/settings/);
 
 		const trigger = page
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.filter({ hasText: '試合開始時に公開' });
 		await trigger.click();
 		await page.waitForTimeout(200);
@@ -59,7 +60,7 @@ test.describe('settings extended', () => {
 
 		await expect(page.getByText('手動').first()).toBeVisible();
 
-		const trigger2 = page.locator('button[aria-haspopup="listbox"]').filter({ hasText: '手動' });
+		const trigger2 = page.locator('button[data-select-trigger]').filter({ hasText: '手動' });
 		await trigger2.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: '試合開始時に公開' }).click();

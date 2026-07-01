@@ -27,6 +27,7 @@ test.describe.serial('team tasks dashboard', () => {
 
 	test('setup: create teams, team account, and tie', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await expect(page.locator('input[name="name"]')).toBeVisible();
 		await page.locator('input[name="name"]').fill(TEAM_NAME);
@@ -36,6 +37,7 @@ test.describe.serial('team tasks dashboard', () => {
 		await addPlayer(page, PLAYER, page.url());
 
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await expect(page.locator('input[name="name"]')).toBeVisible();
 		await page.locator('input[name="name"]').fill(TEAM2_NAME);
@@ -44,6 +46,7 @@ test.describe.serial('team tasks dashboard', () => {
 		await addPlayer(page, `${PLAYER}-2`, page.url());
 
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '新規作成' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
@@ -51,7 +54,7 @@ test.describe.serial('team tasks dashboard', () => {
 			.locator('span')
 			.filter({ hasText: 'A側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM_NAME }).click();
@@ -59,7 +62,7 @@ test.describe.serial('team tasks dashboard', () => {
 			.locator('span')
 			.filter({ hasText: 'B側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM2_NAME }).click();

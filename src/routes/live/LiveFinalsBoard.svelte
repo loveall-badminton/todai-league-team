@@ -1,12 +1,22 @@
 <script lang="ts">
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import Card from '$lib/components/Card.svelte';
-	import type { LivePageData } from '$lib/server/services/livePageService';
+	import type { ScheduleData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { cn } from '$lib/utils/cn';
 
-	let { query }: { query: QueryValue<LivePageData['finalsBoard']> } = $props();
+	const FINALS_PHASES = new Set([
+		'semifinal',
+		'final',
+		'third_place',
+		'fifth_place',
+		'ranking_tiebreaker'
+	]);
+
+	let { query }: { query: QueryValue<ScheduleData> } = $props();
+
+	let finalsTies = $derived((query.current ?? []).filter((t) => FINALS_PHASES.has(t.phase)));
 </script>
 
 {#if query.current == null}
@@ -25,25 +35,31 @@
 			{/each}
 		</div>
 	</section>
-{:else if query.current.finalsBoard.length > 0}
+{:else if finalsTies.length > 0}
 	<section class="space-y-3">
 		<SectionLabel>決勝トーナメント</SectionLabel>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each query.current.finalsBoard as tie (tie.id)}
+			{#each finalsTies as tie (tie.id)}
 				<Card class={cn(tie.status === 'playing' ? 'border-emerald-200' : '')} flush>
 					<div class="p-4">
-						<p class="text-xs font-medium text-muted">{phaseLabel(tie.phase)}</p>
+						<div class="flex items-center gap-1.5">
+							<p class="text-xs font-semibold text-muted">{tie.tieCode}</p>
+							<span class="text-zinc-200">·</span>
+							<p class="text-xs text-muted">{phaseLabel(tie.phase)}</p>
+						</div>
 						<div class="mt-1.5 flex items-baseline justify-between gap-2">
 							<p class="min-w-0 truncate text-sm font-semibold">
 								{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 							</p>
-							<span
-								class="shrink-0 text-lg font-bold tabular-nums {tie.status === 'playing'
-									? 'text-emerald-700'
-									: ''}"
-							>
-								{tie.teamScoreA}–{tie.teamScoreB}
-							</span>
+							{#if ['playing', 'interval', 'suspended', 'finished', 'confirmed'].includes(tie.status)}
+								<span
+									class="shrink-0 text-lg font-bold tabular-nums {tie.status === 'playing'
+										? 'text-emerald-700'
+										: ''}"
+								>
+									{tie.teamScoreA}–{tie.teamScoreB}
+								</span>
+							{/if}
 						</div>
 						<p class="mt-0.5 text-xs text-muted">{tieStatusLabel(tie.status)}</p>
 					</div>

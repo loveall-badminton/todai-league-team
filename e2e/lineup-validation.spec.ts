@@ -10,6 +10,7 @@ test.describe.serial('lineup gender validation', () => {
 	test('setup: create teams, players, tie', async ({ page }) => {
 		// Team A with 2 players (male + female)
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await page.locator('input[name="name"]').fill(TEAM_A);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
@@ -29,7 +30,7 @@ test.describe.serial('lineup gender validation', () => {
 		await page
 			.locator('label')
 			.filter({ hasText: '性別' })
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: '男性' }).click();
@@ -49,7 +50,7 @@ test.describe.serial('lineup gender validation', () => {
 		await page
 			.locator('label')
 			.filter({ hasText: '性別' })
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: '女性' }).click();
@@ -59,6 +60,7 @@ test.describe.serial('lineup gender validation', () => {
 
 		// Team B (just needs to exist)
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '+ 追加' }).click();
 		await page.locator('input[name="name"]').fill(TEAM_B);
 		await page.getByRole('button', { name: '追加', exact: true }).click();
@@ -66,6 +68,7 @@ test.describe.serial('lineup gender validation', () => {
 
 		// Create tie
 		await page.goto('/ties');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: '新規作成' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByPlaceholder('A-1').fill(TIE_CODE);
@@ -74,7 +77,7 @@ test.describe.serial('lineup gender validation', () => {
 			.locator('span')
 			.filter({ hasText: 'A側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM_A }).click();
@@ -83,7 +86,7 @@ test.describe.serial('lineup gender validation', () => {
 			.locator('span')
 			.filter({ hasText: 'B側チーム' })
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.click();
 		await page.waitForTimeout(200);
 		await page.getByRole('option', { name: TEAM_B }).click();
@@ -118,7 +121,7 @@ test.describe.serial('lineup gender validation', () => {
 			.filter({ hasText: '男子ダブルス' })
 			.first()
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.first();
 		await mdButton.click();
 		await page.waitForTimeout(200);
@@ -140,7 +143,7 @@ test.describe.serial('lineup gender validation', () => {
 			.filter({ hasText: '女子ダブルス' })
 			.first()
 			.locator('..')
-			.locator('button[aria-haspopup="listbox"]')
+			.locator('button[data-select-trigger]')
 			.first();
 		await wdButton.click();
 		await page.waitForTimeout(200);

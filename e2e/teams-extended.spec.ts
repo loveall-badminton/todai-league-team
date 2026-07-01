@@ -19,6 +19,7 @@ test.describe.serial('extended team management', () => {
 
 	test('creates a team for extended tests', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		const createForm = await openTeamCreateForm(page);
 		await createForm.locator('input[name="name"]').fill(BASE_TEAM);
 		await createForm.getByRole('button', { name: '追加', exact: true }).click();
@@ -48,9 +49,11 @@ test.describe.serial('extended team management', () => {
 
 	test('edits a player name', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.getByText(EDITED_PLAYER)).toBeVisible();
 
-		await page.getByRole('button', { name: new RegExp(EDITED_PLAYER) }).click();
+		await page.locator('button').filter({ hasText: EDITED_PLAYER }).first().click();
+		await page.waitForTimeout(500);
 		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
 		await expect(editForm.locator('input[name="name"]')).toBeVisible();
 
@@ -72,10 +75,13 @@ test.describe.serial('extended team management', () => {
 
 	test('changes player status to inactive', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.getByText(UPDATED_PLAYER_NAME)).toBeVisible();
 
-		await page.getByRole('button', { name: new RegExp(UPDATED_PLAYER_NAME) }).click();
+		await page.locator('button').filter({ hasText: UPDATED_PLAYER_NAME }).first().click();
+		await page.waitForTimeout(500);
 		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
+		await expect(editForm).toBeVisible({ timeout: 5000 });
 
 		await editForm.getByRole('button', { name: '保存' }).click();
 		await page.waitForTimeout(800);
@@ -83,9 +89,11 @@ test.describe.serial('extended team management', () => {
 
 	test('deletes a player', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.getByText(UPDATED_PLAYER_NAME)).toBeVisible();
 
-		await page.getByRole('button', { name: new RegExp(UPDATED_PLAYER_NAME) }).click();
+		await page.locator('button').filter({ hasText: UPDATED_PLAYER_NAME }).first().click();
+		await page.waitForTimeout(500);
 		const editForm = page.locator('form').filter({ hasText: 'キャンセル' });
 		await expect(editForm).toBeVisible();
 		await page.getByText('選手を削除').click();
@@ -98,8 +106,12 @@ test.describe.serial('extended team management', () => {
 	test('bulk creates players', async ({ page }) => {
 		const names = [`E2E-BulkA-${Date.now()}`, `E2E-BulkB-${Date.now()}`];
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await page.getByRole('tab', { name: '一括登録' }).click();
-		await page.locator('textarea[name="namesText"]').fill(names.join('\n'));
+		await page.waitForTimeout(300);
+		const namesTextarea = page.locator('textarea[name="namesText"]');
+		await expect(namesTextarea).toBeVisible({ timeout: 5000 });
+		await namesTextarea.fill(names.join('\n'));
 		await page.getByRole('button', { name: '一括登録' }).click();
 		await page.waitForTimeout(500);
 		for (const name of names) {
@@ -114,21 +126,20 @@ test.describe.serial('team status and group changes', () => {
 
 	async function selectTeamFormOption(page: Page, labelText: string, optionText: string) {
 		const form = page.locator('form').filter({ hasText: 'チーム名' });
-		const section = form
-			.getByText(labelText)
-			.locator('..')
-			.locator('button[aria-haspopup="listbox"]');
+		const trigger = form
+			.locator('label')
+			.filter({ hasText: labelText })
+			.locator('button[data-select-trigger]');
 		const option = page.getByRole('option', { name: optionText }).last();
-		await section.click();
-		if (!(await option.isVisible().catch(() => false))) {
-			await section.click();
-		}
-		await expect(option).toBeVisible();
+		await trigger.click();
+		await page.waitForTimeout(200);
+		await expect(option).toBeVisible({ timeout: 5000 });
 		await option.click();
 	}
 
 	test('creates a team for status test', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		const createForm = await openTeamCreateForm(page);
 		await createForm.locator('input[name="name"]').fill(TEAM_NAME);
 		await createForm.getByRole('button', { name: '追加', exact: true }).click();
@@ -138,6 +149,7 @@ test.describe.serial('team status and group changes', () => {
 
 	test('changes team status to withdrawn', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(TEAM_NAME);
 
 		await selectTeamFormOption(page, '状態', '棄権');
@@ -153,6 +165,8 @@ test.describe.serial('team status and group changes', () => {
 
 	test('changes team status back to active', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
+		await expect(page.locator('h1')).toContainText(TEAM_NAME);
 
 		await selectTeamFormOption(page, '状態', '出場');
 		await page
@@ -167,6 +181,7 @@ test.describe.serial('team status and group changes', () => {
 
 	test('assigns team to group A', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 
 		await selectTeamFormOption(page, 'リーグ', 'Aリーグ');
 		await page
@@ -181,6 +196,7 @@ test.describe.serial('team status and group changes', () => {
 
 	test('assigns team to group B', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 
 		await selectTeamFormOption(page, 'リーグ', 'Bリーグ');
 		await page
@@ -201,6 +217,7 @@ test.describe.serial('CSV import', () => {
 
 	test('creates a team for CSV import', async ({ page }) => {
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		const createForm = await openTeamCreateForm(page);
 		await createForm.locator('input[name="name"]').fill(TEAM_NAME);
 		await createForm.getByRole('button', { name: '追加', exact: true }).click();
@@ -214,6 +231,7 @@ test.describe.serial('CSV import', () => {
 		writeFileSync(CSV_PATH, csvContent, 'utf-8');
 
 		await page.goto('/teams');
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: 'インポート' }).click();
 
 		const fileInput = page.locator('input[type="file"]');

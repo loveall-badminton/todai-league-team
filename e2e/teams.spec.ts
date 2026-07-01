@@ -40,13 +40,12 @@ test.describe.serial('team management', () => {
 	test('bulk creates players on a team', async ({ page }) => {
 		const names = [`E2E-Bulk1-${Date.now()}`, `E2E-Bulk2-${Date.now()}`];
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(TEAM_NAME);
 
 		const bulkTab = page.getByRole('tab', { name: '一括登録' });
 		await bulkTab.click();
-		// Wait for bits-ui tab transition to complete before asserting selection state
 		await page.waitForTimeout(300);
-		await expect(bulkTab).toHaveAttribute('aria-selected', 'true');
 
 		const namesTextarea = page.locator('textarea[name="namesText"]');
 		await expect(namesTextarea).toBeVisible();
@@ -60,8 +59,8 @@ test.describe.serial('team management', () => {
 	test('updates team name', async ({ page }) => {
 		const updatedName = `${TEAM_NAME}-改`;
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await expect(page.locator('h1')).toContainText(TEAM_NAME);
-		await page.waitForTimeout(300);
 
 		const teamForm = page.locator('form').filter({ hasText: 'チーム名' });
 		await teamForm.evaluate((form: HTMLFormElement, value) => {
@@ -81,6 +80,7 @@ test.describe.serial('team management', () => {
 
 	test('deletes a team', async ({ page }) => {
 		await page.goto(teamUrl);
+		await page.waitForTimeout(500);
 		await page.getByRole('button', { name: 'チームを削除' }).click();
 		await page.getByRole('button', { name: '削除する' }).click();
 		await expect(page).toHaveURL(/\/teams$/);

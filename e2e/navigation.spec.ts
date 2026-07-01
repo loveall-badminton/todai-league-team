@@ -23,13 +23,13 @@ test.describe('page navigation', () => {
 		});
 
 		await page.goto('/ties');
-		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(500);
 
 		await page.goto('/settings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(500);
 
 		await page.goto('/');
-		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(500);
 
 		expect(errors).toEqual([]);
 	});

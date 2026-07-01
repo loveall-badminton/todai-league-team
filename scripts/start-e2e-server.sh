@@ -11,7 +11,8 @@ echo "[e2e-server] Building..."
 pnpm build
 
 echo "[e2e-server] Resetting E2E DB..."
-rm -rf "$E2E_DIR"
+rm -rf "$E2E_DIR/v3/d1" "$E2E_DIR/v3/do"
+mkdir -p "$E2E_DIR/v3/cache"
 
 echo "[e2e-server] Applying Drizzle migrations to local D1..."
 CI=true npx wrangler d1 migrations apply todai-league --local --persist-to "$E2E_DIR"
