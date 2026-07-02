@@ -203,6 +203,51 @@ export async function recalculateTieResult(
 		.where(eq(ties.id, tieId));
 }
 
+export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
+	const db = await getRequestDbOrThrow();
+	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+	if (!tie) throw new Error('対戦が見つかりません');
+	if (tie.status === 'confirmed') throw new Error('確定済みの対戦は打ち切りできません');
+
+	const rubberRows = await db
+		.select()
+		.from(rubbers)
+		.where(eq(rubbers.tieId, tieId))
+		.orderBy(asc(rubbers.displayOrder));
+	const currentResult = calculateTieResult(tie, rubberRows);
+	if (!currentResult.winnerTeamId) {
+		throw new Error('3勝到達後にのみ打ち切りできます');
+	}
+
+	const remainingRubbers = rubberRows.filter(
+		(rubber) => !terminalRubberStatuses.has(rubber.status)
+	);
+	if (remainingRubbers.length === 0) {
+		throw new Error('打ち切りできる残りの種目がありません');
+	}
+
+	const affectedMatchIds: string[] = [];
+	for (const rubber of remainingRubbers) {
+		if (rubber.matchId) {
+			affectedMatchIds.push(rubber.matchId);
+			await cancelMatchRubber(rubber.matchId, now);
+			continue;
+		}
+
+		await db
+			.update(rubbers)
+			.set({
+				status: 'cancelled',
+				winnerSide: null,
+				updatedAt: now
+			})
+			.where(eq(rubbers.id, rubber.id));
+	}
+
+	await recalculateTieResult(tieId, now, db);
+	return { affectedMatchIds };
+}
+
 export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
 	const db = await getRequestDbOrThrow();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });

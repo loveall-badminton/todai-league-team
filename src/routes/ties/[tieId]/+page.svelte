@@ -27,6 +27,7 @@
 	import {
 		confirmMatch,
 		confirmTie,
+		cutoffTie,
 		deleteTie,
 		getLiveRubbers,
 		getTieHeader,
@@ -114,6 +115,7 @@
 
 	let canStart = $derived(tie.status === 'lineup_submitted' || tie.status === 'ready');
 	let canConfirm = $derived(tie.status === 'finished');
+	let canCutoffTie = $derived(tie.status === 'playing' && !!tie.winnerTeamId);
 	let realtimeTopics = $derived(
 		tie.status === 'playing' ? (['score', 'schedule'] as const) : (['schedule'] as const)
 	);
@@ -242,6 +244,18 @@
 		<AppButton variant="success" onclick={() => run(() => confirmTie(), ['header'])}
 			>結果を確定</AppButton
 		>
+	{/if}
+
+	{#if canCutoffTie}
+		<ConfirmDialog
+			onConfirm={() => run(() => cutoffTie(), ['header', 'rubbers'])}
+			triggerLabel="残り種目を打ち切る"
+			triggerVariant="warning"
+			title="残りの種目をまとめて打ち切りますか？"
+			description="3勝が確定しているため、未終了の種目をすべて中止し、対戦を終了状態にします。この操作は取り消せません。"
+			confirmLabel="打ち切って終了する"
+			confirmVariant="danger"
+		/>
 	{/if}
 
 	<span class="ml-auto">

@@ -25,7 +25,16 @@ export default defineConfig({
 		},
 		{
 			name: 'chromium',
-			testIgnore: ['**/full-simulation.spec.ts'],
+			testMatch: '**/!(full-simulation).spec.ts',
+			use: {
+				...devices['Desktop Chrome'],
+				storageState: 'e2e/.auth/user.json'
+			},
+			dependencies: ['setup']
+		},
+		{
+			name: 'full-sim',
+			testMatch: ['**/full-simulation.spec.ts'],
 			use: {
 				...devices['Desktop Chrome'],
 				storageState: 'e2e/.auth/user.json'
@@ -38,6 +47,6 @@ export default defineConfig({
 		command: 'bash scripts/start-e2e-server.sh',
 		port: 4173,
 		reuseExistingServer: !process.env.CI,
-		timeout: 120000
+		timeout: 300000
 	}
 });

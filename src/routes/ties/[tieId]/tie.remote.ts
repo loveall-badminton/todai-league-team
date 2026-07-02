@@ -3,6 +3,7 @@ import { requireAdmin } from '$lib/server/auth/access';
 import { notifyLiveBoard, notifyScoreChange } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeagueRepository';
+import { getMatchState } from '$lib/server/repositories/matchRepository';
 import {
 	lockLineup as lockLineupService,
 	revealLineups as revealLineupsService,
@@ -12,6 +13,7 @@ import {
 import { getPublicRubbers } from '$lib/server/services/liveBoardService';
 import {
 	confirmTie as confirmTieService,
+	cutoffTie as cutoffTieService,
 	startTie as startTieService
 } from '$lib/server/services/tieOperationService';
 import { error } from '@sveltejs/kit';
@@ -50,6 +52,23 @@ export const confirmTie = command(async () => {
 	const tieId = requireAdminTieId();
 	await confirmTieService(tieId);
 	notifyTieStructureChange(tieId);
+});
+
+export const cutoffTie = command(async () => {
+	const tieId = requireAdminTieId();
+	const { affectedMatchIds } = await runAdminMutation(
+		() => cutoffTieService(tieId),
+		notifyTieStructureChange
+	);
+
+	await Promise.all(
+		affectedMatchIds.map(async (matchId) => {
+			const state = await getMatchState(matchId);
+			notifyScoreChange(matchId, ['score'], {
+				score: { state, event: { type: 'cutoff' } }
+			});
+		})
+	);
 });
 
 export const lockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
@@ -105,14 +124,15 @@ function requireAdminTieId() {
 	return getRequestEvent().params.tieId!;
 }
 
-async function runAdminMutation(action: () => Promise<void>, notify: (tieId: string) => void) {
+async function runAdminMutation<T>(action: () => Promise<T>, notify: (tieId: string) => void) {
 	const tieId = requireAdminTieId();
 	try {
-		await action();
+		const result = await action();
+		notify(tieId);
+		return result;
 	} catch (caught) {
 		error(400, actionErrorMessage(caught, '操作に失敗しました'));
 	}
-	notify(tieId);
 }
 
 function notifyTieLineupChange(tieId: string) {

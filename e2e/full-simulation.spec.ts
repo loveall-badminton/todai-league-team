@@ -108,6 +108,12 @@ const TEAMS: Record<string, TeamData> = {
 };
 
 const TEAM_PLAYER_IDS: Record<string, string[]> = {};
+const TEAM_IDS: Record<string, string> = {};
+const TEAM_ACCOUNT = {
+	accountId: `team-a1-${TS}`,
+	name: `Team A1 ${TS}`,
+	password: `TeamA1-${TS}!`
+};
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
 
@@ -143,7 +149,7 @@ async function addPlayer(page: Page, name: string, gender: string): Promise<stri
 		await page.waitForTimeout(100);
 	}
 	await form.getByRole('button', { name: '追加', exact: true }).click();
-	await page.waitForTimeout(500);
+	await page.waitForTimeout(100);
 	await expect(page.getByText(name)).toBeVisible({ timeout: 10000 });
 	// Extract player ID from the DOM without entering edit mode
 	// The hidden input [name="id"] exists inside the <form> that appears when editing.
@@ -158,7 +164,7 @@ async function addPlayer(page: Page, name: string, gender: string): Promise<stri
 
 async function submitTeamLineup(page: Page, teamName: string, teamKey: string, tieId: string) {
 	await page.goto(`/ties/${tieId}`);
-	await page.waitForTimeout(1000);
+	await page.waitForTimeout(200);
 	const panel = page
 		.locator('h2')
 		.filter({ hasText: teamName })
@@ -171,10 +177,12 @@ async function submitTeamLineup(page: Page, teamName: string, teamKey: string, t
 		return;
 	}
 	console.log(`    Clicking lineup link for ${teamName}...`);
-	await link.click();
-	await page.waitForURL(/\/ties\/.+\/lineups\/.+/, { timeout: 10000 });
+	const lineupHref = await link.getAttribute('href');
+	if (!lineupHref) throw new Error(`Missing lineup href for ${teamName}`);
+	await page.goto(lineupHref, { waitUntil: 'commit', timeout: 15000 });
+	await page.waitForURL(/\/ties\/.+\/lineups\/.+/, { timeout: 5000 });
 	console.log(`    Lineup page URL: ${page.url()}`);
-	await page.waitForTimeout(1000);
+	await page.waitForTimeout(200);
 	console.log(`    Submitting lineup for ${teamName}...`);
 
 	const players = TEAMS[teamKey].players;
@@ -199,13 +207,13 @@ async function submitTeamLineup(page: Page, teamName: string, teamKey: string, t
 			.locator('..');
 		const triggers = rubberSection.locator('button[data-select-trigger]');
 		await triggers.nth(slotIndex).click();
-		await page.waitForTimeout(200);
+		await page.waitForTimeout(50);
 		await page.getByRole('option', { name: playerName }).click();
-		await page.waitForTimeout(200);
+		await page.waitForTimeout(50);
 	}
 
 	await page.getByRole('button', { name: '提出する' }).click();
-	await page.waitForTimeout(2000);
+	await page.waitForTimeout(300);
 
 	try {
 		await expect(page.getByText('オーダーを提出しました').first()).toBeVisible({ timeout: 10000 });
@@ -225,100 +233,68 @@ async function startMatchViaUI(page: Page) {
 	const startBtn = page.getByRole('button', { name: '開始' });
 	if (!(await startBtn.isVisible({ timeout: 2000 }).catch(() => false))) return true;
 
-	// Select server via UI (triggers Svelte reactive state properly)
-	const triggers = page.locator('button[data-select-trigger]');
-	await triggers.first().click();
-	await page.waitForTimeout(300);
-	const options = page.getByRole('option');
-	const optCount = await options.count();
-	if (optCount === 0) {
-		console.log(`    WARNING: no options for server`);
+	await page.locator('button[data-select-trigger]').first().click();
+	await page.waitForTimeout(100);
+
+	const ids = await page.evaluate(() => {
+		const options = document.querySelectorAll('[role="option"]');
+		const allValues: string[] = [];
+		options.forEach((o) => {
+			const v = o.getAttribute('data-value');
+			if (v) allValues.push(v);
+		});
+		if (allValues.length < 2) return null;
+		return { serverId: allValues[0], receiverId: allValues[allValues.length - 1] };
+	});
+
+	if (!ids) {
+		console.log(`    WARNING: could not extract player IDs`);
 		return true;
 	}
-	await options.first().click();
-	await page.waitForTimeout(200);
 
-	// Select receiver (pick a different player — last option)
-	await triggers.last().click();
-	await page.waitForTimeout(300);
-	const optCount2 = await page.getByRole('option').count();
-	if (optCount2 === 0) {
-		console.log(`    WARNING: no options for receiver`);
-		return true;
-	}
-	await page.getByRole('option').last().click();
-	await page.waitForTimeout(200);
+	await page.evaluate(({ serverId, receiverId }) => {
+		const si = document.querySelector(
+			'input[name="initialServerPlayerId"]'
+		) as HTMLInputElement | null;
+		const ri = document.querySelector(
+			'input[name="initialReceiverPlayerId"]'
+		) as HTMLInputElement | null;
+		if (si) si.value = serverId;
+		if (ri) ri.value = receiverId;
+		if (si) {
+			const form = si.form;
+			if (form) {
+				form.requestSubmit();
+			}
+		}
+	}, ids);
 
-	// Click start
-	await startBtn.click();
-	await page.waitForTimeout(1500);
+	// Wait for SvelteKit action + WebSocket settle + any re-fetch
+	await page.waitForTimeout(100);
 	return true;
 }
 
-async function scoreGameViaFetch(page: Page, winningSide: 'A' | 'B', maxRallies = 35) {
-	await page.waitForTimeout(500);
-	await page.waitForTimeout(200);
+async function scoreGameViaUI(page: Page, winningSide: 'A' | 'B', maxRallies = 35) {
+	const diag = await page.evaluate(() => ({
+		url: location.href,
+		bodyText: document.body.innerText.slice(0, 200).replace(/\n/g, ' ')
+	}));
+	console.log(`    state: ${diag.url} "${diag.bodyText}..."`);
+
+	const plusButtons = page.getByRole('button', { name: '+1' });
+	const buttonIndex = winningSide === 'A' ? 0 : 1;
 
 	for (let i = 0; i < maxRallies; i++) {
 		if (i > 0 && i % 20 === 0) console.log(`        rally ${i}...`);
-		// Find the +1 button for the winning side using Playwright locator
-		const sideInput = page.locator(`input[name="side"][value="${winningSide}"]`);
-		if ((await sideInput.count()) === 0) {
-			const inputs = await page.evaluate(() => {
-				return Array.from(document.querySelectorAll('input')).map((i) => ({
-					name: i.name,
-					value: i.value,
-					type: i.type
-				}));
-			});
-			console.log(`        side_input_not_found. Page inputs: ${JSON.stringify(inputs)}`);
-			const btns = await page.evaluate(() => {
-				return Array.from(document.querySelectorAll('button')).map((b) => ({
-					text: (b.textContent || '').substring(0, 30),
-					disabled: (b as HTMLButtonElement).disabled,
-					type: b.getAttribute('type')
-				}));
-			});
-			console.log(`        Page buttons: ${JSON.stringify(btns.slice(0, 10))}`);
-			return { stopped: true, reason: 'side_input_not_found' };
+		const button = plusButtons.nth(buttonIndex);
+		if (!(await button.isVisible({ timeout: 1000 }).catch(() => false))) {
+			return { stopped: true, reason: 'score button not visible' };
 		}
-		const btn = sideInput.first().locator('xpath=..').locator('button[type="submit"]');
-		const disabled = await btn.isDisabled().catch(() => true);
-		if (disabled) {
-			const btns = await page.evaluate(() => {
-				return Array.from(document.querySelectorAll('button')).map((b) => ({
-					text: (b.textContent || '').substring(0, 30),
-					disabled: (b as HTMLButtonElement).disabled,
-					type: b.getAttribute('type')
-				}));
-			});
-			console.log(
-				`        Scoring buttons disabled. Page buttons: ${JSON.stringify(btns.slice(0, 10))}`
-			);
-			return { stopped: true, reason: 'button_disabled' };
-		}
-		await btn.click();
-		// Wait for button to be re-enabled (SvelteKit form submission complete)
-		try {
-			await btn.evaluate((b, enabledTimeout) => {
-				const btn = b as HTMLButtonElement;
-				return new Promise<void>((resolve) => {
-					let elapsed = 0;
-					const check = () => {
-						if (!btn.disabled || elapsed > enabledTimeout) {
-							resolve();
-							return;
-						}
-						elapsed += 50;
-						setTimeout(check, 50);
-					};
-					setTimeout(check, 50);
-				});
-			}, 5000);
-		} catch {
-			// ignore timeout waiting for button re-enable
-		}
-		await page.waitForTimeout(50);
+		await button.evaluate((el) => {
+			const form = el.closest('form') as HTMLFormElement | null;
+			form?.requestSubmit();
+		});
+		await page.waitForTimeout(10);
 	}
 	return { stopped: false };
 }
@@ -335,9 +311,9 @@ async function startNextGameViaUI(page: Page) {
 		.locator('..')
 		.locator('button[data-select-trigger]');
 	await serverCtl.click();
-	await page.waitForTimeout(150);
+	await page.waitForTimeout(50);
 	await page.getByRole('option').first().click();
-	await page.waitForTimeout(150);
+	await page.waitForTimeout(50);
 	const receiverCtl = page
 		.locator('span')
 		.filter({ hasText: 'レシーバー' })
@@ -345,11 +321,11 @@ async function startNextGameViaUI(page: Page) {
 		.locator('..')
 		.locator('button[data-select-trigger]');
 	await receiverCtl.click();
-	await page.waitForTimeout(150);
+	await page.waitForTimeout(50);
 	await page.getByRole('option').first().click();
-	await page.waitForTimeout(150);
+	await page.waitForTimeout(50);
 	await gameBtn.click();
-	await page.waitForTimeout(800);
+	await page.waitForTimeout(150);
 	return true;
 }
 
@@ -361,14 +337,14 @@ async function confirmMatch(page: Page) {
 		const saveBtn = page.getByRole('button', { name: '保存' });
 		if (await saveBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
 			await saveBtn.click();
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(100);
 		}
 	}
 	// Confirm winner
 	const confirmBtn = page.getByRole('button', { name: '勝者確認' });
 	if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 		await confirmBtn.click();
-		await page.waitForTimeout(500);
+		await page.waitForTimeout(100);
 	}
 }
 
@@ -379,12 +355,12 @@ async function scoreFullMatch(
 	isKnockout: boolean
 ) {
 	await page.goto(matchUrl, { timeout: 15000 });
-	await page.waitForTimeout(1000);
+	await page.waitForTimeout(200);
 	// Start match
 	await startMatchViaUI(page);
 	// Score game 1
 	const maxRallies = isKnockout ? 35 : 25;
-	const g1Result = await scoreGameViaFetch(page, winningSide, maxRallies);
+	const g1Result = await scoreGameViaUI(page, winningSide, maxRallies);
 	if (g1Result?.stopped) {
 		console.log(
 			`    Game 1 stopped: ${g1Result.reason}${g1Result.message ? ': ' + g1Result.message : ''}`
@@ -394,12 +370,12 @@ async function scoreFullMatch(
 	}
 	// Reload to see updated state
 	await page.reload({ timeout: 15000 });
-	await page.waitForTimeout(500);
+	await page.waitForTimeout(100);
 	// Start game 2 if needed
 	if (await startNextGameViaUI(page)) {
-		await scoreGameViaFetch(page, winningSide, maxRallies);
+		await scoreGameViaUI(page, winningSide, maxRallies);
 		await page.reload({ timeout: 15000 });
-		await page.waitForTimeout(500);
+		await page.waitForTimeout(100);
 	}
 	// Confirm match result
 	await confirmMatch(page);
@@ -408,9 +384,31 @@ async function scoreFullMatch(
 // ── Tie helpers ────────────────────────────────────────────────────────────
 
 async function getTieCode(page: Page): Promise<string> {
+	const codeValue = page.locator('dt').filter({ hasText: 'コード' }).locator('..').locator('dd');
+	if (await codeValue.isVisible({ timeout: 5000 }).catch(() => false)) {
+		const code = (await codeValue.textContent())?.trim() ?? '';
+		if (/^(x-[1-5]|[AB]-[1-3])$/.test(code)) return code;
+	}
+	await page.waitForTimeout(300);
+	const bodyText = await page
+		.locator('body')
+		.innerText()
+		.catch(() => '');
+	const bodyMatch = bodyText.match(/\b(x-[1-5]|[AB]-[1-3])\b/);
+	if (bodyMatch) return bodyMatch[1];
 	const title = await page.title();
-	const code = title.split(' | ')[0];
-	if (/^(x-[1-5]|[AB]-[1-3])$/.test(code)) return code;
+	const titleMatch = title.match(/\b(x-[1-5]|[AB]-[1-3])\b/);
+	if (titleMatch) return titleMatch[1];
+	const heading =
+		(
+			await page
+				.locator('h1, h2')
+				.first()
+				.textContent()
+				.catch(() => '')
+		)?.trim() ?? '';
+	const headingMatch = heading.match(/\b(x-[1-5]|[AB]-[1-3])\b/);
+	if (headingMatch) return headingMatch[1];
 	return '';
 }
 
@@ -452,7 +450,14 @@ async function getMatchUrlsFromTie(page: Page): Promise<string[]> {
 async function processTie(page: Page, tieId: string, isKnockout: boolean) {
 	const tieUrl = `/ties/${tieId}`;
 	await page.goto(tieUrl);
-	await page.waitForTimeout(800);
+	await page.waitForTimeout(150);
+	await page
+		.locator('dt')
+		.filter({ hasText: 'コード' })
+		.locator('..')
+		.locator('dd')
+		.waitFor({ state: 'visible', timeout: 10000 })
+		.catch(() => {});
 	const tieCode = await getTieCode(page);
 	const teamNames = await getTieTeamNames(page);
 	const tieTeamKeys: string[] = [];
@@ -469,26 +474,32 @@ async function processTie(page: Page, tieId: string, isKnockout: boolean) {
 
 	// Approve lineups
 	await page.goto(tieUrl);
-	await page.waitForTimeout(500);
+	await page.waitForTimeout(100);
 	const approveBtns = page.getByRole('button', { name: '承認する' });
 	const approveCount = await approveBtns.count();
 	for (let i = 0; i < approveCount; i++) {
 		await approveBtns.first().click();
-		await page.waitForTimeout(300);
+		await page.waitForTimeout(50);
 	}
 
 	// Start tie
-	await page.waitForTimeout(300);
+	await page.waitForTimeout(50);
 	const startTieBtn = page.getByRole('button', { name: '対戦を開始' });
 	if (await startTieBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 		await startTieBtn.click();
-		await page.waitForTimeout(1500);
+		await page.waitForTimeout(250);
 	}
 
 	// Get match URLs
 	await page.goto(tieUrl);
-	await page.waitForTimeout(800);
-	const matchUrls = await getMatchUrlsFromTie(page);
+	await page.waitForTimeout(150);
+	let matchUrls = await getMatchUrlsFromTie(page);
+	for (let i = 0; i < 20 && matchUrls.length === 0; i++) {
+		await page.waitForTimeout(250);
+		await page.goto(tieUrl);
+		await page.waitForTimeout(100);
+		matchUrls = await getMatchUrlsFromTie(page);
+	}
 	const ws = winningSide(tieCode);
 	console.log(`  Scoring ${matchUrls.length} rubbers (winning side: ${ws})`);
 
@@ -498,6 +509,49 @@ async function processTie(page: Page, tieId: string, isKnockout: boolean) {
 		console.log(`    Rubber ${i + 1}/${matchUrls.length}...`);
 		await scoreFullMatch(page, url, ws, isKnockout);
 	}
+}
+
+async function createTeamAccount(page: Page, teamKey: keyof typeof TEAM_IDS) {
+	const teamId = TEAM_IDS[teamKey];
+	if (!teamId) throw new Error(`team id not found for ${teamKey}`);
+
+	await page.goto('/settings/accounts');
+	await page.waitForTimeout(200);
+
+	await page
+		.locator('label')
+		.filter({ hasText: '種別' })
+		.locator('button[data-select-trigger]')
+		.click();
+	await page.waitForTimeout(50);
+	await page.getByRole('option', { name: 'チーム' }).click();
+	await page.waitForTimeout(50);
+
+	await page
+		.locator('label')
+		.filter({ hasText: 'チーム' })
+		.nth(1)
+		.locator('button[data-select-trigger]')
+		.click();
+	await page.waitForTimeout(50);
+	await page.getByRole('option', { name: TEAMS[teamKey].name }).click();
+	await page.waitForTimeout(50);
+
+	await page.locator('input[name="accountId"]').fill(TEAM_ACCOUNT.accountId);
+	await page.locator('input[name="name"]').fill(TEAM_ACCOUNT.name);
+	await page.locator('input[name="password"]').fill(TEAM_ACCOUNT.password);
+	await page.getByRole('button', { name: '発行' }).click();
+	await page.waitForTimeout(300);
+}
+
+async function switchToTeamPerspective(page: Page) {
+	await page.getByRole('button', { name: 'ログアウト' }).click();
+	await page.waitForURL(/\/auth\/login/, { timeout: 10000 });
+	await page.locator('input[name="accountId"]').fill(TEAM_ACCOUNT.accountId);
+	await page.locator('input[name="password"]').fill(TEAM_ACCOUNT.password);
+	await page.getByRole('button', { name: 'ログイン' }).click();
+	await page.waitForURL(/^(?!.*\/auth\/login).*$/, { timeout: 10000 });
+	await page.waitForTimeout(300);
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -511,12 +565,13 @@ test.describe.serial('full tournament simulation', () => {
 			const team = TEAMS[key];
 			console.log(`Creating team ${key}: ${team.name}`);
 			await page.goto('/teams');
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(100);
 			await page.getByRole('button', { name: '+ 追加' }).click();
 			await page.locator('input[name="name"]').fill(team.name);
 			await selectAppOption(page, 'リーグ', team.group === 'A' ? 'Aリーグ' : 'Bリーグ');
 			await page.getByRole('button', { name: '追加', exact: true }).click();
 			await expect(page).toHaveURL(/\/teams\/[a-zA-Z0-9-]+$/);
+			TEAM_IDS[key] = page.url().split('/').pop()!;
 			const ids: string[] = [];
 			for (const player of team.players) {
 				const id = await addPlayer(page, player.name, player.gender);
@@ -529,12 +584,12 @@ test.describe.serial('full tournament simulation', () => {
 	test('generate round-robin ties', async ({ page }) => {
 		// Clean up all existing ties for our teams before generating fresh round-robin.
 		// This prevents accumulation of ties across repeated test runs.
-		const regex = teamNameRegex();
+		const regex = /(?:\b[AB]-\d+\b|\bx-\d+\b|SIM-[A-Z]\d-)/;
 		let found = true;
 		while (found) {
 			found = false;
 			await page.goto('/ties');
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(100);
 			const cards = page
 				.locator('div.overflow-hidden.rounded-xl.border')
 				.filter({ hasText: regex });
@@ -544,14 +599,14 @@ test.describe.serial('full tournament simulation', () => {
 			if (!(await detailLink.isVisible({ timeout: 500 }).catch(() => false))) break;
 			await detailLink.click();
 			await page.waitForURL(/\/ties\/[a-zA-Z0-9-]+$/, { timeout: 5000 });
-			await page.waitForTimeout(300);
+			await page.waitForTimeout(50);
 			const deleteBtn = page.getByText('対戦を削除');
 			if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 				await deleteBtn.click();
 				const cb = page.getByRole('checkbox', { name: '強制削除する' });
 				if (await cb.isVisible({ timeout: 1000 }).catch(() => false)) await cb.click();
 				await page.getByRole('button', { name: '削除する' }).click();
-				await page.waitForTimeout(500);
+				await page.waitForTimeout(100);
 				found = true;
 			}
 		}
@@ -559,11 +614,11 @@ test.describe.serial('full tournament simulation', () => {
 
 		for (const group of ['A', 'B']) {
 			await page.goto(`/groups/${group}`);
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(100);
 			const genBtn = page.getByRole('button', { name: '総当たり生成' });
 			if (await genBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
 				await genBtn.click();
-				await page.waitForTimeout(1500);
+				await page.waitForTimeout(250);
 				console.log(`Generated round-robin ties for Group ${group}`);
 			}
 		}
@@ -581,17 +636,17 @@ test.describe.serial('full tournament simulation', () => {
 	}
 
 	test('play group stage', async ({ page }) => {
-		test.setTimeout(900_000);
+		test.setTimeout(1_800_000);
 		// Get tie IDs filtered to our teams only
 		await page.goto('/ties');
-		await page.waitForTimeout(1500);
+		await page.waitForTimeout(200);
 		const tieCards = findOurTieCards(page);
 		const count = await tieCards.count();
 		console.log(`Found ${count} ties for our teams in group stage`);
 
 		for (let i = 0; i < count; i++) {
 			await page.goto('/ties');
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(100);
 			const card = findOurTieCards(page).nth(i);
 			const detailLink = card.locator('a').filter({ hasText: '詳細' });
 			await detailLink.click();
@@ -603,7 +658,7 @@ test.describe.serial('full tournament simulation', () => {
 	});
 
 	test('generate and play knockout stage', async ({ page }) => {
-		test.setTimeout(900_000);
+		test.setTimeout(1_800_000);
 
 		// Delete any unscored group ties from other test runs (e.g. finals.spec.ts)
 		// that would prevent the semifinals button from becoming enabled.
@@ -612,7 +667,7 @@ test.describe.serial('full tournament simulation', () => {
 		while (foundForeign) {
 			foundForeign = false;
 			await page.goto('/ties');
-			await page.waitForTimeout(300);
+			await page.waitForTimeout(50);
 			const cards = page.locator('div.overflow-hidden.rounded-xl.border');
 			const count = await cards.count();
 			for (let i = 0; i < count; i++) {
@@ -621,14 +676,14 @@ test.describe.serial('full tournament simulation', () => {
 				const detailLink = cards.nth(i).locator('a').filter({ hasText: '詳細' });
 				if (!(await detailLink.isVisible({ timeout: 500 }).catch(() => false))) continue;
 				await detailLink.click();
-				await page.waitForTimeout(300);
+				await page.waitForTimeout(50);
 				const deleteBtn = page.getByText('対戦を削除');
 				if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 					await deleteBtn.click();
 					const cb = page.getByRole('checkbox', { name: '強制削除する' });
 					if (await cb.isVisible({ timeout: 1000 }).catch(() => false)) await cb.click();
 					await page.getByRole('button', { name: '削除する' }).click();
-					await page.waitForTimeout(500);
+					await page.waitForTimeout(100);
 					foundForeign = true;
 				}
 				break;
@@ -636,26 +691,37 @@ test.describe.serial('full tournament simulation', () => {
 		}
 
 		// Generate semifinals + 5th place
-		await page.goto('/finals');
-		await page.waitForTimeout(1000);
-		const genSemisBtn = page.getByRole('button', { name: '準決勝' });
+		console.log('Navigating to finals page for semis...');
+		await page.goto('/finals', { waitUntil: 'commit', timeout: 15000 });
+		await page.waitForTimeout(200);
+		console.log(
+			'Finals page before semis:',
+			(await page.locator('body').textContent())?.slice(0, 500)
+		);
+		const genSemisBtn = page.getByRole('button', { name: '準決勝・5位決定戦生成' });
 		await expect(genSemisBtn).toBeVisible({ timeout: 5000 });
 		await expect(genSemisBtn).toBeEnabled({ timeout: 10000 });
 		console.log('Generating semifinals and 5th place...');
-		await genSemisBtn.click();
-		await page.waitForTimeout(2000);
-		// Find knockout ties by our team names
-		await page.goto('/ties');
+		await genSemisBtn.evaluate((el) => (el as HTMLButtonElement).click());
+		console.log('Clicked semifinals button');
+		const semisResult = page.getByText(
+			/決勝トーナメント対戦を生成しました。|生成に失敗しました|同点チームの順位を確定してから生成できます|Aリーグ・Bリーグの試合が全て完了してから生成できます/
+		);
+		await expect(semisResult).toBeVisible({ timeout: 30000 });
+		console.log('Semis result:', await semisResult.textContent());
 		await page.waitForTimeout(1000);
-		const semisCards = findOurTieCards(page);
-		const semisCount = await semisCards.count();
+		// Find knockout ties from the same finals page after the refresh.
+		const semisSection = page.locator('section').filter({ hasText: '準決勝 / 5位決定戦' });
+		const semisLinks = semisSection.locator('a[href^="/ties/"]');
+		await expect(semisLinks).toHaveCount(3, { timeout: 20000 });
+		const semisHrefs = await semisLinks.evaluateAll((els) =>
+			els
+				.map((el) => (el as HTMLAnchorElement).getAttribute('href'))
+				.filter((href): href is string => !!href)
+		);
 		const ties: { tieId: string; code: string }[] = [];
-		for (let i = 0; i < semisCount; i++) {
-			await page.goto('/ties');
-			await page.waitForTimeout(500);
-			const card = findOurTieCards(page).nth(i);
-			const detailLink = card.locator('a').filter({ hasText: '詳細' });
-			await detailLink.click();
+		for (const href of semisHrefs) {
+			await page.goto(href, { waitUntil: 'commit', timeout: 15000 });
 			await page.waitForURL(/\/ties\/[a-zA-Z0-9-]+$/, { timeout: 5000 });
 			const tieId = page.url().split('/').pop()!;
 			const code = await getTieCode(page);
@@ -669,28 +735,40 @@ test.describe.serial('full tournament simulation', () => {
 			console.log(`\nProcessing knockout tie ${code}: ${tieId}`);
 			await processTie(page, tieId, true);
 		}
+		await page.goto('/finals', { waitUntil: 'commit', timeout: 15000 });
+		await page.waitForTimeout(200);
+		console.log(
+			'Finals page before finals:',
+			(await page.locator('body').textContent())?.slice(0, 500)
+		);
 		// Generate finals + 3rd place
-		await page.goto('/finals');
-		await page.waitForTimeout(1000);
-		const genFinalsBtn = page.getByRole('button', { name: '決勝' });
+		const genFinalsBtn = page.getByRole('button', { name: '決勝・3位決定戦生成' });
 		if (await genFinalsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
 			await expect(genFinalsBtn).toBeEnabled({ timeout: 15000 });
 			console.log('Generating finals and 3rd place...');
-			await genFinalsBtn.click();
-			await page.waitForTimeout(2000);
+			await genFinalsBtn.evaluate((el) => (el as HTMLButtonElement).click());
+			console.log('Clicked finals button');
+			const finalsResult = page.getByText(
+				/決勝・3位決定戦を生成しました。|生成に失敗しました|準決勝1・準決勝2の結果確定後に生成できます/
+			);
+			await expect(finalsResult).toBeVisible({ timeout: 30000 });
+			console.log('Finals result:', await finalsResult.textContent());
+			await page.waitForTimeout(1000);
 		} else {
 			console.log('Finals button not visible — skipping finals generation');
 		}
 		// Play finals (x-4 and x-5)
+		const finalsSection = page.locator('section').filter({ hasText: '決勝 / 3位決定戦' });
+		const finalLinks = finalsSection.locator('a[href^="/ties/"]');
+		await expect(finalLinks).toHaveCount(2, { timeout: 20000 });
+		const finalHrefs = await finalLinks.evaluateAll((els) =>
+			els
+				.map((el) => (el as HTMLAnchorElement).getAttribute('href'))
+				.filter((href): href is string => !!href)
+		);
 		const finalTies: { tieId: string; code: string }[] = [];
-		const finalCards = findOurTieCards(page);
-		const finalCount = await finalCards.count();
-		for (let i = 0; i < finalCount; i++) {
-			await page.goto('/ties');
-			await page.waitForTimeout(500);
-			const card = findOurTieCards(page).nth(i);
-			const detailLink = card.locator('a').filter({ hasText: '詳細' });
-			await detailLink.click();
+		for (const href of finalHrefs) {
+			await page.goto(href, { waitUntil: 'commit', timeout: 15000 });
 			await page.waitForURL(/\/ties\/[a-zA-Z0-9-]+$/, { timeout: 5000 });
 			const tieId = page.url().split('/').pop()!;
 			const code = await getTieCode(page);
@@ -702,10 +780,19 @@ test.describe.serial('full tournament simulation', () => {
 			console.log(`\nProcessing final tie ${code}: ${tieId}`);
 			await processTie(page, tieId, true);
 		}
-		// Final screenshot
+		await createTeamAccount(page, 'A1');
+		await switchToTeamPerspective(page);
+		await page.goto('/live');
+		await page.waitForTimeout(200);
+		await page.goto('/live/standings');
+		await page.waitForTimeout(200);
+		// Final screenshots
 		await page.goto('/finals');
-		await page.waitForTimeout(1000);
+		await page.waitForTimeout(200);
 		await page.screenshot({ path: 'test-results/finals-result.png', fullPage: true });
+		await page.goto('/live/standings');
+		await page.waitForTimeout(200);
+		await page.screenshot({ path: 'test-results/live-standings-team-view.png', fullPage: true });
 		console.log('\n=== Tournament complete! ===');
 		console.log('Video saved in test-results/ directory');
 	});

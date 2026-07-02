@@ -14,7 +14,7 @@ import {
 	tournaments
 } from '$lib/server/db/schema';
 import { createCfTestDb, type CfTestDb } from '$lib/server/cfTestDb';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -45,6 +45,7 @@ import { createRankingTiebreaker } from './rankingTiebreakerService';
 import {
 	confirmTie,
 	createMatchFromRubber,
+	cutoffTie,
 	recalculateTieResult,
 	startTie,
 	syncRubberResultFromMatch
@@ -520,6 +521,60 @@ describe('tieOperationService DB state transitions', () => {
 		await confirmTie('tie-complete', now);
 		tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, 'tie-complete') });
 		expect(tie?.status).toBe('confirmed');
+	});
+
+	test('cutoffTie cancels all remaining rubbers after a team reaches three wins', async () => {
+		await seedTeams();
+		await cfTestDb.db.insert(ties).values({
+			id: 'tie-cutoff',
+			tieCode: 'cutoff',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			status: 'playing',
+			createdAt: now,
+			updatedAt: now
+		});
+		const rubberRows: RubberInsert[] = (['WD1', 'XD1', 'MD3', 'MD2', 'MD1'] as const).map(
+			(code, index) => {
+				const discipline = code === 'WD1' ? 'WD' : code === 'XD1' ? 'XD' : 'MD';
+				return {
+					id: `cutoff-${code}`,
+					tieId: 'tie-cutoff',
+					code,
+					discipline,
+					displayOrder: index + 1,
+					scoringRuleId: 'GROUP_15',
+					status: index < 3 ? ('finished' as const) : ('scheduled' as const),
+					winnerSide: index < 3 ? ('A' as const) : null,
+					createdAt: now,
+					updatedAt: now
+				};
+			}
+		);
+		await cfTestDb.db.insert(rubbers).values(rubberRows);
+
+		const result = await cutoffTie('tie-cutoff', now);
+
+		const tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, 'tie-cutoff') });
+		const updatedRubbers = await cfTestDb.db
+			.select()
+			.from(rubbers)
+			.where(eq(rubbers.tieId, 'tie-cutoff'))
+			.orderBy(asc(rubbers.displayOrder));
+
+		expect(result.affectedMatchIds).toEqual([]);
+		expect(tie).toMatchObject({
+			teamScoreA: 3,
+			teamScoreB: 0,
+			winnerTeamId: 'team-a',
+			status: 'finished'
+		});
+		expect(updatedRubbers.slice(3).map((rubber) => rubber.status)).toEqual([
+			'cancelled',
+			'cancelled'
+		]);
 	});
 });
 
