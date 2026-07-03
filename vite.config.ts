@@ -5,8 +5,11 @@ import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+const isTest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+const basePlugins = [tailwindcss(), sveltekit()];
+
 export default defineConfig({
-	plugins: [tailwindcss(), contentCollections(), sveltekit()],
+	plugins: isTest ? basePlugins : [tailwindcss(), contentCollections(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
 		coverage: {

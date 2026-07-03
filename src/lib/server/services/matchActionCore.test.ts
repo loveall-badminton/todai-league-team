@@ -135,4 +135,72 @@ describe('applyMatchActionWithDb – undo fallback for rally_won', () => {
 		// Undo of rally_won(A at 1→0) should restore score to {A:0,B:0}
 		expect(result.afterState.games[0].score).toEqual({ A: 0, B: 0 });
 	});
+
+	test('returns cached afterState for duplicate requests', async () => {
+		const cachedState = makeState({ A: 2, B: 1 }, 4);
+		mockGetScoreEventByIdempotencyKey.mockResolvedValue({
+			payloadJson: JSON.stringify({
+				input: { type: 'rally_won', side: 'A', observedSeqNo: 3, idempotencyKey: 'ik-1' },
+				afterState: cachedState
+			})
+		});
+
+		const result = await applyMatchActionWithDb(buildDb() as never, {
+			matchId: 'match-1',
+			input: {
+				type: 'rally_won',
+				side: 'A',
+				observedSeqNo: 3,
+				idempotencyKey: 'ik-1'
+			},
+			beforeState: makeState({ A: 1, B: 1 }, 3),
+			players: [],
+			now: '2026-01-01T00:00:04.000Z'
+		});
+
+		expect(result.afterState.games[0].score).toEqual({ A: 2, B: 1 });
+		expect(mockGetScoreEventByIdempotencyKey).toHaveBeenCalledTimes(1);
+	});
+
+	test('rejects duplicate requests when stored payload has no afterState', async () => {
+		mockGetScoreEventByIdempotencyKey.mockResolvedValue({
+			payloadJson: JSON.stringify({
+				input: { type: 'rally_won', side: 'A', observedSeqNo: 3, idempotencyKey: 'ik-2' }
+			})
+		});
+
+		await expect(
+			applyMatchActionWithDb(buildDb() as never, {
+				matchId: 'match-1',
+				input: {
+					type: 'rally_won',
+					side: 'A',
+					observedSeqNo: 3,
+					idempotencyKey: 'ik-2'
+				},
+				beforeState: makeState({ A: 1, B: 1 }, 3),
+				players: [],
+				now: '2026-01-01T00:00:04.000Z'
+			})
+		).rejects.toThrow('Duplicate request but afterState is missing from stored payload');
+	});
+
+	test('rejects undo when there is no target event', async () => {
+		mockGetScoreEventByIdempotencyKey.mockResolvedValue(null);
+		mockGetLastUndoableScoreEvent.mockResolvedValue(null);
+
+		await expect(
+			applyMatchActionWithDb(buildDb() as never, {
+				matchId: 'match-1',
+				input: {
+					type: 'undo',
+					observedSeqNo: 3,
+					idempotencyKey: 'ik-undo'
+				},
+				beforeState: makeState({ A: 1, B: 1 }, 3),
+				players: [],
+				now: '2026-01-01T00:00:04.000Z'
+			})
+		).rejects.toThrow('Undo target event not found');
+	});
 });

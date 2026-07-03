@@ -33,6 +33,26 @@ describe('realtime consumer routing', () => {
 		).toBe(false);
 	});
 
+	test('finals page refreshes for poll updates and missing finals payloads', () => {
+		expect(
+			shouldRefreshFinalsPage(
+				liveUpdate({
+					source: 'poll',
+					topics: ['schedule']
+				}),
+				['x-1', 'x-2']
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshFinalsPage(
+				liveUpdate({
+					topics: ['finals']
+				}),
+				['x-1', 'x-2']
+			)
+		).toBe(true);
+	});
+
 	test('finals page refreshes on relevant finals phase metadata', () => {
 		expect(
 			shouldRefreshFinalsPage(
@@ -64,6 +84,28 @@ describe('realtime consumer routing', () => {
 				liveUpdate({
 					topics: ['schedule'],
 					data: { schedule: { tieIds: ['a-2'] } }
+				}),
+				'A',
+				['a-1', 'a-2']
+			)
+		).toBe(true);
+	});
+
+	test('group page refreshes for poll updates and missing standings payloads', () => {
+		expect(
+			shouldRefreshGroupPage(
+				liveUpdate({
+					source: 'poll',
+					topics: ['standings']
+				}),
+				'A',
+				['a-1', 'a-2']
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshGroupPage(
+				liveUpdate({
+					topics: ['standings']
 				}),
 				'A',
 				['a-1', 'a-2']
@@ -167,6 +209,30 @@ describe('realtime consumer routing', () => {
 		).toBe(true);
 	});
 
+	test('ties page refreshes for poll and schedule updates, and ignores unknown topics', () => {
+		expect(
+			shouldRefreshTiesPage(
+				liveUpdate({
+					source: 'poll'
+				})
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshTiesPage(
+				liveUpdate({
+					topics: ['schedule']
+				})
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshTiesPage(
+				liveUpdate({
+					topics: ['standings']
+				})
+			)
+		).toBe(false);
+	});
+
 	test('tie header refreshes only when schedule metadata targets the tie and header scope', () => {
 		expect(
 			shouldRefreshTieHeaderData(
@@ -197,6 +263,26 @@ describe('realtime consumer routing', () => {
 		).toBe(true);
 	});
 
+	test('tie header refreshes for poll, standings, and finals metadata missing payloads', () => {
+		expect(shouldRefreshTieHeaderData(liveUpdate({ source: 'poll' }), 'tie-1')).toBe(true);
+		expect(
+			shouldRefreshTieHeaderData(
+				liveUpdate({
+					topics: ['standings']
+				}),
+				'tie-1'
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshTieHeaderData(
+				liveUpdate({
+					topics: ['finals']
+				}),
+				'tie-1'
+			)
+		).toBe(true);
+	});
+
 	test('tie lineups refresh only when lineup schedule metadata targets the tie', () => {
 		expect(
 			shouldRefreshTieLineups(
@@ -212,6 +298,18 @@ describe('realtime consumer routing', () => {
 				liveUpdate({
 					topics: ['schedule'],
 					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] } }
+				}),
+				'tie-1'
+			)
+		).toBe(true);
+	});
+
+	test('tie lineups refresh for poll and missing schedule payloads', () => {
+		expect(shouldRefreshTieLineups(liveUpdate({ source: 'poll' }), 'tie-1')).toBe(true);
+		expect(
+			shouldRefreshTieLineups(
+				liveUpdate({
+					topics: ['schedule']
 				}),
 				'tie-1'
 			)
@@ -257,6 +355,29 @@ describe('realtime consumer routing', () => {
 				['m1']
 			)
 		).toBe(false);
+	});
+
+	test('tie live rubbers refresh for poll updates, missing score payloads, and relevant schedule phases', () => {
+		expect(shouldRefreshTieLiveRubbers(liveUpdate({ source: 'poll' }), 'tie-1', ['m1'])).toBe(true);
+		expect(
+			shouldRefreshTieLiveRubbers(
+				liveUpdate({
+					topics: ['score']
+				}),
+				'tie-1',
+				['m1']
+			)
+		).toBe(true);
+		expect(
+			shouldRefreshTieLiveRubbers(
+				liveUpdate({
+					topics: ['schedule'],
+					data: { schedule: { tieIds: ['tie-1'], phases: ['group_a'], scopes: ['rubbers'] } }
+				}),
+				'tie-1',
+				['m1']
+			)
+		).toBe(true);
 	});
 
 	test('tie live rubbers ignore lineup-only schedule updates', () => {
@@ -307,5 +428,15 @@ describe('realtime consumer routing', () => {
 		});
 		expect(shouldRefreshDashboardPlaying(update)).toBe(false);
 		expect(shouldRefreshDashboardRecent(update)).toBe(false);
+	});
+
+	test('dashboard subqueries refresh for poll and schedule updates', () => {
+		const pollUpdate = liveUpdate({ source: 'poll' });
+		expect(shouldRefreshDashboardPlaying(pollUpdate)).toBe(true);
+		expect(shouldRefreshDashboardRecent(pollUpdate)).toBe(true);
+
+		const scheduleUpdate = liveUpdate({ topics: ['schedule'] });
+		expect(shouldRefreshDashboardPlaying(scheduleUpdate)).toBe(true);
+		expect(shouldRefreshDashboardRecent(scheduleUpdate)).toBe(true);
 	});
 });

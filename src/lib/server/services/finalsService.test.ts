@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+	assertFinalAssignmentsReady,
 	buildFinalAndThirdPlaceAssignments,
 	buildSemifinalsAndFifthPlaceAssignments
 } from './finalsService';
@@ -179,5 +180,22 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 				}
 			)
 		).toThrow('準決勝の勝敗が未確定です');
+	});
+});
+
+describe('assertFinalAssignmentsReady', () => {
+	test('rejects semifinal assignments that still contain unassigned teams', () => {
+		expect(() =>
+			assertFinalAssignmentsReady([
+				{
+					tieCode: 'x-1',
+					phase: 'semifinal',
+					roundLabel: '準決勝1',
+					teamAId: null,
+					teamBId: 'b2',
+					displayOrder: 1
+				}
+			])
+		).toThrow('予選順位を確定してから生成してください');
 	});
 });

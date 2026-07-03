@@ -174,9 +174,33 @@ export function calculateGroupStandingsFromRecords(params: {
 		}
 	}
 
+	const activeTeamMatchesWonGroupSizes = new Map<number, number>();
+	for (const row of rows) {
+		if (row.manualRank === null) {
+			activeTeamMatchesWonGroupSizes.set(
+				row.teamMatchesWon,
+				(activeTeamMatchesWonGroupSizes.get(row.teamMatchesWon) ?? 0) + 1
+			);
+		}
+	}
+
 	const sorted = [...rows].sort(
-		(a, b) => compareStanding(a, b, params.ties) || a.teamName.localeCompare(b.teamName)
+		(a, b) =>
+			compareStanding(a, b, params.ties, activeTeamMatchesWonGroupSizes) ||
+			a.teamName.localeCompare(b.teamName)
 	);
+
+	const roundRobinComplete =
+		params.ties.length > 0 && params.ties.every((tie) => !!tie.winnerTeamId);
+	if (roundRobinComplete) {
+		for (const tiedRows of groupByRecord(sorted, standingTieKey).values()) {
+			if (tiedRows.length < 2) continue;
+			for (const row of tiedRows) {
+				if (row.manualRank !== null) continue;
+				row.requiresTiebreaker = true;
+			}
+		}
+	}
 
 	let rank = 1;
 	let prevKey: string | null = null;
@@ -250,13 +274,20 @@ function statsAgainst(
 	return { rubbersWon, gamesWon };
 }
 
-function compareStanding(a: GroupStanding, b: GroupStanding, groupTies: StandingTieRecord[]) {
+function compareStanding(
+	a: GroupStanding,
+	b: GroupStanding,
+	groupTies: StandingTieRecord[],
+	teamMatchesWonGroupSizes: Map<number, number>
+) {
 	if (a.manualRank !== null || b.manualRank !== null) {
 		return (a.manualRank ?? 999) - (b.manualRank ?? 999);
 	}
 	if (b.teamMatchesWon !== a.teamMatchesWon) return b.teamMatchesWon - a.teamMatchesWon;
-	const headToHead = headToHeadOrder(a, b, groupTies);
-	if (headToHead !== 0) return headToHead;
+	if ((teamMatchesWonGroupSizes.get(a.teamMatchesWon) ?? 0) === 2) {
+		const headToHead = headToHeadOrder(a, b, groupTies);
+		if (headToHead !== 0) return headToHead;
+	}
 	if (b.rubbersWon !== a.rubbersWon) return b.rubbersWon - a.rubbersWon;
 	if ((b.tiedTeamsRubbersWon ?? 0) !== (a.tiedTeamsRubbersWon ?? 0)) {
 		return (b.tiedTeamsRubbersWon ?? 0) - (a.tiedTeamsRubbersWon ?? 0);

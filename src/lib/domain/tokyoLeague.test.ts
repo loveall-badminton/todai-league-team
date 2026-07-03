@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { RUBBER_DEFINITIONS, TOKYO_LEAGUE_SCORING_RULES } from './tokyoLeague';
+import { groupPhaseFor, RUBBER_DEFINITIONS, TOKYO_LEAGUE_SCORING_RULES } from './tokyoLeague';
 
 describe('tokyo league constants', () => {
 	test('rubber definitions are fixed in operation order', () => {
@@ -38,5 +38,10 @@ describe('tokyo league constants', () => {
 			maxGames: 1,
 			gamesToWin: 1
 		});
+	});
+
+	test('group phase mapping is stable', () => {
+		expect(groupPhaseFor('A')).toBe('group_a');
+		expect(groupPhaseFor('B')).toBe('group_b');
 	});
 });

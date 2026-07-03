@@ -409,7 +409,11 @@ describe('tieOperationService DB state transitions', () => {
 
 		const tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 		const rubberRows = await cfTestDb.db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
-		expect(tie).toMatchObject({ status: 'ready', lineupsRevealedAt: now, actualStartAt: null });
+		expect(tie).toMatchObject({
+			status: 'lineup_submitted',
+			lineupsRevealedAt: null,
+			actualStartAt: null
+		});
 		expect(rubberRows.every((rubber) => !rubber.matchId)).toBe(true);
 		expect(rubberRows.every((rubber) => rubber.status !== 'playing')).toBe(true);
 	});

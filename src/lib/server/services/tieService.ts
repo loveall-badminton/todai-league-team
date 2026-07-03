@@ -48,38 +48,39 @@ export async function createTieWithRubbers(params: {
 		);
 	const tieId = crypto.randomUUID();
 
-	await db.insert(ties).values({
-		id: tieId,
-		tieCode,
-		phase: params.phase,
-		groupCode: params.groupCode ?? null,
-		roundLabel: params.roundLabel ?? null,
-		teamAId: params.teamAId ?? null,
-		teamBId: params.teamBId ?? null,
-		status: 'lineup_pending',
-		displayOrder: params.displayOrder ?? 0,
-		scheduledStartAt: params.scheduledStartAt ?? null,
-		venue: params.venue ?? null,
-		courtBlockCode: params.courtBlockCode ?? null,
-		lineupDueAt,
-		lineupDuePolicy: params.lineupDuePolicy ?? 'ten_minutes_before',
-		createdAt: now,
-		updatedAt: now
-	});
-
-	await db.insert(rubbers).values(
-		RUBBER_DEFINITIONS.map((rubber) => ({
-			id: crypto.randomUUID(),
-			tieId,
-			code: rubber.code,
-			discipline: rubber.discipline,
-			displayOrder: rubber.displayOrder,
-			scoringRuleId: params.scoringRuleId,
-			status: 'not_ready' as const,
+	await db.batch([
+		db.insert(ties).values({
+			id: tieId,
+			tieCode,
+			phase: params.phase,
+			groupCode: params.groupCode ?? null,
+			roundLabel: params.roundLabel ?? null,
+			teamAId: params.teamAId ?? null,
+			teamBId: params.teamBId ?? null,
+			status: 'lineup_pending',
+			displayOrder: params.displayOrder ?? 0,
+			scheduledStartAt: params.scheduledStartAt ?? null,
+			venue: params.venue ?? null,
+			courtBlockCode: params.courtBlockCode ?? null,
+			lineupDueAt,
+			lineupDuePolicy: params.lineupDuePolicy ?? 'ten_minutes_before',
 			createdAt: now,
 			updatedAt: now
-		}))
-	);
+		}),
+		db.insert(rubbers).values(
+			RUBBER_DEFINITIONS.map((rubber) => ({
+				id: crypto.randomUUID(),
+				tieId,
+				code: rubber.code,
+				discipline: rubber.discipline,
+				displayOrder: rubber.displayOrder,
+				scoringRuleId: params.scoringRuleId,
+				status: 'not_ready' as const,
+				createdAt: now,
+				updatedAt: now
+			}))
+		)
+	]);
 
 	return tieId;
 }
@@ -219,6 +220,46 @@ export function inferLineupDueAt(
 	if (Number.isNaN(date.getTime())) return null;
 	date.setMinutes(date.getMinutes() - defaultMinutesBefore);
 	return date.toISOString();
+}
+
+export function resolveUpdatedLineupDueAt(params: {
+	existingLineupDueAt: string | null;
+	existingLineupDuePolicy: LineupDuePolicy | null | undefined;
+	updatedScheduledStartAt?: string | null;
+	updatedLineupDueAt?: string | null;
+	scheduleChanged?: boolean;
+	defaultMinutesBefore: number;
+}) {
+	const {
+		existingLineupDueAt,
+		existingLineupDuePolicy,
+		updatedScheduledStartAt,
+		updatedLineupDueAt,
+		scheduleChanged,
+		defaultMinutesBefore
+	} = params;
+
+	if (updatedLineupDueAt !== undefined) {
+		if (
+			scheduleChanged &&
+			updatedScheduledStartAt !== undefined &&
+			updatedLineupDueAt === existingLineupDueAt &&
+			existingLineupDuePolicy === 'ten_minutes_before'
+		) {
+			return inferLineupDueAt(updatedScheduledStartAt, defaultMinutesBefore, 'ten_minutes_before');
+		}
+		return updatedLineupDueAt;
+	}
+
+	if (
+		scheduleChanged &&
+		updatedScheduledStartAt !== undefined &&
+		existingLineupDuePolicy === 'ten_minutes_before'
+	) {
+		return inferLineupDueAt(updatedScheduledStartAt, defaultMinutesBefore, 'ten_minutes_before');
+	}
+
+	return existingLineupDueAt;
 }
 
 export function generateRoundRobinPairs<T>(teams: T[]): [T, T][] {

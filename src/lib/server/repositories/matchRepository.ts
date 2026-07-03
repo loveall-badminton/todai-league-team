@@ -94,7 +94,24 @@ export async function getMatchPlayers(
 
 export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput): Promise<string> {
 	const db = await getRequestDbOrThrow();
+	const { matchId, statements } = buildCreateMatchWithPlayersStatements(db, input);
+	await db.batch(statements);
+	return matchId;
+}
+
+export function buildCreateMatchWithPlayersStatements(
+	db: RequestDb,
+	input: CreateMatchWithPlayersInput
+) {
 	const matchId = crypto.randomUUID();
+	return buildCreateMatchWithPlayersStatementsForId(db, input, matchId);
+}
+
+export function buildCreateMatchWithPlayersStatementsForId(
+	db: RequestDb,
+	input: CreateMatchWithPlayersInput,
+	matchId: string
+) {
 	const sideAId = crypto.randomUUID();
 	const sideBId = crypto.randomUUID();
 	const sideAName = input.players
@@ -114,57 +131,58 @@ export async function createMatchWithPlayers(input: CreateMatchWithPlayersInput)
 		scoring: input.scoring
 	});
 
-	await db.batch([
-		db.insert(matches).values({
-			id: matchId,
-			tournamentId: input.tournamentId,
-			courtId: input.courtId,
-			discipline: input.discipline,
-			eventName: input.eventName,
-			category: input.category,
-			roundName: input.roundName,
-			rubberId: input.rubberId ?? null,
-			rankingTiebreakerId: input.rankingTiebreakerId ?? null,
-			scoringRuleId: input.scoringRuleId ?? null,
-			createdAt: input.now,
-			updatedAt: input.now
-		}),
-		db.insert(matchSides).values([
-			{
-				id: sideAId,
-				matchId,
-				side: 'A',
-				displayName: sideAName,
+	return {
+		matchId,
+		statements: [
+			db.insert(matches).values({
+				id: matchId,
+				tournamentId: input.tournamentId,
+				courtId: input.courtId,
+				discipline: input.discipline,
+				eventName: input.eventName,
+				category: input.category,
+				roundName: input.roundName,
+				rubberId: input.rubberId ?? null,
+				rankingTiebreakerId: input.rankingTiebreakerId ?? null,
+				scoringRuleId: input.scoringRuleId ?? null,
 				createdAt: input.now,
 				updatedAt: input.now
-			},
-			{
-				id: sideBId,
-				matchId,
-				side: 'B',
-				displayName: sideBName,
-				createdAt: input.now,
-				updatedAt: input.now
-			}
-		]),
-		db.insert(matchSidePlayers).values(
-			input.players.map((player) => ({
-				id: crypto.randomUUID(),
-				matchId,
-				matchSideId: player.side === 'A' ? sideAId : sideBId,
-				side: player.side,
-				playerOrder: player.order,
-				name: player.name,
-				teamName: player.teamName,
-				createdAt: input.now,
-				updatedAt: input.now
-			}))
-		),
-		buildMatchSnapshotUpsert(db, state),
-		buildMatchServiceStateUpsert(db, state)
-	] as const);
-
-	return matchId;
+			}),
+			db.insert(matchSides).values([
+				{
+					id: sideAId,
+					matchId,
+					side: 'A',
+					displayName: sideAName,
+					createdAt: input.now,
+					updatedAt: input.now
+				},
+				{
+					id: sideBId,
+					matchId,
+					side: 'B',
+					displayName: sideBName,
+					createdAt: input.now,
+					updatedAt: input.now
+				}
+			]),
+			db.insert(matchSidePlayers).values(
+				input.players.map((player) => ({
+					id: crypto.randomUUID(),
+					matchId,
+					matchSideId: player.side === 'A' ? sideAId : sideBId,
+					side: player.side as 'A' | 'B',
+					playerOrder: player.order,
+					name: player.name,
+					teamName: player.teamName,
+					createdAt: input.now,
+					updatedAt: input.now
+				}))
+			),
+			buildMatchSnapshotUpsert(db, state),
+			buildMatchServiceStateUpsert(db, state)
+		] as const
+	};
 }
 
 export async function updateMatchDerivedState(state: MatchState): Promise<void> {

@@ -13,6 +13,7 @@ import {
 	ties
 } from '$lib/server/db/schema';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import { resolveUpdatedLineupDueAt } from '$lib/server/services/tieService';
 import { and, asc, count, eq, inArray, isNotNull, or } from 'drizzle-orm';
 
 export type Team = typeof teams.$inferSelect;
@@ -496,6 +497,21 @@ export async function updateTieSchedule(input: {
 	now: string;
 }) {
 	const db = getRequestDb();
+	const [existing, settings] = await Promise.all([
+		db.query.ties.findFirst({ where: eq(ties.id, input.id) }),
+		ensureDefaultSettings(input.now)
+	]);
+	if (!existing) {
+		throw new Error('対戦が見つかりません');
+	}
+	const lineupDueAt = resolveUpdatedLineupDueAt({
+		existingLineupDueAt: existing.lineupDueAt,
+		existingLineupDuePolicy: existing.lineupDuePolicy,
+		updatedScheduledStartAt: input.scheduledStartAt,
+		updatedLineupDueAt: input.lineupDueAt,
+		scheduleChanged: input.scheduleChanged,
+		defaultMinutesBefore: settings.defaultLineupDueMinutesBefore
+	});
 	await db
 		.update(ties)
 		.set({
@@ -503,7 +519,7 @@ export async function updateTieSchedule(input: {
 			scheduledStartAt: input.scheduledStartAt ?? null,
 			venue: input.venue ?? null,
 			courtBlockCode: input.courtBlockCode ?? null,
-			lineupDueAt: input.lineupDueAt ?? null,
+			lineupDueAt,
 			operationNote: input.operationNote ?? null,
 			scheduleChanged: input.scheduleChanged ?? false,
 			updatedAt: input.now

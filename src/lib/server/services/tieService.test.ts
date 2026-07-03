@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { generateRoundRobinPairs, inferLineupDueAt } from './tieService';
+import { generateRoundRobinPairs, inferLineupDueAt, resolveUpdatedLineupDueAt } from './tieService';
 
 describe('inferLineupDueAt', () => {
 	test('returns null when scheduledStartAt is null', () => {
@@ -38,6 +38,47 @@ describe('inferLineupDueAt', () => {
 	test('applies default ten_minutes_before policy when policy is undefined', () => {
 		const result = inferLineupDueAt('2025-06-01T10:00:00.000Z', 15, undefined);
 		expect(result).toBe('2025-06-01T09:45:00.000Z');
+	});
+});
+
+describe('resolveUpdatedLineupDueAt', () => {
+	test('recomputes the due time when scheduleChanged is true and the existing due time was automatic', () => {
+		expect(
+			resolveUpdatedLineupDueAt({
+				existingLineupDueAt: '2025-06-01T09:50:00.000Z',
+				existingLineupDuePolicy: 'ten_minutes_before',
+				updatedScheduledStartAt: '2025-06-01T11:00:00.000Z',
+				updatedLineupDueAt: '2025-06-01T09:50:00.000Z',
+				scheduleChanged: true,
+				defaultMinutesBefore: 10
+			})
+		).toBe('2025-06-01T10:50:00.000Z');
+	});
+
+	test('keeps a manually edited due time when it differs from the previous automatic value', () => {
+		expect(
+			resolveUpdatedLineupDueAt({
+				existingLineupDueAt: '2025-06-01T09:50:00.000Z',
+				existingLineupDuePolicy: 'ten_minutes_before',
+				updatedScheduledStartAt: '2025-06-01T11:00:00.000Z',
+				updatedLineupDueAt: '2025-06-01T10:40:00.000Z',
+				scheduleChanged: true,
+				defaultMinutesBefore: 10
+			})
+		).toBe('2025-06-01T10:40:00.000Z');
+	});
+
+	test('preserves the current due time when scheduleChanged is false', () => {
+		expect(
+			resolveUpdatedLineupDueAt({
+				existingLineupDueAt: '2025-06-01T09:50:00.000Z',
+				existingLineupDuePolicy: 'ten_minutes_before',
+				updatedScheduledStartAt: '2025-06-01T11:00:00.000Z',
+				updatedLineupDueAt: '2025-06-01T09:50:00.000Z',
+				scheduleChanged: false,
+				defaultMinutesBefore: 10
+			})
+		).toBe('2025-06-01T09:50:00.000Z');
 	});
 });
 

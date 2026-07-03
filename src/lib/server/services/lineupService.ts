@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { lineupItems, lineupSubmissions, teamPlayers, ties } from '$lib/server/db/schema';
+import type { RequestDb } from '$lib/server/repositories/matchStateStore';
 
 type LineupItemInput = {
 	rubberCode: RubberCode;
@@ -229,27 +230,39 @@ export async function unlockLineup(params: { tieId: string; teamId: string; now?
 	await updateTieLineupStatus(params.tieId, now);
 }
 
+export function buildRevealLineupsStatements(
+	db: RequestDb,
+	tieId: string,
+	submissions: (typeof lineupSubmissions.$inferSelect)[],
+	now: string
+) {
+	if (submissions.length < 2) throw new Error('両チームのオーダーが提出されていません');
+	for (const s of submissions) {
+		if (s.status === 'draft')
+			throw new Error('下書き状態のオーダーがあります。先に提出してください');
+	}
+	return [
+		...submissions.map((submission) =>
+			db
+				.update(lineupSubmissions)
+				.set({ status: 'revealed', revealedAt: now, updatedAt: now })
+				.where(eq(lineupSubmissions.id, submission.id))
+		),
+		db
+			.update(ties)
+			.set({ lineupsRevealedAt: now, status: 'ready', updatedAt: now })
+			.where(eq(ties.id, tieId))
+	];
+}
+
 export async function revealLineups(tieId: string, now = new Date().toISOString()) {
 	const db = getRequestDb();
 	const submissions = await db
 		.select()
 		.from(lineupSubmissions)
 		.where(eq(lineupSubmissions.tieId, tieId));
-	if (submissions.length < 2) throw new Error('両チームのオーダーが提出されていません');
-	for (const s of submissions) {
-		if (s.status === 'draft')
-			throw new Error('下書き状態のオーダーがあります。先に提出してください');
-	}
-	for (const submission of submissions) {
-		await db
-			.update(lineupSubmissions)
-			.set({ status: 'revealed', revealedAt: now, updatedAt: now })
-			.where(eq(lineupSubmissions.id, submission.id));
-	}
-	await db
-		.update(ties)
-		.set({ lineupsRevealedAt: now, status: 'ready', updatedAt: now })
-		.where(eq(ties.id, tieId));
+	const statements = buildRevealLineupsStatements(db, tieId, submissions, now);
+	await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
 }
 
 export async function unrevealLineups(tieId: string, now = new Date().toISOString()) {

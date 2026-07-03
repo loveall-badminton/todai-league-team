@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createRealtimeQueryFlow } from './queryFlow';
 import type { RealtimeUpdate } from './updates';
 
@@ -12,6 +12,10 @@ function update(partial: Partial<RealtimeUpdate> = {}): RealtimeUpdate {
 }
 
 describe('createRealtimeQueryFlow', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	test('does not refresh when websocket update is fully applied locally', async () => {
 		const refresh = vi.fn(async () => undefined);
 		const handle = createRealtimeQueryFlow({

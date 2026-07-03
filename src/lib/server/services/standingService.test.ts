@@ -149,6 +149,73 @@ describe('calculateGroupStandingsFromRecords', () => {
 		expect(standings[1].rank).toBe(1);
 	});
 
+	test('does not use head-to-head to break a 3-way tie with identical aggregate stats', () => {
+		const standings = calculateGroupStandingsFromRecords({
+			teams,
+			ties: [
+				{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: 'a' },
+				{ id: 'ac', teamAId: 'a', teamBId: 'c', winnerTeamId: 'c' },
+				{ id: 'bc', teamAId: 'b', teamBId: 'c', winnerTeamId: 'b' }
+			],
+			rubbers: [],
+			matches: []
+		});
+
+		expect(standings.map((row) => [row.teamId, row.rank])).toEqual([
+			['a', 1],
+			['b', 1],
+			['c', 1]
+		]);
+	});
+
+	test('still uses head-to-head for the remaining two teams when a tied team is manually ranked', () => {
+		const standings = calculateGroupStandingsFromRecords({
+			teams,
+			ties: [
+				{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: 'b' },
+				{ id: 'ac', teamAId: 'a', teamBId: 'c', winnerTeamId: 'c' },
+				{ id: 'bc', teamAId: 'b', teamBId: 'c', winnerTeamId: 'b' }
+			],
+			rubbers: [],
+			matches: [],
+			overrides: [{ teamId: 'c', manualRank: 1 }]
+		});
+
+		expect(standings.find((row) => row.teamId === 'b')?.rank).toBe(2);
+		expect(standings.find((row) => row.teamId === 'a')?.rank).toBe(3);
+	});
+
+	test('marks a completed unresolved tie as requiring a tiebreaker', () => {
+		const standings = calculateGroupStandingsFromRecords({
+			teams,
+			ties: [
+				{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: 'a' },
+				{ id: 'ac', teamAId: 'a', teamBId: 'c', winnerTeamId: 'c' },
+				{ id: 'bc', teamAId: 'b', teamBId: 'c', winnerTeamId: 'b' }
+			],
+			rubbers: [],
+			matches: []
+		});
+
+		expect(standings.every((row) => row.requiresTiebreaker)).toBe(true);
+	});
+
+	test('does not mark a manually ranked team as requiring a tiebreaker', () => {
+		const standings = calculateGroupStandingsFromRecords({
+			teams,
+			ties: [
+				{ id: 'ab', teamAId: 'a', teamBId: 'b', winnerTeamId: 'a' },
+				{ id: 'ac', teamAId: 'a', teamBId: 'c', winnerTeamId: 'c' },
+				{ id: 'bc', teamAId: 'b', teamBId: 'c', winnerTeamId: 'b' }
+			],
+			rubbers: [],
+			matches: [],
+			overrides: [{ teamId: 'a', manualRank: 1 }]
+		});
+
+		expect(standings.find((row) => row.teamId === 'a')?.requiresTiebreaker).toBe(false);
+	});
+
 	describe('競技規則 順位決定基準', () => {
 		const fourTeams = [
 			{ id: 'a', name: 'Alpha' },
@@ -419,9 +486,9 @@ describe('calculateGroupStandingsFromRecords', () => {
 		});
 
 		expect(standings).toEqual([
-			expect.objectContaining({ teamId: 'a', rank: 1, requiresTiebreaker: false }),
-			expect.objectContaining({ teamId: 'b', rank: 1, requiresTiebreaker: false }),
-			expect.objectContaining({ teamId: 'c', rank: 1, requiresTiebreaker: false })
+			expect.objectContaining({ teamId: 'a', rank: 1, requiresTiebreaker: true }),
+			expect.objectContaining({ teamId: 'b', rank: 1, requiresTiebreaker: true }),
+			expect.objectContaining({ teamId: 'c', rank: 1, requiresTiebreaker: true })
 		]);
 	});
 });

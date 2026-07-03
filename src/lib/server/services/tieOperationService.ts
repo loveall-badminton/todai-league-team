@@ -1,6 +1,9 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
-import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
+import {
+	buildCreateMatchWithPlayersStatements,
+	createMatchWithPlayers
+} from '$lib/server/repositories/matchRepository';
 import type { RequestDb } from '$lib/server/repositories/matchStateStore';
 import {
 	lineupItems,
@@ -15,12 +18,12 @@ import {
 } from '$lib/server/db/schema';
 import { MatchStateSchema } from '$lib/domain/schemas';
 import * as v from 'valibot';
-import { revealLineups } from './lineupService';
 import {
 	INTERNAL_TOURNAMENT_ID,
 	ensureInternalTournament,
 	scoringConfigFromRule
 } from './tokyoLeagueSetupService';
+import { buildRevealLineupsStatements } from './lineupService';
 
 const terminalRubberStatuses = new Set(['finished', 'confirmed', 'skipped', 'cancelled']);
 const matchResultStatuses = new Set(['finished', 'confirmed', 'forfeited', 'retired']);
@@ -77,24 +80,134 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 		);
 	if (!ready && !options.force) throw new Error('両チームのオーダー提出が必要です');
 
-	if (!tie.lineupsRevealedAt) {
-		await revealLineups(tieId, now);
-	}
-
 	const allRubbers = await db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
-	for (const rubber of allRubbers) {
-		if (!rubber.matchId) {
-			await createMatchFromRubber(rubber.id, now);
-		}
+	const statements: unknown[] = [];
+	await ensureInternalTournament(now);
+
+	if (!tie.lineupsRevealedAt) {
+		statements.push(...buildRevealLineupsStatements(db, tieId, submissions, now));
 	}
 
-	await db.batch([
+	const submissionIds = submissions.map((submission) => submission.id);
+	const lineupRows =
+		submissionIds.length > 0
+			? await db.select().from(lineupItems).where(inArray(lineupItems.submissionId, submissionIds))
+			: [];
+	const playerIds = [...new Set(lineupRows.flatMap((row) => [row.player1Id, row.player2Id]))];
+	const teamIds = [...new Set(submissions.map((submission) => submission.teamId))];
+	const playerRows =
+		playerIds.length > 0
+			? await db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
+			: [];
+	const teamRows =
+		teamIds.length > 0 ? await db.select().from(teams).where(inArray(teams.id, teamIds)) : [];
+	const scoringRuleIds = [...new Set(allRubbers.map((rubber) => rubber.scoringRuleId))];
+	const scoringRuleRows =
+		scoringRuleIds.length > 0
+			? await db.select().from(scoringRules).where(inArray(scoringRules.id, scoringRuleIds))
+			: [];
+	const playerById = new Map(playerRows.map((player) => [player.id, player]));
+	const teamNameById = new Map(teamRows.map((team) => [team.id, team.name]));
+	const scoringRuleById = new Map(scoringRuleRows.map((rule) => [rule.id, rule]));
+	const submissionBySide = new Map(submissions.map((submission) => [submission.side, submission]));
+	const lineupBySubmissionIdAndCode = new Map(
+		lineupRows.map((row) => [`${row.submissionId}:${row.rubberCode}`, row])
+	);
+
+	for (const rubber of allRubbers) {
+		if (rubber.matchId) continue;
+		const sideAPlayers = buildMatchPlayersForRubber({
+			rubberCode: rubber.code,
+			side: 'A',
+			submissionBySide,
+			lineupBySubmissionIdAndCode,
+			playerById,
+			teamNameById
+		});
+		const sideBPlayers = buildMatchPlayersForRubber({
+			rubberCode: rubber.code,
+			side: 'B',
+			submissionBySide,
+			lineupBySubmissionIdAndCode,
+			playerById,
+			teamNameById
+		});
+		const scoringRule = scoringRuleById.get(rubber.scoringRuleId);
+		if (!scoringRule) throw new Error('Scoring rule not found');
+
+		const createInput = {
+			tournamentId: INTERNAL_TOURNAMENT_ID,
+			courtId: null,
+			discipline: rubber.discipline,
+			eventName: tie.tieCode,
+			category: tie.roundLabel,
+			roundName: rubber.code,
+			rubberId: rubber.id,
+			scoringRuleId: rubber.scoringRuleId,
+			scoring: scoringConfigFromRule(scoringRule),
+			players: [...sideAPlayers, ...sideBPlayers],
+			now
+		};
+		const prepared = buildCreateMatchWithPlayersStatements(db, createInput);
+		statements.push(...prepared.statements);
+		statements.push(
+			db
+				.update(rubbers)
+				.set({ matchId: prepared.matchId, status: 'scheduled', updatedAt: now })
+				.where(eq(rubbers.id, rubber.id))
+		);
+	}
+
+	statements.push(
 		db
 			.update(ties)
 			.set({ status: 'playing', actualStartAt: tie.actualStartAt ?? now, updatedAt: now })
 			.where(eq(ties.id, tieId)),
 		db.update(rubbers).set({ status: 'scheduled', updatedAt: now }).where(eq(rubbers.tieId, tieId))
-	]);
+	);
+
+	await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+}
+
+function buildMatchPlayersForRubber(params: {
+	rubberCode: string;
+	side: 'A' | 'B';
+	submissionBySide: Map<'A' | 'B', typeof lineupSubmissions.$inferSelect>;
+	lineupBySubmissionIdAndCode: Map<string, typeof lineupItems.$inferSelect>;
+	playerById: Map<string, typeof teamPlayers.$inferSelect>;
+	teamNameById: Map<string, string>;
+}) {
+	const submission = params.submissionBySide.get(params.side);
+	if (!submission) {
+		throw new Error(`${params.side}側のオーダーがありません`);
+	}
+	const lineup = params.lineupBySubmissionIdAndCode.get(`${submission.id}:${params.rubberCode}`);
+	const [player1, player2] = resolveRubberLineupPlayers({
+		rubberCode: params.rubberCode,
+		lineup,
+		player1: lineup ? params.playerById.get(lineup.player1Id) : undefined,
+		player2: lineup ? params.playerById.get(lineup.player2Id) : undefined
+	});
+	const teamName = params.teamNameById.get(submission.teamId) ?? null;
+	return [
+		{ side: params.side, order: 1 as const, name: player1.name, teamName },
+		{ side: params.side, order: 2 as const, name: player2.name, teamName }
+	];
+}
+
+function resolveRubberLineupPlayers(params: {
+	rubberCode: string;
+	lineup: typeof lineupItems.$inferSelect | undefined;
+	player1: typeof teamPlayers.$inferSelect | undefined;
+	player2: typeof teamPlayers.$inferSelect | undefined;
+}) {
+	if (!params.lineup) {
+		throw new Error(`${params.rubberCode}のオーダーがありません`);
+	}
+	if (!params.player1 || !params.player2) {
+		throw new Error('選手が見つかりません');
+	}
+	return [params.player1, params.player2] as const;
 }
 
 export async function createMatchFromRubber(
@@ -320,17 +433,22 @@ async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberC
 			eq(lineupItems.rubberCode, rubberCode as never)
 		)
 	});
-	if (!item) throw new Error(`${rubberCode}のオーダーがありません`);
-	const players = await db
-		.select()
-		.from(teamPlayers)
-		.where(inArray(teamPlayers.id, [item.player1Id, item.player2Id]));
-	const team = await db.query.teams.findFirst({ where: eq(teams.id, submission.teamId) });
-	return [item.player1Id, item.player2Id].map((id) => {
-		const player = players.find((row) => row.id === id);
-		if (!player) throw new Error('選手が見つかりません');
-		return { ...player, teamName: team?.name ?? null };
+	const players = item
+		? await db
+				.select()
+				.from(teamPlayers)
+				.where(inArray(teamPlayers.id, [item.player1Id, item.player2Id]))
+		: [];
+	const playerById = new Map(players.map((player) => [player.id, player]));
+	const [player1, player2] = resolveRubberLineupPlayers({
+		rubberCode,
+		lineup: item,
+		player1: item ? playerById.get(item.player1Id) : undefined,
+		player2: item ? playerById.get(item.player2Id) : undefined
 	});
+	const team = await db.query.teams.findFirst({ where: eq(teams.id, submission.teamId) });
+	const teamName = team?.name ?? null;
+	return [player1, player2].map((player) => ({ ...player, teamName }));
 }
 
 async function getRequestDbOrThrow(dbParam?: RequestDb): Promise<RequestDb> {

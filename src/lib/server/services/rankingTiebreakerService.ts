@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm';
 import type { MatchDiscipline } from '$lib/domain/types';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
-import { createMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 import {
 	matches,
 	rankingTiebreakers,
@@ -10,6 +9,7 @@ import {
 	teamPlayers,
 	teams
 } from '$lib/server/db/schema';
+import { buildCreateMatchWithPlayersStatementsForId } from '$lib/server/repositories/matchRepository';
 import { rubberStatusFromMatchResultStatus } from '$lib/server/services/tieOperationService';
 import {
 	INTERNAL_TOURNAMENT_ID,
@@ -28,6 +28,8 @@ export type RankingTiebreakerPlayerForValidation = {
 	gender?: 'male' | 'female' | 'unknown';
 };
 
+type RankingTiebreakerDiscipline = Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>;
+
 function assertUniquePlayers(label: string, players: RankingTiebreakerPlayerForValidation[]) {
 	if (new Set(players.map((player) => player.id)).size !== players.length) {
 		throw new Error(`${label}側の再試合選手が重複しています`);
@@ -35,7 +37,7 @@ function assertUniquePlayers(label: string, players: RankingTiebreakerPlayerForV
 }
 
 function isEligibleForDiscipline(
-	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>,
+	discipline: RankingTiebreakerDiscipline,
 	order: 1 | 2,
 	player: RankingTiebreakerPlayerForValidation
 ) {
@@ -46,15 +48,19 @@ function isEligibleForDiscipline(
 }
 
 function assertEligiblePlayersForDiscipline(
-	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>,
+	discipline: RankingTiebreakerDiscipline,
 	playersA: RankingTiebreakerPlayerForValidation[],
 	playersB: RankingTiebreakerPlayerForValidation[]
 ) {
-	const allPlayers = [
-		{ side: 'A', order: 1 as const, player: playersA[0] },
-		{ side: 'A', order: 2 as const, player: playersA[1] },
-		{ side: 'B', order: 1 as const, player: playersB[0] },
-		{ side: 'B', order: 2 as const, player: playersB[1] }
+	const allPlayers: Array<{
+		side: 'A' | 'B';
+		order: 1 | 2;
+		player: RankingTiebreakerPlayerForValidation;
+	}> = [
+		{ side: 'A', order: 1, player: playersA[0] },
+		{ side: 'A', order: 2, player: playersA[1] },
+		{ side: 'B', order: 1, player: playersB[0] },
+		{ side: 'B', order: 2, player: playersB[1] }
 	];
 	if (allPlayers.some(({ order, player }) => !isEligibleForDiscipline(discipline, order, player))) {
 		throw new Error('再試合選手の性別が種目条件に一致していません');
@@ -67,7 +73,7 @@ export function validateRankingTiebreakerSelection<
 >(params: {
 	teamA: TTeam | null | undefined;
 	teamB: TTeam | null | undefined;
-	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>;
+	discipline: RankingTiebreakerDiscipline;
 	playersA: (TPlayer | null | undefined)[];
 	playersB: (TPlayer | null | undefined)[];
 }) {
@@ -95,7 +101,7 @@ export async function createRankingTiebreaker(params: {
 	reason: string;
 	teamAId: string;
 	teamBId: string;
-	discipline: Extract<MatchDiscipline, 'MD' | 'WD' | 'XD'>;
+	discipline: RankingTiebreakerDiscipline;
 	playerA1Id: string;
 	playerA2Id: string;
 	playerB1Id: string;
@@ -129,40 +135,53 @@ export async function createRankingTiebreaker(params: {
 
 	await ensureInternalTournament(now);
 	const rankingTiebreakerId = crypto.randomUUID();
+	const matchId = crypto.randomUUID();
+
+	// rankingTiebreakers.matchId and matches.rankingTiebreakerId form a circular FK, so the
+	// rankingTiebreakers row must exist (with matchId null) before the matches insert can
+	// reference it, and can only be backfilled with matchId after the matches row exists.
 	await db.insert(rankingTiebreakers).values({
 		id: rankingTiebreakerId,
 		groupCode: params.groupCode,
 		reason: params.reason,
 		teamAId: validated.teamA.id,
 		teamBId: validated.teamB.id,
+		matchId: null,
 		status: 'scheduled',
 		createdAt: now,
 		updatedAt: now
 	});
 
-	const matchId = await createMatchWithPlayers({
-		tournamentId: INTERNAL_TOURNAMENT_ID,
-		courtId: null,
-		discipline: params.discipline,
-		eventName: `${params.groupCode}リーグ順位決定再試合`,
-		category: params.reason,
-		roundName: `${validated.teamA.name} vs ${validated.teamB.name}`,
-		rankingTiebreakerId,
-		scoringRuleId: scoringRule.id,
-		scoring: scoringConfigFromRule(scoringRule),
-		players: [
-			{ side: 'A', order: 1, name: validated.playersA[0].name, teamName: validated.teamA.name },
-			{ side: 'A', order: 2, name: validated.playersA[1].name, teamName: validated.teamA.name },
-			{ side: 'B', order: 1, name: validated.playersB[0].name, teamName: validated.teamB.name },
-			{ side: 'B', order: 2, name: validated.playersB[1].name, teamName: validated.teamB.name }
-		],
-		now
-	});
+	const { statements } = buildCreateMatchWithPlayersStatementsForId(
+		db,
+		{
+			tournamentId: INTERNAL_TOURNAMENT_ID,
+			courtId: null,
+			discipline: params.discipline,
+			eventName: `${params.groupCode}リーグ順位決定再試合`,
+			category: params.reason,
+			roundName: `${validated.teamA.name} vs ${validated.teamB.name}`,
+			rankingTiebreakerId,
+			scoringRuleId: scoringRule.id,
+			scoring: scoringConfigFromRule(scoringRule),
+			players: [
+				{ side: 'A', order: 1, name: validated.playersA[0].name, teamName: validated.teamA.name },
+				{ side: 'A', order: 2, name: validated.playersA[1].name, teamName: validated.teamA.name },
+				{ side: 'B', order: 1, name: validated.playersB[0].name, teamName: validated.teamB.name },
+				{ side: 'B', order: 2, name: validated.playersB[1].name, teamName: validated.teamB.name }
+			],
+			now
+		},
+		matchId
+	);
 
-	await db
-		.update(rankingTiebreakers)
-		.set({ matchId, updatedAt: now })
-		.where(eq(rankingTiebreakers.id, rankingTiebreakerId));
+	await db.batch([
+		...statements,
+		db
+			.update(rankingTiebreakers)
+			.set({ matchId, updatedAt: now })
+			.where(eq(rankingTiebreakers.id, rankingTiebreakerId))
+	] as unknown as Parameters<typeof db.batch>[0]);
 	return { rankingTiebreakerId, matchId };
 }
 

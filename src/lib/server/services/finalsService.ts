@@ -37,6 +37,13 @@ export type SemifinalResultSource = {
 	winnerTeamId: string | null;
 };
 
+export function assertFinalAssignmentsReady(assignments: FinalTieAssignment[]) {
+	const missing = assignments.find((assignment) => !assignment.teamAId || !assignment.teamBId);
+	if (missing) {
+		throw new Error('予選順位を確定してから生成してください');
+	}
+}
+
 export function buildSemifinalsAndFifthPlaceAssignments(
 	standingA: FinalsStandingSeed[],
 	standingB: FinalsStandingSeed[]
@@ -74,7 +81,7 @@ export function buildFinalAndThirdPlaceAssignments(
 		throw new Error('準決勝の勝敗が未確定です');
 	}
 
-	return [
+	const assignments: FinalTieAssignment[] = [
 		{
 			tieCode: 'x-4',
 			phase: 'third_place',
@@ -92,6 +99,8 @@ export function buildFinalAndThirdPlaceAssignments(
 			displayOrder: 5
 		}
 	];
+	assertFinalAssignmentsReady(assignments);
+	return assignments;
 }
 
 export async function generateSemifinalsAndFifthPlace(now = new Date().toISOString()) {
@@ -103,8 +112,11 @@ export async function generateSemifinalsAndFifthPlace(now = new Date().toISOStri
 		calculateGroupStandings('B')
 	]);
 
+	const assignments = buildSemifinalsAndFifthPlaceAssignments(standingA, standingB);
+	assertFinalAssignmentsReady(assignments);
+
 	let changed = 0;
-	for (const assignment of buildSemifinalsAndFifthPlaceAssignments(standingA, standingB)) {
+	for (const assignment of assignments) {
 		await upsertFinalTie({
 			tieCode: assignment.tieCode,
 			phase: assignment.phase,

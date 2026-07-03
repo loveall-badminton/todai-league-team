@@ -53,4 +53,20 @@ describe('searchParams utils', () => {
 			updateUrlSearchParams(new URL('https://example.test/ties'), schema, { filter: 'invalid' })
 		).toBeNull();
 	});
+
+	test('updates array values and deletes omitted keys', () => {
+		const arraySchema = v.object({
+			filter: v.optional(v.picklist(['all', 'playing'] as const), 'all'),
+			tag: v.array(v.string())
+		});
+
+		const url = updateUrlSearchParams(
+			new URL('https://example.test/ties?filter=playing&tag=old'),
+			arraySchema,
+			{ filter: 'all', tag: ['a', 'b'] },
+			{ omit: (key) => key === 'filter' }
+		);
+
+		expect(url?.href).toBe('https://example.test/ties?tag=a&tag=b');
+	});
 });
