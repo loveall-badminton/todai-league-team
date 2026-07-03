@@ -14,8 +14,6 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import type { PageProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 
@@ -38,12 +36,6 @@
 				!pendingLineups.includes(t) && !submittedLineups.includes(t) && t.status !== 'cancelled'
 		)
 	);
-
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => invalidateAll(),
-		shouldRefresh: (update: RealtimeUpdate) => update.topics.includes('schedule'),
-		debounceMs: 0
-	});
 </script>
 
 <svelte:head>
@@ -53,7 +45,12 @@
 <PageHeader title="オーダー/審判">
 	{#snippet actions()}
 		{#if isTeamAccount}
-			<RealtimeSync topics={['score', 'schedule']} onUpdate={(u) => void handleRealtimeUpdate(u)} />
+			<RealtimeSync
+				topics={['score', 'schedule']}
+				refresh={() => invalidateAll()}
+				shouldRefresh={(update) => update.topics.includes('schedule')}
+				debounceMs={0}
+			/>
 		{/if}
 	{/snippet}
 </PageHeader>

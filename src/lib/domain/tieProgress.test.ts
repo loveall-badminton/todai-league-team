@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { calculateTieResult, rubberStatusFromMatchResultStatus } from './tieOperationService';
+import { calculateTieResult, rubberStatusFromMatchResultStatus } from './tieProgress';
 
 describe('rubberStatusFromMatchResultStatus', () => {
 	test('maps forfeit and retirement match results to finished rubbers', () => {

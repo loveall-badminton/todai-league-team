@@ -14,6 +14,9 @@
 		savedPlayerValue
 	} from './lineupHelpers';
 	import LineupForm from './LineupForm.svelte';
+	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { shouldRefreshTieLineups } from '$lib/realtime/updates';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import { loadLocalLineupDraft, saveLocalLineupDraft } from '../lineupDraftStorage';
@@ -54,9 +57,15 @@
 	}
 
 	function saveLocalDraft(items: DraftItem[]) {
-		saveLocalLineupDraft(data.tie.id, data.team.id, items);
+		const saved = saveLocalLineupDraft(data.tie.id, data.team.id, items);
 		draftItems = items;
-		toast.success('下書きをこの端末に保存しました');
+		if (saved) {
+			toast.success('下書きをこの端末に保存しました');
+		} else {
+			toast.error('この端末に保存できませんでした', {
+				description: 'プライベートブラウズ等でストレージが使えない可能性があります'
+			});
+		}
 	}
 
 	onMount(() => {
@@ -94,6 +103,13 @@
 		<span class="inline-flex rounded-full px-3 py-1 text-sm font-medium {statusBadgeClass(status)}">
 			{submissionStatusLabel(status)}
 		</span>
+		<!-- 運営のロック/公開/期限変更を即時反映する。下書き(draftItems)はローカル $state なので refresh では消えない -->
+		<RealtimeSync
+			topics={['schedule']}
+			refresh={() => invalidateAll()}
+			shouldRefresh={(update) => shouldRefreshTieLineups(update, data.tie.id)}
+			pollInterval={15000}
+		/>
 		{#if remainingMin !== null}
 			<span
 				class="text-xs {remainingMin <= 0

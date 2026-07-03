@@ -1,5 +1,6 @@
 import { asc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchQuery } from '$lib/server/db/utils';
 import { courts, matchSidePlayers, matchSides, matches, tournaments } from '$lib/server/db/schema';
 
 export type Tournament = typeof tournaments.$inferSelect;
@@ -105,25 +106,22 @@ export async function listMatchesForTournament(tournamentId: string): Promise<Li
 
 	const matchIds = matchRows.map((m) => m.id);
 
-	const [courtRows, allSides, allPlayers] = (await (
-		db.batch as unknown as (q: unknown[]) => Promise<unknown>
-	)([
-		db
-			.select()
-			.from(courts)
-			.where(eq(courts.tournamentId, tournamentId))
-			.orderBy(asc(courts.displayOrder), asc(courts.name)),
-		db.select().from(matchSides).where(inArray(matchSides.matchId, matchIds)),
+	// D1 の bind 変数上限(100)を超えないよう match ID を分割して取得する
+	const courtRows = await db
+		.select()
+		.from(courts)
+		.where(eq(courts.tournamentId, tournamentId))
+		.orderBy(asc(courts.displayOrder), asc(courts.name));
+	const allSides = await batchQuery(matchIds, (batch) =>
+		db.select().from(matchSides).where(inArray(matchSides.matchId, batch))
+	);
+	const allPlayers = await batchQuery(matchIds, (batch) =>
 		db
 			.select()
 			.from(matchSidePlayers)
-			.where(inArray(matchSidePlayers.matchId, matchIds))
+			.where(inArray(matchSidePlayers.matchId, batch))
 			.orderBy(asc(matchSidePlayers.playerOrder))
-	])) as [
-		(typeof courts.$inferSelect)[],
-		(typeof matchSides.$inferSelect)[],
-		(typeof matchSidePlayers.$inferSelect)[]
-	];
+	);
 
 	const sidesByMatchId = new Map<string, typeof allSides>();
 	for (const s of allSides) {

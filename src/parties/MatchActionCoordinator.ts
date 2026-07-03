@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { getDb } from '$lib/server/db';
-import { applyMatchActionWithDb } from '$lib/server/services/matchActionService';
+import { applyMatchActionWithDb } from '$lib/server/services/matchActionCore';
 import {
 	MATCH_ACTION_COORDINATOR_URL,
 	MatchActionCoordinatorRequestSchema,

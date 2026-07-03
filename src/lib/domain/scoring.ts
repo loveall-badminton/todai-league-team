@@ -5,10 +5,12 @@ import {
 	type MatchDiscipline,
 	type MatchPlayer,
 	type MatchState,
+	type MatchStatus,
 	type ScoringConfig,
 	type ScoreEventInput,
 	type ServiceState,
-	type Side
+	type Side,
+	type TerminalReason
 } from './types';
 import {
 	applyDoublesServiceAfterRally,
@@ -18,6 +20,7 @@ import {
 	otherSide,
 	scoreOfSide
 } from './service';
+import { ACTIVE_MATCH_STATUSES, CONFIRMABLE_MATCH_STATUSES } from './matchStatus';
 
 export {
 	applyDoublesServiceAfterRally,
@@ -92,94 +95,87 @@ export function applyScoreEvent(params: {
 		throw new Error('承認済みの試合は変更できません。運営が承認を解除してください。');
 	}
 
+	return withSeq(applyEvent(state, input, players), now);
+}
+
+/**
+ * イベント種別ごとの状態遷移。遷移元ステータスの検証は各ハンドラ先頭の
+ * assertStatusIn に集約し、seqNo/updatedAt の更新は呼び出し側(withSeq)が担う。
+ */
+function applyEvent(state: MatchState, input: ScoreEventInput, players: MatchPlayer[]): MatchState {
 	switch (input.type) {
 		case 'match_started':
-			return withSeq(
-				startMatch(state, players, input.initialServerPlayerId, input.initialReceiverPlayerId),
-				now
-			);
+			return startMatch(state, players, input.initialServerPlayerId, input.initialReceiverPlayerId);
 		case 'game_started':
-			return withSeq(
-				startGame(
-					state,
-					players,
-					input.gameNo,
-					input.initialServerPlayerId,
-					input.initialReceiverPlayerId
-				),
-				now
+			return startGame(
+				state,
+				players,
+				input.gameNo,
+				input.initialServerPlayerId,
+				input.initialReceiverPlayerId
 			);
 		case 'rally_won':
-			return withSeq(applyRallyWon(state, players, input.side), now);
+			return applyRallyWon(state, players, input.side);
 		case 'undo':
 			if (!input.restoreState) throw new Error('Undo restore state is required');
-			return withSeq({ ...input.restoreState, lastSeqNo: state.lastSeqNo }, now);
+			return { ...input.restoreState, lastSeqNo: state.lastSeqNo };
 		case 'correction':
-			return withSeq(
-				applyCorrection(state, input.gameNo, input.score, input.gamesWon, input.service),
-				now
-			);
+			return applyCorrection(state, input.gameNo, input.score, input.gamesWon, input.service);
 		case 'let_called':
-			if (state.status !== 'playing') throw new Error('Let can be recorded only while playing');
-			return withSeq(state, now);
+			assertStatusIn(state, ['playing'], 'Let can be recorded only while playing');
+			return state;
 		case 'match_suspended':
-			if (state.status !== 'playing' && state.status !== 'interval') {
-				throw new Error('Match can be suspended only while playing or during interval');
-			}
-			return withSeq({ ...state, status: 'suspended' }, now);
+			assertStatusIn(
+				state,
+				['playing', 'interval'],
+				'Match can be suspended only while playing or during interval'
+			);
+			return { ...state, status: 'suspended' };
 		case 'match_resumed':
-			if (state.status !== 'suspended') throw new Error('Match can be resumed only from suspended');
-			return withSeq({ ...state, status: 'playing' }, now);
-		case 'side_forfeited': {
-			const allowed = ['scheduled', 'playing', 'interval', 'suspended'] as const;
-			if (!allowed.includes(state.status)) {
-				throw new Error('不戦敗を記録できるのは試合開始前または進行中のみです');
-			}
-			return withSeq(
-				{
-					...state,
-					status: 'forfeited',
-					winnerSide: otherSide(input.side),
-					terminalReason: 'forfeit',
-					service: null
-				},
-				now
+			assertStatusIn(state, ['suspended'], 'Match can be resumed only from suspended');
+			return { ...state, status: 'playing' };
+		case 'side_forfeited':
+			assertStatusIn(
+				state,
+				['scheduled', ...ACTIVE_MATCH_STATUSES],
+				'不戦敗を記録できるのは試合開始前または進行中のみです'
 			);
-		}
-		case 'side_retired': {
-			const allowed = ['playing', 'interval', 'suspended'] as const;
-			if (!allowed.includes(state.status)) {
-				throw new Error('棄権を記録できるのは試合進行中のみです');
-			}
-			return withSeq(
-				{
-					...state,
-					status: 'retired',
-					winnerSide: otherSide(input.side),
-					terminalReason: 'retirement',
-					service: null
-				},
-				now
-			);
-		}
+			return terminateWithWinner(state, otherSide(input.side), 'forfeited', 'forfeit');
+		case 'side_retired':
+			assertStatusIn(state, ACTIVE_MATCH_STATUSES, '棄権を記録できるのは試合進行中のみです');
+			return terminateWithWinner(state, otherSide(input.side), 'retired', 'retirement');
 		case 'match_confirmed':
-			if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
-				throw new Error('Only terminal matches can be confirmed');
-			}
-			return withSeq({ ...state, status: 'confirmed', confirmedFromStatus: state.status }, now);
+			assertStatusIn(state, CONFIRMABLE_MATCH_STATUSES, 'Only terminal matches can be confirmed');
+			return { ...state, status: 'confirmed', confirmedFromStatus: state.status };
 		case 'match_unconfirmed':
-			if (state.status !== 'confirmed') {
-				throw new Error('Only confirmed matches can be unconfirmed');
-			}
-			return withSeq(
-				{
-					...state,
-					status: state.confirmedFromStatus ?? 'finished',
-					confirmedFromStatus: null
-				},
-				now
-			);
+			assertStatusIn(state, ['confirmed'], 'Only confirmed matches can be unconfirmed');
+			return {
+				...state,
+				status: state.confirmedFromStatus ?? 'finished',
+				confirmedFromStatus: null
+			};
 	}
+}
+
+/**
+ * 運営による試合の打ち切り(スコアイベントを経由しない管理操作)。
+ * 種目打ち切り時のスナップショット更新に使う。
+ */
+export function applyMatchCancellation(state: MatchState, now: string): MatchState {
+	return withSeq({ ...state, status: 'cancelled', service: null }, now);
+}
+
+function assertStatusIn(state: MatchState, allowed: readonly MatchStatus[], message: string): void {
+	if (!allowed.includes(state.status)) throw new Error(message);
+}
+
+function terminateWithWinner(
+	state: MatchState,
+	winnerSide: Side,
+	status: MatchStatus,
+	terminalReason: TerminalReason
+): MatchState {
+	return { ...state, status, winnerSide, terminalReason, service: null };
 }
 
 function createEmptyGame(gameNo: number): GameState {
@@ -211,7 +207,7 @@ function startMatch(
 	initialServerPlayerId: string,
 	initialReceiverPlayerId: string
 ): MatchState {
-	if (state.status !== 'scheduled') throw new Error('Match can be started only from scheduled');
+	assertStatusIn(state, ['scheduled'], 'Match can be started only from scheduled');
 	return {
 		...state,
 		status: 'playing',
@@ -231,7 +227,7 @@ function startGame(
 	initialServerPlayerId: string,
 	initialReceiverPlayerId: string
 ): MatchState {
-	if (state.status !== 'interval') throw new Error('Game can be started only from interval');
+	assertStatusIn(state, ['interval'], 'Game can be started only from interval');
 	if (gameNo !== state.currentGameNo) throw new Error('Game number does not match current game');
 	return {
 		...state,
@@ -257,7 +253,7 @@ function createService(
 }
 
 function applyRallyWon(state: MatchState, players: MatchPlayer[], side: Side): MatchState {
-	if (state.status !== 'playing') throw new Error('Rally can be recorded only while playing');
+	assertStatusIn(state, ['playing'], 'Rally can be recorded only while playing');
 
 	const currentGame = getCurrentGame(state);
 	const nextScore = { ...currentGame.score, [side]: currentGame.score[side] + 1 };

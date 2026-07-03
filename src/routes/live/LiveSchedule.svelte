@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import type { LivePageData } from '$lib/server/services/livePageService';
+	import type { ScheduleData } from '$lib/server/services/livePageService';
 	import type { QueryValue } from '$lib/utils/types';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
@@ -9,12 +9,10 @@
 	import { Clock, ArrowRight, CircleCheck, CircleAlert } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	type ScheduleTie = NonNullable<LivePageData['schedule']>[number];
+	type ScheduleTie = ScheduleData[number];
 
-	let {
-		query,
-		myTeamId = null
-	}: { query: QueryValue<LivePageData['schedule']>; myTeamId?: string | null } = $props();
+	let { query, myTeamId = null }: { query: QueryValue<ScheduleData>; myTeamId?: string | null } =
+		$props();
 
 	let grouped = $derived(
 		query.current == null ? null : groupTiesByPhase<ScheduleTie>(query.current)

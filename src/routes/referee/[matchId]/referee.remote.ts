@@ -1,9 +1,10 @@
+import { isConfirmableMatchStatus, isTerminalMatchStatus } from '$lib/domain/matchStatus';
 import { form, getRequestEvent } from '$app/server';
 import { otherSide } from '$lib/domain/scoring';
 import { LetReasonSchema, SideSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import { requireRefereeMatchAccess } from '$lib/server/auth/access';
-import { notifyScoreChange } from '$lib/server/realtime/broadcast';
+import { notifyLiveBoard, notifyScoreChange } from '$lib/server/realtime/broadcast';
 import {
 	getMatchPlayers,
 	getMatchWithPlayers,
@@ -199,7 +200,7 @@ export const saveRefereeName = form(
 		const matchId = event.params.matchId!;
 		await requireRefereeMatchAccess(matchId);
 		const state = await getMatchState(matchId);
-		if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
+		if (!isConfirmableMatchStatus(state.status)) {
 			return { error: '試合終了後に入力してください' };
 		}
 		await updateMatchResultVerification(matchId, {
@@ -215,7 +216,7 @@ export const confirmWinner = form(async () => {
 	await requireRefereeMatchAccess(matchId);
 	const [state, match] = await Promise.all([getMatchState(matchId), getMatchWithPlayers(matchId)]);
 	if (!match) return { error: '試合が見つかりません' };
-	if (!['finished', 'forfeited', 'retired'].includes(state.status)) {
+	if (!isConfirmableMatchStatus(state.status)) {
 		return { error: '試合終了後に確認してください' };
 	}
 	if (!state.winnerSide) {
@@ -267,6 +268,11 @@ function broadcastScoreUpdate(
 		| { state: MatchState; event: { type: 'cutoff' | 'winner_confirmed' | 'winner_unconfirmed' } }
 ) {
 	notifyScoreChange(matchId, ['score'], { score });
+	// 試合が終局すると tie の対戦スコアや順位が変わるため、score を購読しない
+	// ボード・順位表ページにも refresh を促す
+	if (isTerminalMatchStatus(score.state.status)) {
+		notifyLiveBoard(['schedule', 'standings']);
+	}
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

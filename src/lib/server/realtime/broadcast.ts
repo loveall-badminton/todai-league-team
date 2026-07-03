@@ -8,7 +8,21 @@ import {
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
-import { invalidateLivePageCache } from '$lib/server/services/livePageCache';
+
+function emit(
+	label: string,
+	channels: string[],
+	topics: readonly LiveTopic[],
+	data?: LiveUpdateData
+): void {
+	if (dev) {
+		console.log(`[broadcast] ${label}`, { channels, topics, data, at: new Date().toISOString() });
+	}
+	const message = createLiveUpdatedMessage(topics, data);
+	for (const channel of channels) {
+		dispatch(channel, message);
+	}
+}
 
 export function notifyLiveBoard(): void;
 export function notifyLiveBoard<TTopics extends readonly LiveTopic[]>(
@@ -19,11 +33,7 @@ export function notifyLiveBoard(
 	topics: readonly LiveTopic[] = ALL_LIVE_TOPICS,
 	data?: LiveUpdateData
 ): void {
-	invalidateLivePageCache(topics);
-	if (dev) {
-		console.log('[broadcast] notifyLiveBoard', { topics, data, at: new Date().toISOString() });
-	}
-	dispatch(LIVE_BOARD_CHANNEL, createLiveUpdatedMessage(topics, data));
+	emit('notifyLiveBoard', [LIVE_BOARD_CHANNEL], topics, data);
 }
 
 export function notifyMatch<TTopics extends readonly LiveTopic[]>(
@@ -31,10 +41,7 @@ export function notifyMatch<TTopics extends readonly LiveTopic[]>(
 	topics: TTopics,
 	data?: LiveUpdateData<TTopics[number]>
 ): void {
-	if (dev) {
-		console.log('[broadcast] notifyMatch', { matchId, topics, data, at: new Date().toISOString() });
-	}
-	dispatch(matchChannel(matchId), createLiveUpdatedMessage(topics, data));
+	emit('notifyMatch', [matchChannel(matchId)], topics, data);
 }
 
 export function notifyScoreChange<TTopics extends readonly LiveTopic[]>(
@@ -42,18 +49,7 @@ export function notifyScoreChange<TTopics extends readonly LiveTopic[]>(
 	topics: TTopics,
 	data?: LiveUpdateData<TTopics[number]>
 ): void {
-	invalidateLivePageCache(topics);
-	if (dev) {
-		console.log('[broadcast] notifyScoreChange', {
-			matchId,
-			topics,
-			data,
-			at: new Date().toISOString()
-		});
-	}
-	const message = createLiveUpdatedMessage(topics, data);
-	dispatch(LIVE_BOARD_CHANNEL, message);
-	dispatch(matchChannel(matchId), message);
+	emit('notifyScoreChange', [LIVE_BOARD_CHANNEL, matchChannel(matchId)], topics, data);
 }
 
 function dispatch(channel: string, message: LiveMessage): void {

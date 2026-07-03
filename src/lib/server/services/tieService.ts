@@ -12,6 +12,25 @@ import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
 type LineupDuePolicy = 'first_match_before_opening' | 'ten_minutes_before' | 'manual';
 
+function rubberInsertValues(
+	tieId: string,
+	scoringRuleId: string,
+	now: string,
+	definitions: readonly (typeof RUBBER_DEFINITIONS)[number][] = RUBBER_DEFINITIONS
+) {
+	return definitions.map((rubber) => ({
+		id: crypto.randomUUID(),
+		tieId,
+		code: rubber.code,
+		discipline: rubber.discipline,
+		displayOrder: rubber.displayOrder,
+		scoringRuleId,
+		status: 'not_ready' as const,
+		createdAt: now,
+		updatedAt: now
+	}));
+}
+
 export async function createTieWithRubbers(params: {
 	tieCode: string;
 	phase: TiePhase;
@@ -67,19 +86,7 @@ export async function createTieWithRubbers(params: {
 			createdAt: now,
 			updatedAt: now
 		}),
-		db.insert(rubbers).values(
-			RUBBER_DEFINITIONS.map((rubber) => ({
-				id: crypto.randomUUID(),
-				tieId,
-				code: rubber.code,
-				discipline: rubber.discipline,
-				displayOrder: rubber.displayOrder,
-				scoringRuleId: params.scoringRuleId,
-				status: 'not_ready' as const,
-				createdAt: now,
-				updatedAt: now
-			}))
-		)
+		db.insert(rubbers).values(rubberInsertValues(tieId, params.scoringRuleId, now))
 	]);
 
 	return tieId;
@@ -91,36 +98,19 @@ export async function ensureRubbersForTie(params: {
 	now?: string;
 }) {
 	const db = getRequestDb();
-	const [{ count: existingCount }] = await db
-		.select({ count: sql<number>`COUNT(*)` })
+	const existing = await db
+		.select({ code: rubbers.code })
 		.from(rubbers)
 		.where(eq(rubbers.tieId, params.tieId));
-	if (existingCount >= RUBBER_DEFINITIONS.length) return;
-
-	const existing = await db
-		.select()
-		.from(rubbers)
-		.where(eq(rubbers.tieId, params.tieId))
-		.orderBy(asc(rubbers.displayOrder));
 
 	const existingCodes = new Set(existing.map((rubber) => rubber.code));
-	const now = params.now ?? new Date().toISOString();
 	const missing = RUBBER_DEFINITIONS.filter((rubber) => !existingCodes.has(rubber.code));
 	if (missing.length === 0) return;
 
-	await db.insert(rubbers).values(
-		missing.map((rubber) => ({
-			id: crypto.randomUUID(),
-			tieId: params.tieId,
-			code: rubber.code,
-			discipline: rubber.discipline,
-			displayOrder: rubber.displayOrder,
-			scoringRuleId: params.scoringRuleId,
-			status: 'not_ready' as const,
-			createdAt: now,
-			updatedAt: now
-		}))
-	);
+	const now = params.now ?? new Date().toISOString();
+	await db
+		.insert(rubbers)
+		.values(rubberInsertValues(params.tieId, params.scoringRuleId, now, missing));
 }
 
 export async function generateGroupRoundRobinTies(params: {
@@ -152,57 +142,39 @@ export async function generateGroupRoundRobinTies(params: {
 
 	const existingPairs = new Set(existingTies.map((t) => [t.teamAId, t.teamBId].sort().join('|')));
 
-	const tieInserts: unknown[] = [];
-	const rubberInserts: unknown[] = [];
+	type DbStatement = Parameters<typeof db.batch>[0][number];
+	const tieInserts: DbStatement[] = [];
+	const rubberInserts: DbStatement[] = [];
 
-	for (let i = 0; i < groupTeams.length; i += 1) {
-		for (let j = i + 1; j < groupTeams.length; j += 1) {
-			const teamA = groupTeams[i];
-			const teamB = groupTeams[j];
-			if (existingPairs.has([teamA.id, teamB.id].sort().join('|'))) continue;
+	for (const [teamA, teamB] of generateRoundRobinPairs(groupTeams)) {
+		if (existingPairs.has([teamA.id, teamB.id].sort().join('|'))) continue;
 
-			const tieId = crypto.randomUUID();
-			tieInserts.push(
-				db.insert(ties).values({
-					id: tieId,
-					tieCode: `${params.tieCodePrefix}-${nextNo}`,
-					phase: groupPhaseFor(params.groupCode),
-					groupCode: params.groupCode,
-					roundLabel: `${params.groupCode}リーグ`,
-					teamAId: teamA.id,
-					teamBId: teamB.id,
-					status: 'lineup_pending',
-					displayOrder: nextNo,
-					lineupDueAt,
-					lineupDuePolicy: 'ten_minutes_before',
-					createdAt: now,
-					updatedAt: now
-				})
-			);
-			rubberInserts.push(
-				db.insert(rubbers).values(
-					RUBBER_DEFINITIONS.map((rubber) => ({
-						id: crypto.randomUUID(),
-						tieId,
-						code: rubber.code,
-						discipline: rubber.discipline,
-						displayOrder: rubber.displayOrder,
-						scoringRuleId: params.scoringRuleId,
-						status: 'not_ready' as const,
-						createdAt: now,
-						updatedAt: now
-					}))
-				)
-			);
-			nextNo += 1;
-		}
+		const tieId = crypto.randomUUID();
+		tieInserts.push(
+			db.insert(ties).values({
+				id: tieId,
+				tieCode: `${params.tieCodePrefix}-${nextNo}`,
+				phase: groupPhaseFor(params.groupCode),
+				groupCode: params.groupCode,
+				roundLabel: `${params.groupCode}リーグ`,
+				teamAId: teamA.id,
+				teamBId: teamB.id,
+				status: 'lineup_pending',
+				displayOrder: nextNo,
+				lineupDueAt,
+				lineupDuePolicy: 'ten_minutes_before',
+				createdAt: now,
+				updatedAt: now
+			})
+		);
+		rubberInserts.push(
+			db.insert(rubbers).values(rubberInsertValues(tieId, params.scoringRuleId, now))
+		);
+		nextNo += 1;
 	}
 
 	if (tieInserts.length > 0) {
-		await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)([
-			...tieInserts,
-			...rubberInserts
-		]);
+		await db.batch([...tieInserts, ...rubberInserts] as [DbStatement, ...DbStatement[]]);
 	}
 
 	return tieInserts.length;

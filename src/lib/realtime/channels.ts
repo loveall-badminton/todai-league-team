@@ -110,12 +110,14 @@ export function isLiveUpdatedMessage(message: LiveMessage): message is LiveUpdat
 	return message.type === 'updated';
 }
 
-export function filterSubscribedTopics(
+export function filterSubscribedTopics<TTopic extends LiveTopic>(
 	messageTopics: readonly LiveTopic[],
-	subscribedTopics: readonly LiveTopic[]
-): LiveTopic[] {
-	if (subscribedTopics.length === 0) return [...messageTopics];
-	return messageTopics.filter((topic) => subscribedTopics.includes(topic));
+	subscribedTopics: readonly TTopic[]
+): TTopic[] {
+	if (subscribedTopics.length === 0) return [...messageTopics] as TTopic[];
+	return messageTopics.filter((topic): topic is TTopic =>
+		(subscribedTopics as readonly LiveTopic[]).includes(topic)
+	);
 }
 
 export function hasScoreUpdate(

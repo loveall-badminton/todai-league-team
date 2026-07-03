@@ -17,6 +17,9 @@ import {
 	ties
 } from '$lib/server/db/schema';
 import { MatchStateSchema } from '$lib/domain/schemas';
+import { isTerminalRubberStatus } from '$lib/domain/matchStatus';
+import { calculateTieResult, rubberStatusFromMatchResultStatus } from '$lib/domain/tieProgress';
+import { applyMatchCancellation } from '$lib/domain/scoring';
 import * as v from 'valibot';
 import {
 	INTERNAL_TOURNAMENT_ID,
@@ -24,57 +27,6 @@ import {
 	scoringConfigFromRule
 } from './tokyoLeagueSetupService';
 import { buildRevealLineupsStatements } from './lineupService';
-
-const terminalRubberStatuses = new Set(['finished', 'confirmed', 'skipped', 'cancelled']);
-const matchResultStatuses = new Set(['finished', 'confirmed', 'forfeited', 'retired']);
-type TieStatus = typeof ties.$inferSelect.status;
-
-export type TieResultInput = {
-	teamAId: string | null;
-	teamBId: string | null;
-	status: TieStatus;
-};
-
-export type RubberResultInput = {
-	winnerSide: 'A' | 'B' | null;
-	status: string;
-};
-
-export function calculateTieResult(tie: TieResultInput, rubberRows: RubberResultInput[]) {
-	const teamScoreA = rubberRows.filter((rubber) => rubber.winnerSide === 'A').length;
-	const teamScoreB = rubberRows.filter((rubber) => rubber.winnerSide === 'B').length;
-	const winnerTeamId = teamScoreA >= 3 ? tie.teamAId : teamScoreB >= 3 ? tie.teamBId : null;
-	const allDone =
-		rubberRows.length === 5 &&
-		rubberRows.every((rubber) => terminalRubberStatuses.has(rubber.status));
-	const hasActiveRubber = rubberRows.some((rubber) => rubber.status === 'playing');
-	// 3勝到達で勝敗自体は決するが、残りのラバーを消化するかは任意なので、
-	// 「進行中のラバーが無い」ことも finished 扱いの条件に含める。
-	const decided = allDone || (winnerTeamId !== null && !hasActiveRubber);
-	const status: TieStatus =
-		tie.status === 'confirmed'
-			? tie.status
-			: hasActiveRubber
-				? 'playing'
-				: decided
-					? 'finished'
-					: tie.status;
-	return {
-		teamScoreA,
-		teamScoreB,
-		winnerTeamId,
-		status,
-		allDone,
-		decided
-	};
-}
-
-export function rubberStatusFromMatchResultStatus(
-	matchStatus: string
-): 'finished' | 'confirmed' | null {
-	if (!matchResultStatuses.has(matchStatus)) return null;
-	return matchStatus === 'confirmed' ? 'confirmed' : 'finished';
-}
 
 export async function startTie(tieId: string, options: { force?: boolean; now?: string } = {}) {
 	const db = await getRequestDbOrThrow();
@@ -94,7 +46,8 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 	if (!ready && !options.force) throw new Error('両チームのオーダー提出が必要です');
 
 	const allRubbers = await db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
-	const statements: unknown[] = [];
+	type DbStatement = Parameters<typeof db.batch>[0][number];
+	const statements: DbStatement[] = [];
 	await ensureInternalTournament(now);
 
 	if (!tie.lineupsRevealedAt) {
@@ -179,7 +132,7 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 		db.update(rubbers).set({ status: 'scheduled', updatedAt: now }).where(eq(rubbers.tieId, tieId))
 	);
 
-	await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+	await db.batch(statements as [DbStatement, ...DbStatement[]]);
 }
 
 function buildMatchPlayersForRubber(params: {
@@ -345,9 +298,7 @@ export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
 		throw new Error('3勝到達後にのみ打ち切りできます');
 	}
 
-	const remainingRubbers = rubberRows.filter(
-		(rubber) => !terminalRubberStatuses.has(rubber.status)
-	);
+	const remainingRubbers = rubberRows.filter((rubber) => !isTerminalRubberStatus(rubber.status));
 	if (remainingRubbers.length === 0) {
 		throw new Error('打ち切りできる残りの種目がありません');
 	}
@@ -381,7 +332,7 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');
-	if (terminalRubberStatuses.has(rubber.status)) {
+	if (isTerminalRubberStatus(rubber.status)) {
 		throw new Error('すでに終了している種目は打ち切りできません');
 	}
 
@@ -392,11 +343,10 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 	let stateJson = '{}';
 
 	if (snapshot) {
-		const state = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
-		state.status = 'cancelled';
-		state.lastSeqNo += 1;
-		state.updatedAt = now;
-		state.service = null;
+		const state = applyMatchCancellation(
+			v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson)),
+			now
+		);
 		nextSeqNo = state.lastSeqNo;
 		stateJson = JSON.stringify(state);
 	}

@@ -10,7 +10,7 @@ import {
 	teams
 } from '$lib/server/db/schema';
 import { buildCreateMatchWithPlayersStatementsForId } from '$lib/server/repositories/matchRepository';
-import { rubberStatusFromMatchResultStatus } from '$lib/server/services/tieOperationService';
+import { rubberStatusFromMatchResultStatus } from '$lib/domain/tieProgress';
 import {
 	INTERNAL_TOURNAMENT_ID,
 	ensureDefaultSettings,

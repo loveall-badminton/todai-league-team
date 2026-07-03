@@ -2,17 +2,10 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveStandings from '../../LiveStandings.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getStandingsPageData } from './standings.remote';
 
 	const standingsQuery = getStandingsPageData();
 	let standings = $derived({ current: standingsQuery.current ?? null });
-
-	const refreshTopics = createRealtimeQueryFlow({
-		refresh: () => standingsQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => update.topics.includes('standings')
-	});
 </script>
 
 <svelte:head>
@@ -21,8 +14,9 @@
 
 {#snippet headerActions()}
 	<RealtimeSync
-		topics={['standings'] as const}
-		onUpdate={(u) => void refreshTopics(u)}
+		topics={['standings']}
+		refresh={() => standingsQuery.refresh()}
+		shouldRefresh={(update) => update.topics.includes('standings')}
 		pollInterval={30000}
 	/>
 {/snippet}

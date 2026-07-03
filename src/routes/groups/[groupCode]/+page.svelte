@@ -11,8 +11,7 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { GripVertical } from '@lucide/svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import { shouldRefreshGroupPage, type RealtimeUpdate } from '$lib/realtime/updates';
+	import { shouldRefreshGroupPage } from '$lib/realtime/updates';
 	import type { GroupStanding } from '$lib/server/services/standingService';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import { toast } from 'svelte-sonner';
@@ -74,16 +73,6 @@
 			toast.error(e instanceof Error ? e.message : '失敗');
 		}
 	}
-
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => groupPageQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) =>
-			shouldRefreshGroupPage(
-				update,
-				groupStatic.groupCode,
-				groupPage.ties.map((tie: TieSummary) => tie.id)
-			)
-	});
 </script>
 
 <svelte:head>
@@ -94,7 +83,13 @@
 	<div class="flex items-center gap-3">
 		<RealtimeSync
 			topics={['standings', 'schedule']}
-			onUpdate={(u) => void handleRealtimeUpdate(u)}
+			refresh={() => groupPageQuery.refresh()}
+			shouldRefresh={(update) =>
+				shouldRefreshGroupPage(
+					update,
+					groupStatic.groupCode,
+					groupPage.ties.map((tie: TieSummary) => tie.id)
+				)}
 		/>
 		<AppButton onclick={() => run(() => generateRoundRobin())}>総当たり生成</AppButton>
 	</div>

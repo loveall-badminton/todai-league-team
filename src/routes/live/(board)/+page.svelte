@@ -3,8 +3,6 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveSchedule from '../LiveSchedule.svelte';
 	import LiveFinalsBoard from '../LiveFinalsBoard.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getSchedulePageData } from './live.remote';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -27,11 +25,6 @@
 		'ranking_tiebreaker'
 	]);
 	let hasFinals = $derived((scheduleQuery.current ?? []).some((t) => FINALS_PHASES.has(t.phase)));
-
-	const refreshTopics = createRealtimeQueryFlow({
-		refresh: () => scheduleQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => update.topics.includes('schedule')
-	});
 </script>
 
 <svelte:head>
@@ -56,8 +49,9 @@
 			{playingCount > 0 ? `${playingCount}試合進行中` : '進行中の試合なし'}
 		</span>
 		<RealtimeSync
-			topics={['schedule'] as const}
-			onUpdate={(u) => void refreshTopics(u)}
+			topics={['schedule']}
+			refresh={() => scheduleQuery.refresh()}
+			shouldRefresh={(update) => update.topics.includes('schedule')}
 			pollInterval={15000}
 		/>
 	</div>

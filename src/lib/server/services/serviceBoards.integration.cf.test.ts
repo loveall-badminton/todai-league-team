@@ -11,7 +11,7 @@ import {
 	matches,
 	rankingTiebreakers,
 	rubbers,
-	scoreEvents,
+	matchSnapshots,
 	teamPlayers,
 	teams,
 	ties,
@@ -30,7 +30,7 @@ vi.mock('$lib/server/db/request', () => ({
 }));
 
 import { generateFinalAndThirdPlace, generateSemifinalsAndFifthPlace } from './finalsService';
-import { getActiveTieBoard, getFinalsTieBoard, getPublicRubbers } from './liveBoardService';
+import { getPublicRubbers } from './liveBoardService';
 import { createRankingTiebreaker, syncRankingTiebreakerResult } from './rankingTiebreakerService';
 import { createTieWithRubbers } from './tieService';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
@@ -250,7 +250,7 @@ describe('finalsService DB generation', () => {
 });
 
 describe('liveBoardService DB boards', () => {
-	test('reads public rubbers with revealed lineup names and reconstructed legacy final score', async () => {
+	test('reads public rubbers with revealed lineup names and per-game scores from the snapshot', async () => {
 		await seedTeams();
 		await cfTestDb.db.insert(tournaments).values({
 			id: 'tokyo-league-default',
@@ -337,24 +337,47 @@ describe('liveBoardService DB boards', () => {
 				updatedAt: now
 			}
 		]);
-		await cfTestDb.db.insert(scoreEvents).values({
-			id: 'score-legacy',
+		await cfTestDb.db.insert(matchSnapshots).values({
 			matchId: 'match-live',
 			seqNo: 10,
-			eventType: 'rally_won',
-			side: 'A',
-			gameNo: 1,
-			scoreABefore: 20,
-			scoreBBefore: 19,
-			scoreAAfter: 0,
-			scoreBAfter: 0,
-			payloadJson: '{}',
-			idempotencyKey: 'legacy',
-			createdAt: now
+			stateJson: JSON.stringify({
+				schemaVersion: 1,
+				matchId: 'match-live',
+				tournamentId: 'tokyo-league-default',
+				courtId: null,
+				discipline: 'WD',
+				status: 'finished',
+				scoring: {
+					maxGames: 3,
+					gamesToWin: 2,
+					pointsToWin: 21,
+					winBy: 2,
+					maxPoints: 30,
+					midGameIntervalPoint: 11
+				},
+				currentGameNo: 1,
+				games: [
+					{
+						gameNo: 1,
+						score: { A: 21, B: 19 },
+						winnerSide: 'A',
+						midGameIntervalTaken: true,
+						changeEndsRequired: false,
+						changeEndsCompleted: false
+					}
+				],
+				gamesWon: { A: 1, B: 0 },
+				winnerSide: 'A',
+				terminalReason: 'normal',
+				service: null,
+				lastSeqNo: 10,
+				createdAt: now,
+				updatedAt: now
+			}),
+			updatedAt: now
 		});
 
 		const rubbersForTie = await getPublicRubbers('tie-live');
-		const activeBoard = await getActiveTieBoard();
 
 		expect(rubbersForTie[0]).toMatchObject({
 			sideAPlayers: 'A1 P1 / A1 P2',
@@ -362,38 +385,10 @@ describe('liveBoardService DB boards', () => {
 			status: 'finished',
 			gameDetails: [{ gameNo: 1, scoreA: 21, scoreB: 19 }]
 		});
-		expect(activeBoard.ties[0]).toMatchObject({ id: 'tie-live', teamAName: 'A1', teamBName: 'B2' });
-		expect(activeBoard.rubbersByTieId['tie-live'][0].sideAPlayers).toBe('A1 P1 / A1 P2');
-	});
-
-	test('returns empty boards when no active or finals ties exist, then maps finals team names', async () => {
-		await expect(getPublicRubbers('missing')).resolves.toEqual([]);
-		await expect(getActiveTieBoard()).resolves.toEqual({ ties: [], rubbersByTieId: {} });
-		await expect(getFinalsTieBoard()).resolves.toEqual({ finalsBoard: [] });
-
-		await seedTeams();
-		await cfTestDb.db.insert(ties).values({
-			id: 'final-board',
-			tieCode: 'x-5',
-			phase: 'final',
-			roundLabel: '決勝',
-			teamAId: 'a1',
-			teamBId: 'b1',
-			status: 'scheduled',
-			displayOrder: 5,
-			createdAt: now,
-			updatedAt: now
-		});
-
-		const finalsBoard = await getFinalsTieBoard();
-		expect(finalsBoard.finalsBoard[0]).toMatchObject({
-			tieCode: 'x-5',
-			teamAName: 'A1',
-			teamBName: 'B1'
-		});
 	});
 
 	test('reads unrevealed public rubbers without lineup or match data', async () => {
+		await expect(getPublicRubbers('missing')).resolves.toEqual([]);
 		await seedTeams();
 		await cfTestDb.db.insert(ties).values({
 			id: 'tie-unrevealed',

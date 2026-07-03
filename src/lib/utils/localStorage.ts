@@ -7,7 +7,12 @@ export function loadJsonFromLocalStorage<const TSchema extends v.GenericSchema>(
 ): v.InferOutput<TSchema> | null {
 	if (!browser) return null;
 
-	const raw = localStorage.getItem(key);
+	let raw: string | null;
+	try {
+		raw = localStorage.getItem(key);
+	} catch {
+		return null;
+	}
 	if (!raw) return null;
 
 	try {
@@ -28,11 +33,20 @@ export function saveJsonToLocalStorage<const TSchema extends v.GenericSchema>(
 	const result = v.safeParse(schema, value);
 	if (!result.success) return null;
 
-	localStorage.setItem(key, JSON.stringify(result.output));
+	// iOS Safari のプライベートブラウズ等では setItem が例外を投げる
+	try {
+		localStorage.setItem(key, JSON.stringify(result.output));
+	} catch {
+		return null;
+	}
 	return result.output;
 }
 
 export function removeLocalStorageItem(key: string) {
 	if (!browser) return;
-	localStorage.removeItem(key);
+	try {
+		localStorage.removeItem(key);
+	} catch {
+		// ストレージが利用できない環境では何もしない
+	}
 }

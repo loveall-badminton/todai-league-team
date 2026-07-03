@@ -5,7 +5,7 @@
 	import LiveTieDetail from './LiveTieDetail.svelte';
 	import { hasScoreUpdate } from '$lib/realtime/channels';
 	import type { MatchState } from '$lib/domain/types';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import { isConfirmableMatchStatus, rubberStatusForMatchStatus } from '$lib/domain/matchStatus';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getTieDetail, getTieProgression } from './tie-detail.remote';
 	import type { TiePageData } from '$lib/server/services/liveBoardService';
@@ -20,7 +20,18 @@
 	const tieDetailQuery = getTieDetail(tieId);
 	let tieDetailData = $derived(await tieDetailQuery);
 
-	let rubbers = $derived<TiePageData['rubbers']>(tieDetailData?.rubbers ?? []);
+	// remote query の値は $state.raw で保持されており、直接ミューテーションしても
+	// 再描画されない。リアルタイム更新は $state のパッチとして持ち、
+	// query 由来のベースにマージした $derived を表示に使う。
+	type RubberSummary = TiePageData['rubbers'][number];
+	let scorePatches = $state<Record<string, Partial<RubberSummary>>>({});
+	let rubbers = $derived(
+		(tieDetailData?.rubbers ?? []).map((rubber) =>
+			rubber.matchId && scorePatches[rubber.matchId]
+				? { ...rubber, ...scorePatches[rubber.matchId] }
+				: rubber
+		)
+	);
 
 	let progression = $state<{ current: ProgressionRealtimeState | null }>({ current: null });
 	let expandedRubberId = $state<string | null>(null);
@@ -55,47 +66,70 @@
 		return 'applied';
 	}
 
-	function applyScoreToRubber(rubber: TiePageData['rubbers'][number], state: MatchState) {
+	function buildScorePatch(state: MatchState): Partial<RubberSummary> {
 		const currentGame = state.games.find((g) => g.gameNo === state.currentGameNo);
-		rubber.gamesScore = `${state.gamesWon.A}-${state.gamesWon.B}`;
-		rubber.pointScore = currentGame ? `${currentGame.score.A}-${currentGame.score.B}` : null;
-		rubber.gameDetails = state.games.map((g) => ({
-			gameNo: g.gameNo,
-			scoreA: g.score.A,
-			scoreB: g.score.B,
-			winnerSide: g.winnerSide
-		}));
-		rubber.matchStatus = state.status;
-		rubber.winnerSide = state.winnerSide;
-		if (state.status === 'confirmed') rubber.status = 'confirmed';
-		else if (['finished', 'forfeited', 'retired'].includes(state.status))
-			rubber.status = 'finished';
-		else if (['playing', 'interval', 'suspended'].includes(state.status)) rubber.status = 'playing';
-		else if (state.status === 'cancelled') rubber.status = 'cancelled';
+		const patch: Partial<RubberSummary> = {
+			gamesScore: `${state.gamesWon.A}-${state.gamesWon.B}`,
+			pointScore: currentGame ? `${currentGame.score.A}-${currentGame.score.B}` : null,
+			gameDetails: state.games.map((g) => ({
+				gameNo: g.gameNo,
+				scoreA: g.score.A,
+				scoreB: g.score.B,
+				winnerSide: g.winnerSide
+			})),
+			matchStatus: state.status,
+			winnerSide: state.winnerSide
+		};
+		const rubberStatus = rubberStatusForMatchStatus(state.status);
+		// 未開始(scheduled)への巻き戻しはこの画面では扱わないため上書きしない
+		if (rubberStatus && rubberStatus !== 'scheduled') patch.status = rubberStatus;
+		return patch;
 	}
 
-	const refreshTopics = createRealtimeQueryFlow({
-		refresh: () => {
+	// tie-detail のエッジキャッシュ(TTL 3秒)を跨いでから取り直す。
+	// 即時 refresh だと更新前のキャッシュを引いてローカル適用済みの表示を巻き戻すことがある。
+	const RECONCILE_DELAY_MS = 4000;
+	let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function scheduleReconcileRefresh() {
+		if (reconcileTimer !== null) return;
+		reconcileTimer = setTimeout(() => {
+			reconcileTimer = null;
 			tieDetailQuery.refresh();
-			if (expandedRubberId !== null) loadProgression();
-		},
-		applyUpdate: (update: RealtimeUpdate) => {
-			if (!update.data || !hasScoreUpdate(update.data)) {
-				if (update.topics.includes('schedule') && update.data?.schedule?.tieIds?.includes(tieId)) {
-					return 'refresh';
-				}
-				return 'ignore';
-			}
-			const state = update.data.score.state;
-			const rubber = rubbers.find((r) => r.matchId === state.matchId);
-			if (!rubber) return 'ignore';
-			applyScoreToRubber(rubber, state);
-			const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
-			if (progResult === 'refresh') return 'refresh';
-			if (['finished', 'forfeited', 'retired'].includes(state.status)) return 'refresh';
-			return 'applied';
-		}
+			if (expandedRubberId !== null) void loadProgression();
+		}, RECONCILE_DELAY_MS);
+	}
+
+	$effect(() => {
+		return () => {
+			if (reconcileTimer !== null) clearTimeout(reconcileTimer);
+		};
 	});
+
+	function refreshAll() {
+		tieDetailQuery.refresh();
+		if (expandedRubberId !== null) void loadProgression();
+	}
+
+	function applyUpdate(update: RealtimeUpdate): 'applied' | 'refresh' | 'ignore' {
+		if (!update.data || !hasScoreUpdate(update.data)) {
+			if (update.topics.includes('schedule') && update.data?.schedule?.tieIds?.includes(tieId)) {
+				return 'refresh';
+			}
+			return 'ignore';
+		}
+		const state = update.data.score.state;
+		const rubber = rubbers.find((r) => r.matchId === state.matchId);
+		if (!rubber) return 'ignore';
+		scorePatches[state.matchId] = buildScorePatch(state);
+		const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
+		if (progResult === 'refresh') return 'refresh';
+		if (isConfirmableMatchStatus(state.status)) {
+			// スコアはローカル適用済み。ヘッダーの対戦スコア等はキャッシュ失効後に取り直す
+			scheduleReconcileRefresh();
+		}
+		return 'applied';
+	}
 
 	let pageTitle = $derived(
 		tieDetailData
@@ -111,7 +145,8 @@
 {#snippet headerActions()}
 	<RealtimeSync
 		topics={['score', 'schedule'] as const}
-		onUpdate={(u) => void refreshTopics(u)}
+		refresh={refreshAll}
+		{applyUpdate}
 		pollInterval={8000}
 	/>
 {/snippet}

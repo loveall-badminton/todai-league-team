@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { RealtimeUpdate } from './updates';
 import {
-	shouldRefreshDashboardPlaying,
-	shouldRefreshDashboardRecent,
+	shouldRefreshOnScheduleOrTerminalScore,
 	shouldRefreshFinalsPage,
 	shouldRefreshGroupPage,
 	shouldRefreshTieHeaderData,
@@ -426,17 +425,14 @@ describe('realtime consumer routing', () => {
 				}
 			}
 		});
-		expect(shouldRefreshDashboardPlaying(update)).toBe(false);
-		expect(shouldRefreshDashboardRecent(update)).toBe(false);
+		expect(shouldRefreshOnScheduleOrTerminalScore(update)).toBe(false);
 	});
 
 	test('dashboard subqueries refresh for poll and schedule updates', () => {
 		const pollUpdate = liveUpdate({ source: 'poll' });
-		expect(shouldRefreshDashboardPlaying(pollUpdate)).toBe(true);
-		expect(shouldRefreshDashboardRecent(pollUpdate)).toBe(true);
+		expect(shouldRefreshOnScheduleOrTerminalScore(pollUpdate)).toBe(true);
 
 		const scheduleUpdate = liveUpdate({ topics: ['schedule'] });
-		expect(shouldRefreshDashboardPlaying(scheduleUpdate)).toBe(true);
-		expect(shouldRefreshDashboardRecent(scheduleUpdate)).toBe(true);
+		expect(shouldRefreshOnScheduleOrTerminalScore(scheduleUpdate)).toBe(true);
 	});
 });

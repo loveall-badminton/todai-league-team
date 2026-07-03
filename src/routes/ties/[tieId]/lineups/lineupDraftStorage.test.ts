@@ -64,6 +64,22 @@ describe('lineupDraftStorage', () => {
 		expect(loadLocalLineupDraft(tieId, teamId)).toBeNull();
 	});
 
+	test('saves drafts with empty (null) slots by normalizing them to empty strings', () => {
+		const tieId = 'tie-3';
+		const teamId = 'team-c';
+		const draft = RUBBER_DEFINITIONS.map((rubber, index) => ({
+			rubberCode: rubber.code,
+			player1Id: index === 0 ? null : `${rubber.code}-p1`,
+			player2Id: null
+		}));
+
+		saveLocalLineupDraft(tieId, teamId, draft);
+
+		const loaded = loadLocalLineupDraft(tieId, teamId);
+		expect(loaded?.[0]).toEqual({ rubberCode: 'WD1', player1Id: '', player2Id: '' });
+		expect(loaded?.[1]).toEqual({ rubberCode: 'XD1', player1Id: 'XD1-p1', player2Id: '' });
+	});
+
 	test('returns null when no draft is stored', () => {
 		const tieId = 'tie-2';
 		const teamId = 'team-b';

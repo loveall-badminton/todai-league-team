@@ -1,23 +1,31 @@
 import { Server, type Connection } from 'partyserver';
 import { liveMessageSchema, type LiveMessage } from '$lib/realtime/channels';
-import { LivePageDataSchema } from '$lib/server/cacheSchemas';
-import type { LivePageData } from '$lib/server/services/livePageService';
 import * as v from 'valibot';
 
 const ALLOWED_INTERNAL_HOST = 'live-board.internal';
-const LIVE_PAGE_CACHE_KEY = 'cached-live-page-data';
-const CACHE_TTL_MS = 30_000;
-const LivePageCachePutSchema = v.object({ data: v.unknown() });
 
-type CachedLivePageEntry = { data: LivePageData; expiresAt: number };
+// 汎用エントリキャッシュ(グローバル L2)。エッジキャッシュ(PoP ローカル)のミス時に
+// ここを参照することで、D1 への再計算を「PoP 数 × TTL」から「失効イベントごとに1回」に抑える。
+// broadcast(スコア更新等)の topics と交差するエントリは即時失効する。
+const CACHE_ENTRY_PREFIX = 'cache-entry:';
+const CACHE_EPOCH_KEY = 'cache-entry-epoch';
+const CacheEntryPutSchema = v.object({
+	key: v.pipe(v.string(), v.nonEmpty()),
+	data: v.unknown(),
+	ttlMs: v.pipe(v.number(), v.minValue(1_000), v.maxValue(300_000)),
+	topics: v.array(v.string()),
+	// GET 時点の epoch。その後に失効が走っていたら PUT を拒否し、古い計算結果の混入を防ぐ
+	epoch: v.optional(v.number())
+});
+
+type GenericCacheEntry = { data: unknown; expiresAt: number; topics: string[] };
 
 export class LiveBoard extends Server<Env> {
 	static options = { hibernate: true };
 
-	private cachedData: CachedLivePageEntry | null = null;
-	private isFetching = false;
-	private waiters: Array<(value: CachedLivePageEntry | null) => void> = [];
-	private fetchTimeout: ReturnType<typeof setTimeout> | null = null;
+	// hibernation でメモリが消えても storage から復元できるホットキャッシュ
+	private entryCache = new Map<string, GenericCacheEntry>();
+	private entryEpoch: number | null = null;
 
 	async onConnect(connection: Connection) {
 		const hello: LiveMessage = { type: 'hello', at: new Date().toISOString() };
@@ -31,16 +39,9 @@ export class LiveBoard extends Server<Env> {
 			return Response.json({ ok: false, error: 'forbidden' }, { status: 403 });
 		}
 
-		if (request.method === 'GET' && url.pathname === '/cache/live-page') {
-			return this.handleCacheGet();
-		}
-
-		if (request.method === 'PUT' && url.pathname === '/cache/live-page') {
-			return this.handleCachePut(request);
-		}
-
-		if (request.method === 'POST' && url.pathname === '/cache/invalidate') {
-			return this.handleCacheInvalidate();
+		if (url.pathname === '/cache/entry') {
+			if (request.method === 'GET') return this.handleEntryGet(url);
+			if (request.method === 'PUT') return this.handleEntryPut(request);
 		}
 
 		if (request.method === 'POST') {
@@ -54,139 +55,95 @@ export class LiveBoard extends Server<Env> {
 			if (!parsed.success) {
 				return Response.json({ ok: false, error: 'invalid message' }, { status: 400 });
 			}
+			// 更新ブロードキャストと同時に、関係するキャッシュエントリをグローバルに失効させる。
+			// クライアントはこのメッセージを受けて即再取得するため、broadcast 前に完了させる。
+			if (parsed.output.type === 'updated') {
+				await this.invalidateEntriesByTopics(parsed.output.topics);
+			}
 			this.broadcast(JSON.stringify(parsed.output));
 			return Response.json({ ok: true });
 		}
 		return new Response('Not found', { status: 404 });
 	}
 
-	private async handleCacheGet(): Promise<Response> {
-		const now = Date.now();
-
-		// 1. If valid cache in memory, return it
-		if (this.cachedData && this.cachedData.expiresAt > now) {
-			return Response.json({ ok: true, data: this.cachedData.data, from: 'do-mem' });
+	private async getEpoch(): Promise<number> {
+		if (this.entryEpoch === null) {
+			this.entryEpoch = (await this.ctx.storage.get<number>(CACHE_EPOCH_KEY)) ?? 0;
 		}
-
-		// 2. If valid/stale cache exists in storage, read it once to populate memory
-		if (!this.cachedData) {
-			const cached = await this.ctx.storage.get<{
-				data: LivePageData;
-				expiresAt: number;
-			}>(LIVE_PAGE_CACHE_KEY);
-			if (cached) {
-				this.cachedData = cached;
-			}
-		}
-
-		// 3. If cache is valid (now populated), return it
-		if (this.cachedData && this.cachedData.expiresAt > now) {
-			return Response.json({ ok: true, data: this.cachedData.data, from: 'do-storage' });
-		}
-
-		// 4. If cache exists but is stale, we can return it but tell the caller to refresh in background
-		if (this.cachedData) {
-			if (this.isFetching) {
-				return Response.json({ ok: true, data: this.cachedData.data, from: 'do-stale-fetching' });
-			} else {
-				this.startFetchTimer();
-				return Response.json({
-					ok: true,
-					data: this.cachedData.data,
-					from: 'do-stale-needs-refresh',
-					needsRefresh: true
-				});
-			}
-		}
-
-		// 5. If no cache exists at all (empty cache)
-		if (this.isFetching) {
-			// Already fetching, wait for the result
-			const newCache = await new Promise<CachedLivePageEntry | null>((resolve) => {
-				this.waiters.push(resolve);
-			});
-			if (newCache) {
-				return Response.json({ ok: true, data: newCache.data, from: 'do-waited' });
-			} else {
-				// Waiter failed/timed out, try fallback
-				return Response.json({ ok: false, error: 'fetch timeout' }, { status: 504 });
-			}
-		} else {
-			// We need to fetch. Mark as fetching and tell the caller to query D1.
-			this.startFetchTimer();
-			return Response.json({ ok: false, status: 'fetch-needed' }, { status: 404 });
-		}
+		return this.entryEpoch;
 	}
 
-	private async handleCachePut(request: Request): Promise<Response> {
+	private async handleEntryGet(url: URL): Promise<Response> {
+		const key = url.searchParams.get('key');
+		if (!key) return Response.json({ ok: false, error: 'key required' }, { status: 400 });
+
+		const now = Date.now();
+		const epoch = await this.getEpoch();
+		let entry = this.entryCache.get(key) ?? null;
+		if (!entry) {
+			entry = (await this.ctx.storage.get<GenericCacheEntry>(CACHE_ENTRY_PREFIX + key)) ?? null;
+			if (entry) this.entryCache.set(key, entry);
+		}
+
+		if (!entry || entry.expiresAt <= now) {
+			if (entry) {
+				this.entryCache.delete(key);
+				void this.ctx.storage.delete(CACHE_ENTRY_PREFIX + key).catch(() => {});
+			}
+			return Response.json({ ok: false, epoch }, { status: 404 });
+		}
+
+		return Response.json({ ok: true, data: entry.data, epoch });
+	}
+
+	private async handleEntryPut(request: Request): Promise<Response> {
+		let raw: unknown;
 		try {
-			const raw = await request.json();
-			const parsed = v.safeParse(LivePageCachePutSchema, raw);
-			if (!parsed.success) {
-				return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
-			}
-			const livePageDataResult = v.safeParse(LivePageDataSchema, parsed.output.data);
-			if (!livePageDataResult.success) {
-				return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
-			}
-			const expiresAt = Date.now() + CACHE_TTL_MS * (0.8 + Math.random() * 0.4);
-			const entry: CachedLivePageEntry = { data: livePageDataResult.output, expiresAt };
-			this.cachedData = entry; // save in memory
-			void this.ctx.storage.put(LIVE_PAGE_CACHE_KEY, entry).catch(() => {}); // save in storage asynchronously
-
-			// Clear fetching flag and resolve all waiters
-			this.clearFetchTimer();
-			const currentWaiters = this.waiters;
-			this.waiters = [];
-			for (const resolve of currentWaiters) {
-				resolve(entry);
-			}
-
-			return Response.json({ ok: true });
+			raw = await request.json();
 		} catch {
+			return Response.json({ ok: false, error: 'invalid json' }, { status: 400 });
+		}
+		const parsed = v.safeParse(CacheEntryPutSchema, raw);
+		if (!parsed.success) {
 			return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
 		}
-	}
 
-	private async handleCacheInvalidate(): Promise<Response> {
-		if (this.cachedData) {
-			this.cachedData.expiresAt = 0; // mark as stale
-			void this.ctx.storage.put(LIVE_PAGE_CACHE_KEY, this.cachedData).catch(() => {});
-		} else {
-			void this.ctx.storage.delete(LIVE_PAGE_CACHE_KEY).catch(() => {});
+		if (parsed.output.epoch !== undefined && parsed.output.epoch !== (await this.getEpoch())) {
+			// 計算開始後に失効が走った(=計算結果が古い可能性がある)ため受け入れない
+			return Response.json({ ok: false, error: 'stale epoch' }, { status: 409 });
 		}
-		// If cache is invalidated, we also clear any active fetch timer and waiters
-		this.clearFetchTimer();
-		const currentWaiters = this.waiters;
-		this.waiters = [];
-		for (const resolve of currentWaiters) {
-			resolve(this.cachedData);
-		}
+
+		const entry: GenericCacheEntry = {
+			data: parsed.output.data,
+			expiresAt: Date.now() + parsed.output.ttlMs,
+			topics: parsed.output.topics
+		};
+		this.entryCache.set(parsed.output.key, entry);
+		void this.ctx.storage.put(CACHE_ENTRY_PREFIX + parsed.output.key, entry).catch(() => {});
 		return Response.json({ ok: true });
 	}
 
-	private startFetchTimer() {
-		this.isFetching = true;
-		if (this.fetchTimeout) {
-			clearTimeout(this.fetchTimeout);
-		}
-		this.fetchTimeout = setTimeout(() => {
-			this.isFetching = false;
-			this.fetchTimeout = null;
-			// Notify waiters with null (failed/timed out)
-			const currentWaiters = this.waiters;
-			this.waiters = [];
-			for (const resolve of currentWaiters) {
-				resolve(null);
-			}
-		}, 2000); // 2 seconds timeout
-	}
+	private async invalidateEntriesByTopics(topics: readonly string[]): Promise<void> {
+		if (topics.length === 0) return;
 
-	private clearFetchTimer() {
-		this.isFetching = false;
-		if (this.fetchTimeout) {
-			clearTimeout(this.fetchTimeout);
-			this.fetchTimeout = null;
+		this.entryEpoch = (await this.getEpoch()) + 1;
+		void this.ctx.storage.put(CACHE_EPOCH_KEY, this.entryEpoch).catch(() => {});
+
+		const topicSet = new Set(topics);
+		const matches = (entry: GenericCacheEntry) => entry.topics.some((t) => topicSet.has(t));
+
+		for (const [key, entry] of this.entryCache) {
+			if (matches(entry)) this.entryCache.delete(key);
+		}
+
+		try {
+			const stored = await this.ctx.storage.list<GenericCacheEntry>({
+				prefix: CACHE_ENTRY_PREFIX
+			});
+			const staleKeys = [...stored].filter(([, entry]) => matches(entry)).map(([key]) => key);
+			if (staleKeys.length > 0) await this.ctx.storage.delete(staleKeys);
+		} catch {
+			// 失効は best-effort(エントリ自体の TTL が上限を保証する)
 		}
 	}
 

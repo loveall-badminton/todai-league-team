@@ -2,8 +2,7 @@ import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types
 import { buildRealtimeScorePayload } from '$lib/realtime/matchScorePayload';
 import { getMatchPlayers, getMatchState } from '$lib/server/repositories/matchRepository';
 import { applySerializedMatchAction } from '$lib/server/services/matchActionSerializedService';
-
-const autoConfirmStatuses = new Set(['finished', 'forfeited', 'retired']);
+import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
 
 export type MatchActionRealtimeResult = {
 	input: ScoreEventInput;
@@ -48,7 +47,7 @@ export async function autoConfirmMatchIfComplete(params: {
 	actorName?: string | null;
 	now: string;
 }): Promise<MatchActionRealtimeResult | null> {
-	if (!autoConfirmStatuses.has(params.state.status)) return null;
+	if (!isConfirmableMatchStatus(params.state.status)) return null;
 
 	const input: ScoreEventInput = {
 		type: 'match_confirmed',

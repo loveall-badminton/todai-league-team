@@ -3,7 +3,7 @@ import {
 	MatchActionCoordinatorResponseSchema,
 	MATCH_ACTION_COORDINATOR_URL
 } from './matchActionProtocol';
-import { applyMatchActionWithDb, type ApplyMatchActionParams } from './matchActionService';
+import { applyMatchActionWithDb, type ApplyMatchActionParams } from './matchActionCore';
 import type { ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
 

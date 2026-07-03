@@ -69,9 +69,20 @@ export function saveLocalLineupDraft(
 	tieId: string,
 	teamId: string,
 	items: { rubberCode: string; player1Id: string | null; player2Id: string | null }[]
-) {
-	const validated = v.parse(localLineupDraftSchema, items);
-	saveJsonToLocalStorage(storageKey(tieId, teamId), localLineupDraftSchema, validated);
+): boolean {
+	// 未入力スロットは null で渡ってくるため、スキーマ(string)に合わせて '' に正規化する
+	const normalized = items.map((item) => ({
+		rubberCode: item.rubberCode,
+		player1Id: item.player1Id ?? '',
+		player2Id: item.player2Id ?? ''
+	}));
+	const validated = v.parse(localLineupDraftSchema, normalized);
+	const saved = saveJsonToLocalStorage(
+		storageKey(tieId, teamId),
+		localLineupDraftSchema,
+		validated
+	);
+	return saved !== null;
 }
 
 export function clearLocalLineupDraft(tieId: string, teamId: string) {

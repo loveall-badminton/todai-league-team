@@ -176,59 +176,7 @@ export const StandingsDataSchema = v.object({
 	finalsTies: v.array(FinalsTieSchema)
 });
 
-export const ActiveTieRubberSchema = v.object({
-	id: v.string(),
-	code: RubberCodeSchema,
-	matchId: NullableString,
-	status: RubberStatusSchema,
-	matchStatus: MatchStatusSchema,
-	winnerSide: v.nullable(v.picklist(['A', 'B'])),
-	sideAPlayers: NullableString,
-	sideBPlayers: NullableString,
-	gamesScore: NullableString,
-	pointScore: NullableString,
-	gameDetails: v.array(LiveGameScoreSchema)
-});
-
-export const LivePageDataSchema = v.object({
-	activeTies: v.object({
-		ties: v.array(
-			v.object({
-				id: v.string(),
-				phase: TiePhaseSchema,
-				tieCode: v.string(),
-				venue: VenueSchema,
-				courtBlockCode: NullableString,
-				teamAName: NullableString,
-				teamBName: NullableString,
-				teamScoreA: v.number(),
-				teamScoreB: v.number(),
-				teamAId: NullableString,
-				teamBId: NullableString,
-				status: TieStatusSchema
-			})
-		),
-		rubbersByTieId: v.record(v.string(), v.array(ActiveTieRubberSchema))
-	}),
-	standings: StandingsDataSchema,
-	finalsBoard: v.object({
-		finalsBoard: v.array(
-			v.object({
-				id: v.string(),
-				phase: TiePhaseSchema,
-				teamAName: NullableString,
-				teamBName: NullableString,
-				teamScoreA: v.number(),
-				teamScoreB: v.number(),
-				status: TieStatusSchema
-			})
-		)
-	}),
-	schedule: ScheduleDataSchema
-});
-
 export const CACHE_TTL = {
-	livePage: 2,
 	tieDetail: 3,
 	tieProgression: 10,
 	standings: 5,

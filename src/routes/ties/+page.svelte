@@ -11,8 +11,7 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import { shouldRefreshTiesPage, type RealtimeUpdate } from '$lib/realtime/updates';
+	import { shouldRefreshTiesPage } from '$lib/realtime/updates';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';
 	import { getTiesData, getTiesPageData, reorder } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
@@ -86,11 +85,6 @@
 		},
 		(ids) => reorder({ ids })
 	);
-
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => tiesQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshTiesPage(update)
-	});
 </script>
 
 <svelte:head>
@@ -102,7 +96,8 @@
 		{#if hasActive}
 			<RealtimeSync
 				topics={['score', 'schedule']}
-				onUpdate={(u) => void handleRealtimeUpdate(u)}
+				refresh={() => tiesQuery.refresh()}
+				shouldRefresh={(update) => shouldRefreshTiesPage(update)}
 				pollInterval={12000}
 			/>
 		{/if}

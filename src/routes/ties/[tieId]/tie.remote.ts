@@ -43,7 +43,8 @@ export const startTie = command(async () => {
 		() => startTieService(tieId),
 		(resolvedTieId) =>
 			notifyLiveBoard(['score', 'schedule'], {
-				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers'] }
+				// 対戦開始でオーダーが公開されるため lineups スコープも含める
+				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers', 'lineups'] }
 			})
 	);
 });
@@ -164,6 +165,7 @@ async function applyLifecycleMatchAction(
 		now: new Date().toISOString()
 	});
 	notifyScoreChange(matchId, ['score'], { score: result.scorePayload });
+	notifyLiveBoard(['schedule', 'standings']);
 }
 
 async function getMatchSeqNo(matchId: string): Promise<number> {

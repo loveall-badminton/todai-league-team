@@ -1,15 +1,18 @@
+import type { LiveTopic } from './channels';
 import type { RealtimeUpdate } from './updates';
 
 export type RealtimeApplyResult = 'applied' | 'refresh' | 'ignore';
 
-export interface RealtimeQueryFlowOptions {
+export interface RealtimeQueryFlowOptions<TTopic extends LiveTopic = LiveTopic> {
 	refresh: () => Promise<unknown> | unknown;
-	applyUpdate?: (update: RealtimeUpdate) => RealtimeApplyResult;
-	shouldRefresh?: (update: RealtimeUpdate) => boolean;
+	applyUpdate?: (update: RealtimeUpdate<TTopic>) => RealtimeApplyResult;
+	shouldRefresh?: (update: RealtimeUpdate<TTopic>) => boolean;
 	debounceMs?: number;
 }
 
-export function createRealtimeQueryFlow(options: RealtimeQueryFlowOptions) {
+export function createRealtimeQueryFlow<TTopic extends LiveTopic = LiveTopic>(
+	options: RealtimeQueryFlowOptions<TTopic>
+) {
 	const debounceMs = options.debounceMs ?? 200;
 	let refreshInFlight: Promise<void> | null = null;
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -24,7 +27,7 @@ export function createRealtimeQueryFlow(options: RealtimeQueryFlowOptions) {
 		}
 	}
 
-	return async function handleRealtimeUpdate(update: RealtimeUpdate): Promise<void> {
+	return async function handleRealtimeUpdate(update: RealtimeUpdate<TTopic>): Promise<void> {
 		const result = options.applyUpdate?.(update);
 		if (result === 'applied' || result === 'ignore') return;
 		if (result === 'refresh') {

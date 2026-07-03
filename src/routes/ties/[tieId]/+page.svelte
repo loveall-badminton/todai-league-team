@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -51,8 +52,7 @@
 	import {
 		shouldRefreshTieHeaderData,
 		shouldRefreshTieLiveRubbers,
-		shouldRefreshTieLineups,
-		type RealtimeUpdate
+		shouldRefreshTieLineups
 	} from '$lib/realtime/updates';
 
 	const tieId = page.params.tieId!;
@@ -156,17 +156,17 @@
 
 	const handleTieHeaderUpdate = createRealtimeQueryFlow({
 		refresh: () => tieHeaderQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshTieHeaderData(update, tie.id)
+		shouldRefresh: (update) => shouldRefreshTieHeaderData(update, tie.id)
 	});
 
 	const handleTieLineupsUpdate = createRealtimeQueryFlow({
 		refresh: () => tieLineupsQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshTieLineups(update, tie.id)
+		shouldRefresh: (update) => shouldRefreshTieLineups(update, tie.id)
 	});
 
 	const handleLiveRubbersUpdate = createRealtimeQueryFlow({
 		refresh: () => liveRubbers.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) =>
+		shouldRefresh: (update) =>
 			shouldRefreshTieLiveRubbers(
 				update,
 				tie.id,
@@ -434,7 +434,7 @@
 						confirmVariant="warning"
 						confirmClass="border border-amber-300"
 					/>
-				{:else if row.matchId && ['finished', 'forfeited', 'retired'].includes(row.matchStatus ?? '') && row.refereeName && row.winnerConfirmedAt && row.winnerConfirmedBySide}
+				{:else if row.matchId && isConfirmableMatchStatus(row.matchStatus ?? '') && row.refereeName && row.winnerConfirmedAt && row.winnerConfirmedBySide}
 					<ConfirmDialog
 						onConfirm={async () => {
 							await confirmMatch({ matchId: row.matchId! });

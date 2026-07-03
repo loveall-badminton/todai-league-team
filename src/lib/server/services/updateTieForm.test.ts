@@ -53,7 +53,7 @@ describe('persistUpdateTie', () => {
 			now: '2026-07-02T00:00:00.000Z'
 		});
 		expect(mockNotifyLiveBoard).toHaveBeenCalledWith(['schedule'], {
-			schedule: { tieIds: ['tie-1'], scopes: ['tie_header'] }
+			schedule: { tieIds: ['tie-1'], scopes: ['tie_header', 'lineups'] }
 		});
 	});
 

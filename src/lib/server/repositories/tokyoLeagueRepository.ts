@@ -1,5 +1,6 @@
 import type { GroupCode, TiePhase } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchQuery } from '$lib/server/db/utils';
 import {
 	appSettings,
 	groupStandingOverrides,
@@ -331,15 +332,9 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 
 	const tieIds = tieRows.map((tie) => tie.id);
 
-	// D1 limits bind parameters per statement; chunk to stay within bounds.
-	const CHUNK_SIZE = 99;
-	const rubberRows: Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[] = [];
-	const allAssignments: (typeof officiatingAssignments.$inferSelect)[] = [];
-	for (let i = 0; i < tieIds.length; i += CHUNK_SIZE) {
-		const chunk = tieIds.slice(i, i + CHUNK_SIZE);
-		const [chunkRubbers, chunkAssignments] = (await (
-			db.batch as unknown as (q: unknown[]) => Promise<unknown>
-		)([
+	// D1 の bind 変数上限対策で分割しつつ、チャンクごとに db.batch で1リクエストにまとめる
+	const chunkResults = await batchQuery(tieIds, async (chunk) => {
+		const [chunkRubbers, chunkAssignments] = await db.batch([
 			db
 				.select({ tieId: rubbers.tieId, winnerSide: rubbers.winnerSide })
 				.from(rubbers)
@@ -354,13 +349,11 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 					)
 				)
 				.orderBy(asc(officiatingAssignments.createdAt))
-		])) as [
-			Pick<typeof rubbers.$inferSelect, 'tieId' | 'winnerSide'>[],
-			(typeof officiatingAssignments.$inferSelect)[]
-		];
-		rubberRows.push(...chunkRubbers);
-		allAssignments.push(...chunkAssignments);
-	}
+		]);
+		return [{ rubbers: chunkRubbers, assignments: chunkAssignments }];
+	});
+	const rubberRows = chunkResults.flatMap((result) => result.rubbers);
+	const allAssignments = chunkResults.flatMap((result) => result.assignments);
 
 	const summaryByTieId = summarizeTieSummaries(tieRows, rubberRows);
 

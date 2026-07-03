@@ -1,4 +1,5 @@
 import { applyScoreEvent } from '$lib/domain/scoring';
+import { isActiveMatchStatus, isTerminalMatchStatus } from '$lib/domain/matchStatus';
 import { MatchStateSchema, ScoreEventInputSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
@@ -62,68 +63,7 @@ async function applyMatchActionWithDbImpl(
 		throw new Error('Duplicate request but afterState is missing from stored payload');
 	}
 
-	// db.batch() で複数クエリを1つの D1 HTTP リクエストに統合
-	const needsState = !params.beforeState;
-	const needsPlayers = !params.players;
-
-	let beforeState: MatchState;
-	let players: MatchPlayer[];
-	let match: Awaited<ReturnType<typeof db.query.matches.findFirst>>;
-
-	function toMatchPlayer(row: {
-		id: string;
-		side: 'A' | 'B';
-		playerOrder: number;
-		name: string;
-		teamName: string | null;
-	}): MatchPlayer {
-		if (row.playerOrder !== 1 && row.playerOrder !== 2) {
-			throw new Error(`Invalid player order: ${row.playerOrder}`);
-		}
-
-		return {
-			id: row.id,
-			side: row.side,
-			order: row.playerOrder,
-			name: row.name,
-			teamName: row.teamName
-		};
-	}
-
-	if (needsState || needsPlayers) {
-		const snapshotQuery = db.query.matchSnapshots.findFirst({
-			where: eq(matchSnapshots.matchId, matchId)
-		});
-		const playersQuery = db
-			.select()
-			.from(matchSidePlayers)
-			.where(eq(matchSidePlayers.matchId, matchId))
-			.orderBy(asc(matchSidePlayers.side), asc(matchSidePlayers.playerOrder));
-		const matchQuery = db.query.matches.findFirst({ where: eq(matches.id, matchId) });
-
-		if (needsState && needsPlayers) {
-			const [snapshot, rows, matchRow] = await db.batch([snapshotQuery, playersQuery, matchQuery]);
-			if (!snapshot) throw new Error('Match snapshot not found');
-			beforeState = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
-			players = rows.map(toMatchPlayer);
-			match = matchRow;
-		} else if (needsState) {
-			const [snapshot, matchRow] = await db.batch([snapshotQuery, matchQuery]);
-			if (!snapshot) throw new Error('Match snapshot not found');
-			beforeState = v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
-			players = params.players!;
-			match = matchRow;
-		} else {
-			const [rows, matchRow] = await db.batch([playersQuery, matchQuery]);
-			beforeState = params.beforeState!;
-			players = rows.map(toMatchPlayer);
-			match = matchRow;
-		}
-	} else {
-		beforeState = params.beforeState!;
-		players = params.players!;
-		match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
-	}
+	const { beforeState, players, match } = await loadActionContext(db, params);
 	const input = await prepareUndoInput(db, matchId, params.input);
 	const afterState = applyScoreEvent({ state: beforeState, input, players, now });
 	const eventId = crypto.randomUUID();
@@ -166,28 +106,93 @@ async function applyMatchActionWithDbImpl(
 	}
 	await db.batch([...ops, ...extra]);
 
-	if (match?.rubberId) {
-		const terminalStatuses = new Set([
-			'finished',
-			'forfeited',
-			'retired',
-			'confirmed',
-			'cancelled'
-		]);
-		const wasTerminal = terminalStatuses.has(beforeState.status);
-		const isTerminal = terminalStatuses.has(afterState.status);
-		// rubbers.status は playing/interval/suspended をまとめて 'playing' として扱うため、
-		// この境界をまたぐタイミングでも tie の進行中判定を再計算する必要がある。
-		const activeStatuses = new Set(['playing', 'interval', 'suspended']);
-		const wasActive = activeStatuses.has(beforeState.status);
-		const isActive = activeStatuses.has(afterState.status);
-		if (wasTerminal !== isTerminal || wasActive !== isActive) {
-			const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
-			if (rubber) await recalculateTieResult(rubber.tieId, now, db);
-		}
+	if (match?.rubberId && crossesTieRecalcBoundary(beforeState, afterState)) {
+		const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
+		if (rubber) await recalculateTieResult(rubber.tieId, now, db);
 	}
 
 	return { afterState, input };
+}
+
+// rubbers.status は playing/interval/suspended をまとめて 'playing' として扱うため、
+// 終局・進行中いずれかの境界をまたいだときに tie の集計を再計算する必要がある。
+function crossesTieRecalcBoundary(beforeState: MatchState, afterState: MatchState): boolean {
+	return (
+		isTerminalMatchStatus(beforeState.status) !== isTerminalMatchStatus(afterState.status) ||
+		isActiveMatchStatus(beforeState.status) !== isActiveMatchStatus(afterState.status)
+	);
+}
+
+type ActionContext = {
+	beforeState: MatchState;
+	players: MatchPlayer[];
+	match: Awaited<ReturnType<RequestDb['query']['matches']['findFirst']>>;
+};
+
+// db.batch() で複数クエリを1つの D1 HTTP リクエストに統合するため、
+// 不足しているデータの組み合わせごとに batch の形を変えている。
+async function loadActionContext(
+	db: RequestDb,
+	params: ApplyMatchActionParams
+): Promise<ActionContext> {
+	const { matchId } = params;
+	const needsState = !params.beforeState;
+	const needsPlayers = !params.players;
+
+	const matchQuery = db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+
+	if (!needsState && !needsPlayers) {
+		return {
+			beforeState: params.beforeState!,
+			players: params.players!,
+			match: await matchQuery
+		};
+	}
+
+	const snapshotQuery = db.query.matchSnapshots.findFirst({
+		where: eq(matchSnapshots.matchId, matchId)
+	});
+	const playersQuery = db
+		.select()
+		.from(matchSidePlayers)
+		.where(eq(matchSidePlayers.matchId, matchId))
+		.orderBy(asc(matchSidePlayers.side), asc(matchSidePlayers.playerOrder));
+
+	if (needsState && needsPlayers) {
+		const [snapshot, rows, match] = await db.batch([snapshotQuery, playersQuery, matchQuery]);
+		return { beforeState: parseSnapshotState(snapshot), players: rows.map(toMatchPlayer), match };
+	}
+	if (needsState) {
+		const [snapshot, match] = await db.batch([snapshotQuery, matchQuery]);
+		return { beforeState: parseSnapshotState(snapshot), players: params.players!, match };
+	}
+	const [rows, match] = await db.batch([playersQuery, matchQuery]);
+	return { beforeState: params.beforeState!, players: rows.map(toMatchPlayer), match };
+}
+
+function parseSnapshotState(snapshot: { stateJson: string } | undefined): MatchState {
+	if (!snapshot) throw new Error('Match snapshot not found');
+	return v.parse(MatchStateSchema, JSON.parse(snapshot.stateJson));
+}
+
+function toMatchPlayer(row: {
+	id: string;
+	side: 'A' | 'B';
+	playerOrder: number;
+	name: string;
+	teamName: string | null;
+}): MatchPlayer {
+	if (row.playerOrder !== 1 && row.playerOrder !== 2) {
+		throw new Error(`Invalid player order: ${row.playerOrder}`);
+	}
+
+	return {
+		id: row.id,
+		side: row.side,
+		order: row.playerOrder,
+		name: row.name,
+		teamName: row.teamName
+	};
 }
 
 async function prepareUndoInput(

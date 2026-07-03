@@ -1,19 +1,12 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mockGetRequestDb = vi.hoisted(() => vi.fn());
-const mockGetActiveTieBoard = vi.hoisted(() => vi.fn());
-const mockGetFinalsTieBoard = vi.hoisted(() => vi.fn());
 const mockCalculateAllGroupStandings = vi.hoisted(() => vi.fn());
 const mockListTeams = vi.hoisted(() => vi.fn());
 const mockListTies = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/db/request', () => ({
 	getRequestDb: mockGetRequestDb
-}));
-
-vi.mock('$lib/server/services/liveBoardService', () => ({
-	getActiveTieBoard: mockGetActiveTieBoard,
-	getFinalsTieBoard: mockGetFinalsTieBoard
 }));
 
 vi.mock('$lib/server/services/standingService', () => ({
@@ -25,7 +18,7 @@ vi.mock('$lib/server/repositories/tokyoLeagueRepository', () => ({
 	listTies: mockListTies
 }));
 
-import { getLivePageData, getScoreProgressionForTie, getStandingsData } from './livePageService';
+import { getScoreProgressionForTie, getStandingsData } from './livePageService';
 
 type LivePageDb = {
 	select: (fields?: object) => {
@@ -77,159 +70,6 @@ function createScoreProgressionDb(activeRubbers: unknown[], scoreRows: unknown[]
 describe('livePageService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-	});
-
-	test('getLivePageData maps schedule, finals, standings, and active ties', async () => {
-		mockGetActiveTieBoard.mockResolvedValue({
-			ties: [
-				{
-					id: 'tie-active',
-					phase: 'group_a',
-					tieCode: 'A-1',
-					venue: 'first_gym',
-					courtBlockCode: 'first_1_3',
-					teamAName: 'Alpha',
-					teamBName: 'Beta',
-					teamScoreA: 2,
-					teamScoreB: 1,
-					teamAId: 'team-a',
-					teamBId: 'team-b',
-					status: 'playing'
-				}
-			],
-			rubbersByTieId: {
-				'tie-active': [
-					{
-						id: 'rubber-1',
-						code: 'WD1',
-						matchId: 'match-1',
-						status: 'playing',
-						matchStatus: 'playing',
-						winnerSide: null,
-						sideAPlayers: 'A One / A Two',
-						sideBPlayers: 'B One / B Two',
-						gamesScore: '1-0',
-						pointScore: '15-12',
-						gameDetails: [
-							{ gameNo: 1, scoreA: 21, scoreB: 15, winnerSide: 'A' },
-							{ gameNo: 2, scoreA: 15, scoreB: 12, winnerSide: null }
-						]
-					}
-				]
-			}
-		});
-		mockGetFinalsTieBoard.mockResolvedValue({
-			finalsBoard: [
-				{
-					id: 'tie-final',
-					phase: 'final',
-					teamAName: 'Alpha',
-					teamBName: 'Gamma',
-					teamScoreA: 3,
-					teamScoreB: 2,
-					status: 'finished'
-				}
-			]
-		});
-		mockCalculateAllGroupStandings.mockResolvedValue({
-			A: [
-				{
-					teamId: 'team-a',
-					teamName: 'Alpha',
-					rank: 1,
-					teamMatchesWon: 2,
-					teamMatchesLost: 0,
-					rubbersWon: 10,
-					rubbersLost: 1,
-					gamesWon: 20,
-					gamesLost: 5,
-					headToHeadSummary: null,
-					tiedTeamsRubbersWon: null,
-					tiedTeamsGamesWon: null,
-					requiresTiebreaker: 0,
-					manualRank: null
-				}
-			],
-			B: []
-		});
-		mockListTeams.mockResolvedValue([
-			{ id: 'team-a', name: 'Alpha' },
-			{ id: 'team-b', name: 'Beta' }
-		]);
-		mockListTies.mockResolvedValue([
-			{
-				id: 'tie-group',
-				tieCode: 'A-1',
-				teamAId: 'team-a',
-				teamBId: 'team-b',
-				winnerTeamId: 'team-a',
-				scheduledStartAt: '2026-07-02T10:00:00.000Z',
-				lineupDueAt: '2026-07-02T09:50:00.000Z',
-				teamAName: 'Alpha',
-				teamBName: 'Beta',
-				status: 'finished',
-				teamScoreA: 3,
-				teamScoreB: 2,
-				phase: 'group_a'
-			},
-			{
-				id: 'tie-third',
-				tieCode: 'x-4',
-				teamAId: 'team-b',
-				teamBId: 'team-a',
-				winnerTeamId: null,
-				scheduledStartAt: null,
-				lineupDueAt: null,
-				teamAName: 'Beta',
-				teamBName: 'Alpha',
-				status: 'scheduled',
-				teamScoreA: 0,
-				teamScoreB: 0,
-				phase: 'third_place'
-			}
-		]);
-
-		const result = await getLivePageData();
-
-		expect(result.schedule).toHaveLength(2);
-		expect(result.standings.groupA).toHaveLength(1);
-		expect(result.standings.groupB).toHaveLength(0);
-		expect(result.standings.teams).toEqual([
-			{ id: 'team-a', name: 'Alpha' },
-			{ id: 'team-b', name: 'Beta' }
-		]);
-		expect(result.standings.finalsTies).toEqual([
-			{
-				id: 'tie-third',
-				tieCode: 'x-4',
-				phase: 'third_place',
-				teamAId: 'team-b',
-				teamBId: 'team-a',
-				teamAName: 'Beta',
-				teamBName: 'Alpha',
-				winnerTeamId: null,
-				status: 'scheduled'
-			}
-		]);
-		expect(result.activeTies.ties[0]).toMatchObject({
-			id: 'tie-active',
-			phase: 'group_a',
-			status: 'playing',
-			teamScoreA: 2,
-			teamScoreB: 1
-		});
-		expect(result.activeTies.rubbersByTieId['tie-active'][0].gameDetails[1].winnerSide).toBeNull();
-		expect(result.finalsBoard.finalsBoard).toEqual([
-			{
-				id: 'tie-final',
-				phase: 'final',
-				teamAName: 'Alpha',
-				teamBName: 'Gamma',
-				teamScoreA: 3,
-				teamScoreB: 2,
-				status: 'finished'
-			}
-		]);
 	});
 
 	test('getStandingsData maps standings and schedule groups', async () => {

@@ -26,7 +26,7 @@ vi.mock('$lib/server/db/request', () => ({
 	getRequestDb: () => mockState.db
 }));
 
-vi.mock('./matchActionService', () => ({
+vi.mock('./matchActionCore', () => ({
 	applyMatchActionWithDb
 }));
 

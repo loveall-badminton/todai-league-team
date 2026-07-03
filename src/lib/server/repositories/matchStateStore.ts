@@ -1,4 +1,5 @@
 import { getCurrentGame } from '$lib/domain/scoring';
+import { isResultMatchStatus, rubberStatusForMatchStatus } from '$lib/domain/matchStatus';
 import { eventTypeForInput } from '$lib/domain/scoreEvents';
 import type { MatchState, ScoreEventInput, ServiceState } from '$lib/domain/types';
 import { getDb } from '$lib/server/db';
@@ -136,27 +137,16 @@ export function buildMatchUpdate(db: RequestDb, state: MatchState) {
 			lastSeqNo: state.lastSeqNo,
 			actualStartAt:
 				state.lastSeqNo === 1 && state.status === 'playing' ? state.updatedAt : undefined,
-			actualEndAt: ['finished', 'forfeited', 'retired', 'confirmed'].includes(state.status)
-				? state.updatedAt
-				: undefined,
+			actualEndAt: isResultMatchStatus(state.status) ? state.updatedAt : undefined,
 			updatedAt: state.updatedAt
 		})
 		.where(eq(matches.id, state.matchId));
 }
 
 export function buildRubberUpdate(db: RequestDb, rubberId: string, state: MatchState, now: string) {
-	const activeStatuses = new Set(['playing', 'interval', 'suspended']);
-	const finishedStatuses = new Set(['finished', 'forfeited', 'retired']);
-	const status =
-		state.status === 'confirmed'
-			? 'confirmed'
-			: finishedStatuses.has(state.status)
-				? 'finished'
-				: activeStatuses.has(state.status)
-					? 'playing'
-					: null;
-
-	if (!status) return null;
+	const status = rubberStatusForMatchStatus(state.status);
+	// scheduled への巻き戻しや cancelled はスコアイベント以外の操作で扱うため、ここでは更新しない
+	if (status !== 'confirmed' && status !== 'finished' && status !== 'playing') return null;
 
 	return db
 		.update(rubbers)

@@ -1,11 +1,11 @@
 <script lang="ts">
+	import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { matchChannel } from '$lib/realtime/channels';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { cn } from '$lib/utils/cn';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -125,11 +125,6 @@
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
 
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => invalidateAll(),
-		debounceMs: 0
-	});
-
 	let prevError: string | undefined;
 	let prevSavedRefereeName: string | null = null;
 	$effect(() => {
@@ -153,7 +148,8 @@
 <RealtimeSync
 	topics={['score']}
 	channel={matchChannel(data.state.matchId)}
-	onUpdate={(u) => void handleRealtimeUpdate(u)}
+	refresh={() => invalidateAll()}
+	debounceMs={0}
 />
 
 {#snippet scoreCard(
@@ -205,7 +201,7 @@
 	</div>
 
 	<!-- Match finished banner -->
-	{#if ['finished', 'forfeited', 'retired'].includes(data.state.status)}
+	{#if isConfirmableMatchStatus(data.state.status)}
 		<RefereeMatchFinishedCard
 			status={data.state.status as 'finished' | 'forfeited' | 'retired'}
 			refereeName={savedRefereeName}

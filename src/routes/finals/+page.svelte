@@ -7,8 +7,7 @@
 	import { Trophy } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import { shouldRefreshFinalsPage, type RealtimeUpdate } from '$lib/realtime/updates';
+	import { shouldRefreshFinalsPage } from '$lib/realtime/updates';
 	import { generateFinals, generateSemifinals, getFinalsData } from './finals.remote';
 	import {
 		canGenerateSemifinals,
@@ -43,14 +42,6 @@
 			orderedTies.find((t) => t.tieCode === 'x-2')
 		)
 	);
-
-	const handleRealtimeUpdate = createRealtimeQueryFlow({
-		refresh: () => finalsData.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => {
-			const tieIds = finalsData.current?.ties.map((tie) => tie.id) ?? [];
-			return shouldRefreshFinalsPage(update, tieIds);
-		}
-	});
 </script>
 
 <svelte:head>
@@ -58,7 +49,14 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<RealtimeSync topics={['finals', 'schedule']} onUpdate={(u) => void handleRealtimeUpdate(u)} />
+	<RealtimeSync
+		topics={['finals', 'schedule']}
+		refresh={() => finalsData.refresh()}
+		shouldRefresh={(update) => {
+			const tieIds = finalsData.current?.ties.map((tie) => tie.id) ?? [];
+			return shouldRefreshFinalsPage(update, tieIds);
+		}}
+	/>
 {/snippet}
 
 <PageHeader title="決勝トーナメント" actions={headerActions} />

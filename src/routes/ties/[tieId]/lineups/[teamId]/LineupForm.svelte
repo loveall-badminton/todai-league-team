@@ -6,7 +6,7 @@
 	import type { SelectItem } from '$lib/types/ui';
 	import type { RubberCode } from '$lib/domain/tokyoLeague';
 	import { lineup } from './lineup.remote';
-	import { clearLocalLineupDraft } from '../lineupDraftStorage';
+	import { clearLocalLineupDraft, lineupDraftItemsFromFormData } from '../lineupDraftStorage';
 
 	type RubberDef = { code: RubberCode; discipline: string };
 
@@ -153,16 +153,12 @@
 		<AppButton
 			type="button"
 			disabled={lineup.pending > 0}
-			onclick={() => {
-				const items = rubberDefinitions.map((rubber, index) => {
-					const item = lineup.fields.items[index];
-					return {
-						rubberCode: rubber.code,
-						player1Id: item.player1Id.value() || null,
-						player2Id: item.player2Id.value() || null
-					};
-				});
-				onSaveDraft(items);
+			onclick={(event) => {
+				// AppSelect(bits-ui)の選択は remote form のフィールド状態(field.value())には
+				// 反映されないため、提出時と同じく DOM(FormData)から現在値を読む
+				const form = (event.currentTarget as HTMLElement | null)?.closest('form');
+				if (!form) return;
+				onSaveDraft(lineupDraftItemsFromFormData(new FormData(form)));
 			}}
 			variant="secondary"
 		>

@@ -1,5 +1,6 @@
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchQuery } from '$lib/server/db/utils';
 import { groupStandingOverrides, matches, rubbers, teams, ties } from '$lib/server/db/schema';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
@@ -64,12 +65,15 @@ export async function calculateAllGroupStandings(): Promise<Record<GroupCode, Gr
 		.where(inArray(ties.groupCode, groupCodes))
 		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
 
+	// D1 の bind 変数上限(100)を超えないよう分割して取得する
 	const tieIds = allTies.map((tie) => tie.id);
-	const rubberRows =
-		tieIds.length > 0 ? await db.select().from(rubbers).where(inArray(rubbers.tieId, tieIds)) : [];
+	const rubberRows = await batchQuery(tieIds, (batch) =>
+		db.select().from(rubbers).where(inArray(rubbers.tieId, batch))
+	);
 	const matchIds = rubberRows.map((rubber) => rubber.matchId).filter((id): id is string => !!id);
-	const matchRows =
-		matchIds.length > 0 ? await db.select().from(matches).where(inArray(matches.id, matchIds)) : [];
+	const matchRows = await batchQuery(matchIds, (batch) =>
+		db.select().from(matches).where(inArray(matches.id, batch))
+	);
 	const overrides = await db
 		.select()
 		.from(groupStandingOverrides)

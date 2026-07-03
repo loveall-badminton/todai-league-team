@@ -11,7 +11,7 @@ vi.mock('$lib/server/db/utils', () => ({
 	batchQuery: mockBatchQuery
 }));
 
-import { getActiveTieBoard, getPublicRubbersForTie } from './liveBoardService';
+import { getPublicRubbersForTie } from './liveBoardService';
 
 function createRubberRows() {
 	return [
@@ -41,6 +41,51 @@ function createMatchRows() {
 	];
 }
 
+function createSnapshotState() {
+	return {
+		schemaVersion: 1,
+		matchId: 'match-1',
+		tournamentId: 'tournament-1',
+		courtId: null,
+		discipline: 'WD',
+		status: 'playing',
+		scoring: {
+			maxGames: 3,
+			gamesToWin: 2,
+			pointsToWin: 21,
+			winBy: 2,
+			maxPoints: 30,
+			midGameIntervalPoint: 11
+		},
+		currentGameNo: 2,
+		games: [
+			{
+				gameNo: 1,
+				score: { A: 21, B: 15 },
+				winnerSide: 'A',
+				midGameIntervalTaken: true,
+				changeEndsRequired: false,
+				changeEndsCompleted: false
+			},
+			{
+				gameNo: 2,
+				score: { A: 15, B: 12 },
+				winnerSide: null,
+				midGameIntervalTaken: true,
+				changeEndsRequired: false,
+				changeEndsCompleted: false
+			}
+		],
+		gamesWon: { A: 1, B: 0 },
+		winnerSide: null,
+		terminalReason: null,
+		service: null,
+		lastSeqNo: 60,
+		createdAt: '2026-06-01T00:00:00.000Z',
+		updatedAt: '2026-06-01T01:00:00.000Z'
+	};
+}
+
 describe('liveBoardService db queries', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -68,22 +113,12 @@ describe('liveBoardService db queries', () => {
 							};
 						}
 						return {
-							where() {
-								return {
-									orderBy: vi.fn(async () => [
-										{
-											matchId: 'match-1',
-											gameNo: 1,
-											seqNo: 1,
-											scoreA: 21,
-											scoreB: 15,
-											scoreABefore: 20,
-											scoreBBefore: 15,
-											side: 'A'
-										}
-									])
-								};
-							}
+							where: vi.fn(async () => [
+								{
+									matchId: 'match-1',
+									stateJson: JSON.stringify(createSnapshotState())
+								}
+							])
 						};
 					}
 				};
@@ -100,29 +135,6 @@ describe('liveBoardService db queries', () => {
 			gamesScore: '1-0',
 			pointScore: '15-12',
 			matchStatus: 'playing'
-		});
-	});
-
-	test('getActiveTieBoard returns empty board when no ties are active', async () => {
-		const db = {
-			select: vi.fn(() => ({
-				from() {
-					return {
-						where() {
-							return {
-								orderBy: vi.fn(async () => [])
-							};
-						},
-						orderBy: vi.fn(async () => [])
-					};
-				}
-			}))
-		};
-		mockGetRequestDb.mockReturnValue(db);
-
-		await expect(getActiveTieBoard()).resolves.toEqual({
-			ties: [],
-			rubbersByTieId: {}
 		});
 	});
 });

@@ -46,6 +46,7 @@ export async function persistUpdateTie(params: {
 		now: params.now
 	});
 	notifyLiveBoard(['schedule'], {
-		schedule: { tieIds: [params.id], scopes: ['tie_header'] }
+		// lineupDueAt の変更をオーダー入力ページにも届けるため lineups スコープを含める
+		schedule: { tieIds: [params.id], scopes: ['tie_header', 'lineups'] }
 	});
 }

@@ -8,27 +8,12 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { ArrowRight, Settings } from '@lucide/svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
-	import {
-		shouldRefreshDashboardPlaying,
-		shouldRefreshDashboardRecent,
-		type RealtimeUpdate
-	} from '$lib/realtime/updates';
+	import { shouldRefreshOnScheduleOrTerminalScore } from '$lib/realtime/updates';
 	import { getDashboardPlayingTies, getDashboardRecentTies } from './dashboard.remote';
 
 	const playingQuery = getDashboardPlayingTies();
 	const recentTiesQuery = getDashboardRecentTies();
 	let [playing, recentTies] = $derived(await Promise.all([playingQuery, recentTiesQuery]));
-
-	const handlePlayingUpdate = createRealtimeQueryFlow({
-		refresh: () => playingQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshDashboardPlaying(update)
-	});
-
-	const handleRecentTiesUpdate = createRealtimeQueryFlow({
-		refresh: () => recentTiesQuery.refresh(),
-		shouldRefresh: (update: RealtimeUpdate) => shouldRefreshDashboardRecent(update)
-	});
 </script>
 
 <svelte:head>
@@ -39,10 +24,8 @@
 	<div class="flex items-center gap-3">
 		<RealtimeSync
 			topics={['score', 'schedule']}
-			onUpdate={(u) => {
-				void handlePlayingUpdate(u);
-				void handleRecentTiesUpdate(u);
-			}}
+			refresh={() => Promise.all([playingQuery.refresh(), recentTiesQuery.refresh()])}
+			shouldRefresh={(update) => shouldRefreshOnScheduleOrTerminalScore(update)}
 		/>
 		<AppButton variant="secondary" href={resolve('/settings')}>
 			<Settings class="h-4 w-4" />
