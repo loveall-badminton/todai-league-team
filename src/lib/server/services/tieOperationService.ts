@@ -40,10 +40,8 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 		.where(eq(lineupSubmissions.tieId, tieId));
 	const ready =
 		submissions.length >= 2 &&
-		submissions.every((submission) =>
-			['submitted', 'locked', 'revealed'].includes(submission.status)
-		);
-	if (!ready && !options.force) throw new Error('両チームのオーダー提出が必要です');
+		submissions.every((submission) => ['locked', 'revealed'].includes(submission.status));
+	if (!ready && !options.force) throw new Error('両チームのオーダー承認が必要です');
 
 	const allRubbers = await db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
 	type DbStatement = Parameters<typeof db.batch>[0][number];

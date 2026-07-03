@@ -176,6 +176,12 @@ async function seedSubmittedLineups(tieId: string) {
 	await submitLineup({ tieId, teamId: 'team-b', now });
 }
 
+async function seedApprovedLineups(tieId: string) {
+	await seedSubmittedLineups(tieId);
+	await lockLineup({ tieId, teamId: 'team-a', now });
+	await lockLineup({ tieId, teamId: 'team-b', now });
+}
+
 describe('lineupService DB flows', () => {
 	test('validates, saves, submits, locks, unlocks, reveals and unreveals lineups', async () => {
 		await seedTeams();
@@ -375,7 +381,7 @@ describe('tieOperationService DB state transitions', () => {
 			scoringRuleId: 'GROUP_15',
 			now
 		});
-		await seedSubmittedLineups(tieId);
+		await seedApprovedLineups(tieId);
 
 		await startTie(tieId, { now });
 
@@ -385,6 +391,29 @@ describe('tieOperationService DB state transitions', () => {
 		expect(rubberRows).toHaveLength(5);
 		expect(rubberRows.every((rubber) => rubber.status === 'scheduled')).toBe(true);
 		expect(rubberRows.every((rubber) => rubber.matchId)).toBe(true);
+	});
+
+	test('startTie rejects ties whose lineups are submitted but not approved', async () => {
+		await seedTeams();
+		const tieId = await createTieWithRubbers({
+			tieCode: 'T-3',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			scoringRuleId: 'GROUP_15',
+			now
+		});
+		await seedSubmittedLineups(tieId);
+
+		await expect(startTie(tieId, { now })).rejects.toThrow('両チームのオーダー承認が必要です');
+
+		const tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+		expect(tie).toMatchObject({
+			status: 'lineup_submitted',
+			lineupsRevealedAt: null,
+			actualStartAt: null
+		});
 	});
 
 	test('startTie does not move tie into playing state when match creation fails', async () => {
@@ -398,7 +427,7 @@ describe('tieOperationService DB state transitions', () => {
 			scoringRuleId: 'GROUP_15',
 			now
 		});
-		await seedSubmittedLineups(tieId);
+		await seedApprovedLineups(tieId);
 
 		const submissionA = await cfTestDb.db.query.lineupSubmissions.findFirst({
 			where: eq(lineupSubmissions.tieId, tieId)

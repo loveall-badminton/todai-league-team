@@ -113,7 +113,13 @@
 		};
 	}
 
-	let canStart = $derived(tie.status === 'lineup_submitted' || tie.status === 'ready');
+	let bothLineupsApproved = $derived(
+		['locked', 'revealed'].includes(lineupBySide('A')?.submission.status ?? '') &&
+			['locked', 'revealed'].includes(lineupBySide('B')?.submission.status ?? '')
+	);
+	let canStart = $derived(
+		(tie.status === 'lineup_submitted' || tie.status === 'ready') && bothLineupsApproved
+	);
 	let canConfirm = $derived(tie.status === 'finished');
 	let canCutoffTie = $derived(tie.status === 'playing' && !!tie.winnerTeamId);
 	let realtimeTopics = $derived(
