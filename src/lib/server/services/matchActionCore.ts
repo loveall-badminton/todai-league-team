@@ -176,7 +176,12 @@ async function applyMatchActionWithDbImpl(
 		]);
 		const wasTerminal = terminalStatuses.has(beforeState.status);
 		const isTerminal = terminalStatuses.has(afterState.status);
-		if (wasTerminal !== isTerminal) {
+		// rubbers.status は playing/interval/suspended をまとめて 'playing' として扱うため、
+		// この境界をまたぐタイミングでも tie の進行中判定を再計算する必要がある。
+		const activeStatuses = new Set(['playing', 'interval', 'suspended']);
+		const wasActive = activeStatuses.has(beforeState.status);
+		const isActive = activeStatuses.has(afterState.status);
+		if (wasTerminal !== isTerminal || wasActive !== isActive) {
 			const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
 			if (rubber) await recalculateTieResult(rubber.tieId, now, db);
 		}

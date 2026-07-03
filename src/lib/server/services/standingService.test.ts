@@ -1,11 +1,29 @@
 import { describe, expect, test } from 'vitest';
-import { calculateGroupStandingsFromRecords } from './standingService';
+import { calculateGroupStandingsFromRecords, isRoundRobinComplete } from './standingService';
 
 const teams = [
 	{ id: 'a', name: 'Alpha' },
 	{ id: 'b', name: 'Beta' },
 	{ id: 'c', name: 'Gamma' }
 ];
+
+describe('isRoundRobinComplete', () => {
+	test('is false when the group has no ties yet', () => {
+		expect(isRoundRobinComplete([])).toBe(false);
+	});
+
+	test('is false when any tie has no winner yet', () => {
+		expect(
+			isRoundRobinComplete([{ winnerTeamId: 'a' }, { winnerTeamId: null }, { winnerTeamId: 'b' }])
+		).toBe(false);
+	});
+
+	test('is true when every tie has a winner', () => {
+		expect(
+			isRoundRobinComplete([{ winnerTeamId: 'a' }, { winnerTeamId: 'b' }, { winnerTeamId: 'c' }])
+		).toBe(true);
+	});
+});
 
 describe('calculateGroupStandingsFromRecords', () => {
 	test('orders two tied teams by head-to-head result', () => {

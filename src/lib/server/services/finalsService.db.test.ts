@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const mockGetRequestDb = vi.hoisted(() => vi.fn());
 const mockEnsureDefaultSettings = vi.hoisted(() => vi.fn());
 const mockCalculateGroupStandings = vi.hoisted(() => vi.fn());
+const mockIsRoundRobinComplete = vi.hoisted(() => vi.fn());
 const mockCreateTieWithRubbers = vi.hoisted(() => vi.fn());
 const mockEnsureRubbersForTie = vi.hoisted(() => vi.fn());
 
@@ -15,7 +16,8 @@ vi.mock('./tokyoLeagueSetupService', () => ({
 }));
 
 vi.mock('./standingService', () => ({
-	calculateGroupStandings: mockCalculateGroupStandings
+	calculateGroupStandings: mockCalculateGroupStandings,
+	isRoundRobinComplete: mockIsRoundRobinComplete
 }));
 
 vi.mock('./tieService', () => ({
@@ -25,23 +27,28 @@ vi.mock('./tieService', () => ({
 
 import { generateFinalAndThirdPlace, generateSemifinalsAndFifthPlace } from './finalsService';
 
+function dbWithGroupTies() {
+	return {
+		query: {
+			ties: {
+				findFirst: vi.fn().mockResolvedValue(null),
+				findMany: vi.fn().mockResolvedValue([])
+			}
+		}
+	};
+}
+
 describe('finalsService db generation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEnsureDefaultSettings.mockResolvedValue({ knockoutScoringRuleId: 'KNOCKOUT_21' });
 		mockCreateTieWithRubbers.mockResolvedValue('tie-created');
 		mockEnsureRubbersForTie.mockResolvedValue(undefined);
+		mockIsRoundRobinComplete.mockReturnValue(true);
 	});
 
 	test('generateSemifinalsAndFifthPlace creates three ties when assignments are ready', async () => {
-		const db = {
-			query: {
-				ties: {
-					findFirst: vi.fn().mockResolvedValue(null)
-				}
-			}
-		};
-		mockGetRequestDb.mockReturnValue(db);
+		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
 		mockCalculateGroupStandings.mockResolvedValueOnce([
 			{ rank: 1, teamId: 'a1' },
 			{ rank: 2, teamId: 'a2' },
@@ -58,7 +65,19 @@ describe('finalsService db generation', () => {
 		expect(mockEnsureDefaultSettings).toHaveBeenCalled();
 	});
 
+	test('generateSemifinalsAndFifthPlace throws when the group stage is not finished', async () => {
+		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
+		mockIsRoundRobinComplete.mockReturnValueOnce(false);
+		mockIsRoundRobinComplete.mockReturnValueOnce(true);
+
+		await expect(generateSemifinalsAndFifthPlace('2026-06-20T00:00:00.000Z')).rejects.toThrow(
+			'予選(A・B組)の全対戦が終了してから決勝トーナメントを生成してください'
+		);
+		expect(mockCalculateGroupStandings).not.toHaveBeenCalled();
+	});
+
 	test('generateSemifinalsAndFifthPlace throws when assignments are incomplete', async () => {
+		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
 		mockCalculateGroupStandings.mockResolvedValueOnce([
 			{ rank: 1, teamId: 'a1', requiresTiebreaker: true }
 		]);

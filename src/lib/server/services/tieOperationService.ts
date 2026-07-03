@@ -47,12 +47,25 @@ export function calculateTieResult(tie: TieResultInput, rubberRows: RubberResult
 	const allDone =
 		rubberRows.length === 5 &&
 		rubberRows.every((rubber) => terminalRubberStatuses.has(rubber.status));
+	const hasActiveRubber = rubberRows.some((rubber) => rubber.status === 'playing');
+	// 3勝到達で勝敗自体は決するが、残りのラバーを消化するかは任意なので、
+	// 「進行中のラバーが無い」ことも finished 扱いの条件に含める。
+	const decided = allDone || (winnerTeamId !== null && !hasActiveRubber);
+	const status: TieStatus =
+		tie.status === 'confirmed'
+			? tie.status
+			: hasActiveRubber
+				? 'playing'
+				: decided
+					? 'finished'
+					: tie.status;
 	return {
 		teamScoreA,
 		teamScoreB,
 		winnerTeamId,
-		status: (allDone ? 'finished' : tie.status) as TieStatus,
-		allDone
+		status,
+		allDone,
+		decided
 	};
 }
 
@@ -310,7 +323,7 @@ export async function recalculateTieResult(
 			teamScoreB: result.teamScoreB,
 			winnerTeamId: result.winnerTeamId,
 			status: result.status,
-			actualEndAt: result.allDone ? (tie.actualEndAt ?? now) : tie.actualEndAt,
+			actualEndAt: result.decided ? (tie.actualEndAt ?? now) : tie.actualEndAt,
 			updatedAt: now
 		})
 		.where(eq(ties.id, tieId));

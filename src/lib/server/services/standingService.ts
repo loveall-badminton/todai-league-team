@@ -42,6 +42,10 @@ export async function calculateGroupStandings(groupCode: GroupCode): Promise<Gro
 	return all[groupCode];
 }
 
+export function isRoundRobinComplete(ties: Pick<StandingTieRecord, 'winnerTeamId'>[]): boolean {
+	return ties.length > 0 && ties.every((tie) => !!tie.winnerTeamId);
+}
+
 export async function calculateAllGroupStandings(): Promise<Record<GroupCode, GroupStanding[]>> {
 	const db = getRequestDb();
 
@@ -190,8 +194,7 @@ export function calculateGroupStandingsFromRecords(params: {
 			a.teamName.localeCompare(b.teamName)
 	);
 
-	const roundRobinComplete =
-		params.ties.length > 0 && params.ties.every((tie) => !!tie.winnerTeamId);
+	const roundRobinComplete = isRoundRobinComplete(params.ties);
 	if (roundRobinComplete) {
 		for (const tiedRows of groupByRecord(sorted, standingTieKey).values()) {
 			if (tiedRows.length < 2) continue;

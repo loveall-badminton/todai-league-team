@@ -17,7 +17,7 @@ describe('rubberStatusFromMatchResultStatus', () => {
 });
 
 describe('calculateTieResult', () => {
-	test('sets winner at three rubber wins without finishing the tie early', () => {
+	test('finishes as soon as three rubbers are won and no rubber is still in progress', () => {
 		const result = calculateTieResult({ teamAId: 'team-a', teamBId: 'team-b', status: 'playing' }, [
 			{ winnerSide: 'A', status: 'finished' },
 			{ winnerSide: 'A', status: 'finished' },
@@ -30,9 +30,62 @@ describe('calculateTieResult', () => {
 			teamScoreA: 3,
 			teamScoreB: 0,
 			winnerTeamId: 'team-a',
-			status: 'playing',
-			allDone: false
+			status: 'finished',
+			allDone: false,
+			decided: true
 		});
+	});
+
+	test('keeps showing playing while a rubber started after the winner was decided is still in progress', () => {
+		const result = calculateTieResult(
+			{ teamAId: 'team-a', teamBId: 'team-b', status: 'finished' },
+			[
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: null, status: 'playing' },
+				{ winnerSide: null, status: 'scheduled' }
+			]
+		);
+
+		expect(result).toMatchObject({
+			winnerTeamId: 'team-a',
+			status: 'playing',
+			allDone: false,
+			decided: false
+		});
+	});
+
+	test('returns to finished once the extra rubber started after a decision completes', () => {
+		const result = calculateTieResult({ teamAId: 'team-a', teamBId: 'team-b', status: 'playing' }, [
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'A', status: 'finished' },
+			{ winnerSide: 'B', status: 'finished' },
+			{ winnerSide: null, status: 'scheduled' }
+		]);
+
+		expect(result).toMatchObject({
+			winnerTeamId: 'team-a',
+			status: 'finished',
+			allDone: false,
+			decided: true
+		});
+	});
+
+	test('never downgrades a confirmed tie back to finished', () => {
+		const result = calculateTieResult(
+			{ teamAId: 'team-a', teamBId: 'team-b', status: 'confirmed' },
+			[
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: 'A', status: 'finished' },
+				{ winnerSide: null, status: 'scheduled' },
+				{ winnerSide: null, status: 'scheduled' }
+			]
+		);
+
+		expect(result.status).toBe('confirmed');
 	});
 
 	test('finishes only when all five rubbers are terminal', () => {
@@ -71,7 +124,7 @@ describe('calculateTieResult', () => {
 		});
 	});
 
-	test('3-2 final score: winner set but not allDone when 5th rubber still scheduled', () => {
+	test('3-2 final score: finished but not allDone when 5th rubber still scheduled', () => {
 		const result = calculateTieResult({ teamAId: 'team-a', teamBId: 'team-b', status: 'playing' }, [
 			{ winnerSide: 'A', status: 'finished' },
 			{ winnerSide: 'B', status: 'finished' },
@@ -84,8 +137,9 @@ describe('calculateTieResult', () => {
 			teamScoreA: 3,
 			teamScoreB: 2,
 			winnerTeamId: 'team-a',
-			status: 'playing',
-			allDone: false
+			status: 'finished',
+			allDone: false,
+			decided: true
 		});
 	});
 

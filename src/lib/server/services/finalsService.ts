@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { ties } from '$lib/server/db/schema';
-import { calculateGroupStandings } from './standingService';
+import { calculateGroupStandings, isRoundRobinComplete } from './standingService';
 import { createTieWithRubbers, ensureRubbersForTie } from './tieService';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
@@ -106,6 +106,15 @@ export function buildFinalAndThirdPlaceAssignments(
 export async function generateSemifinalsAndFifthPlace(now = new Date().toISOString()) {
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
+
+	const db = getRequestDb();
+	const [groupATies, groupBTies] = await Promise.all([
+		db.query.ties.findMany({ where: eq(ties.phase, 'group_a') }),
+		db.query.ties.findMany({ where: eq(ties.phase, 'group_b') })
+	]);
+	if (!isRoundRobinComplete(groupATies) || !isRoundRobinComplete(groupBTies)) {
+		throw new Error('予選(A・B組)の全対戦が終了してから決勝トーナメントを生成してください');
+	}
 
 	const [standingA, standingB] = await Promise.all([
 		calculateGroupStandings('A'),

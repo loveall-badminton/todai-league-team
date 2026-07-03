@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import type { MatchState, ScoreEventInput } from '$lib/domain/types';
+import type { MatchState, MatchPlayer, ScoreEventInput } from '$lib/domain/types';
+import { createInitialMatchState } from '$lib/domain/scoring';
 
 vi.mock('$lib/server/db/request', () => ({
 	getRequestDb: () => ({})
@@ -17,8 +18,10 @@ vi.mock('$lib/server/repositories/scoreEventRepository', () => ({
 	hasUndoLink: mockHasUndoLink
 }));
 
+const mockRecalculateTieResult = vi.hoisted(() => vi.fn());
+
 vi.mock('$lib/server/services/tieOperationService', () => ({
-	recalculateTieResult: vi.fn()
+	recalculateTieResult: mockRecalculateTieResult
 }));
 
 function makeState(score: { A: number; B: number }, seqNo: number): MatchState {
@@ -58,15 +61,18 @@ function makeState(score: { A: number; B: number }, seqNo: number): MatchState {
 	};
 }
 
-function buildDb() {
+function buildDb(overrides?: {
+	match?: { id: string; rubberId: string };
+	rubber?: { id: string; tieId: string };
+}) {
 	const stmt = { onConflictDoUpdate: vi.fn(() => ({})) };
 	const insertChain = { values: vi.fn(() => stmt) };
 	const updateChain = { set: vi.fn(() => ({ where: vi.fn(() => ({})) })) };
 	return {
 		batch: vi.fn(async () => [{}, {}, {}]),
 		query: {
-			matches: { findFirst: vi.fn(async () => null) },
-			rubbers: { findFirst: vi.fn(async () => null) }
+			matches: { findFirst: vi.fn(async () => overrides?.match ?? null) },
+			rubbers: { findFirst: vi.fn(async () => overrides?.rubber ?? null) }
 		},
 		insert: vi.fn(() => insertChain),
 		update: vi.fn(() => updateChain)
@@ -202,5 +208,70 @@ describe('applyMatchActionWithDb – undo fallback for rally_won', () => {
 				now: '2026-01-01T00:00:04.000Z'
 			})
 		).rejects.toThrow('Undo target event not found');
+	});
+});
+
+describe('applyMatchActionWithDb – tie recalculation triggers', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	const players: MatchPlayer[] = [
+		{ id: 'p-a', side: 'A', order: 1, name: 'Player A', teamName: null },
+		{ id: 'p-b', side: 'B', order: 1, name: 'Player B', teamName: null }
+	];
+
+	test('recalculates the tie when a match starts, even though that is not a terminal transition', async () => {
+		const scheduledState = createInitialMatchState({
+			matchId: 'match-1',
+			tournamentId: 't-1',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-01-01T00:00:00.000Z'
+		});
+		const input: ScoreEventInput = {
+			type: 'match_started',
+			observedSeqNo: 0,
+			idempotencyKey: 'ik-start',
+			initialServerPlayerId: 'p-a',
+			initialReceiverPlayerId: 'p-b'
+		};
+
+		mockGetScoreEventByIdempotencyKey.mockResolvedValue(null);
+		const db = buildDb({
+			match: { id: 'match-1', rubberId: 'rubber-1' },
+			rubber: { id: 'rubber-1', tieId: 'tie-1' }
+		});
+
+		await applyMatchActionWithDb(db as never, {
+			matchId: 'match-1',
+			input,
+			beforeState: scheduledState,
+			players,
+			now: '2026-01-01T00:00:05.000Z'
+		});
+
+		expect(mockRecalculateTieResult).toHaveBeenCalledWith('tie-1', '2026-01-01T00:00:05.000Z', db);
+	});
+
+	test('does not recalculate the tie for a plain rally while the match keeps playing', async () => {
+		mockGetScoreEventByIdempotencyKey.mockResolvedValue(null);
+		const db = buildDb({
+			match: { id: 'match-1', rubberId: 'rubber-1' },
+			rubber: { id: 'rubber-1', tieId: 'tie-1' }
+		});
+
+		await applyMatchActionWithDb(db as never, {
+			matchId: 'match-1',
+			input: {
+				type: 'rally_won',
+				side: 'A',
+				observedSeqNo: 1,
+				idempotencyKey: 'ik-rally'
+			},
+			beforeState: makeState({ A: 1, B: 0 }, 1),
+			players,
+			now: '2026-01-01T00:00:05.000Z'
+		});
+
+		expect(mockRecalculateTieResult).not.toHaveBeenCalled();
 	});
 });

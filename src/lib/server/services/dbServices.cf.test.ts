@@ -527,6 +527,66 @@ describe('tieOperationService DB state transitions', () => {
 		expect(tie?.status).toBe('confirmed');
 	});
 
+	test('recalculateTieResult finishes a tie as soon as three rubbers are won, without waiting for the rest', async () => {
+		await seedTeams();
+		await cfTestDb.db.insert(ties).values({
+			id: 'tie-early-decision',
+			tieCode: 'early-decision',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			status: 'playing',
+			createdAt: now,
+			updatedAt: now
+		});
+		const rubberRows: RubberInsert[] = (['WD1', 'XD1', 'MD3', 'MD2', 'MD1'] as const).map(
+			(code, index) => {
+				const discipline = code === 'WD1' ? 'WD' : code === 'XD1' ? 'XD' : 'MD';
+				return {
+					id: `early-${code}`,
+					tieId: 'tie-early-decision',
+					code,
+					discipline,
+					displayOrder: index + 1,
+					scoringRuleId: 'GROUP_15',
+					status: index < 3 ? ('finished' as const) : ('scheduled' as const),
+					winnerSide: index < 3 ? ('A' as const) : null,
+					createdAt: now,
+					updatedAt: now
+				};
+			}
+		);
+		await cfTestDb.db.insert(rubbers).values(rubberRows);
+
+		await recalculateTieResult('tie-early-decision', now);
+		let tie = await cfTestDb.db.query.ties.findFirst({
+			where: eq(ties.id, 'tie-early-decision')
+		});
+		expect(tie).toMatchObject({
+			teamScoreA: 3,
+			teamScoreB: 0,
+			winnerTeamId: 'team-a',
+			status: 'finished',
+			actualEndAt: now
+		});
+
+		// 打ち切らずに残っている4戦目を開始すると、再び進行中の扱いに戻る
+		await cfTestDb.db.update(rubbers).set({ status: 'playing' }).where(eq(rubbers.id, 'early-MD2'));
+		await recalculateTieResult('tie-early-decision', '2026-06-15T02:00:00.000Z');
+		tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, 'tie-early-decision') });
+		expect(tie?.status).toBe('playing');
+
+		// 4戦目が終わると、5戦目が未着手でも再び finished 扱いに戻る
+		await cfTestDb.db
+			.update(rubbers)
+			.set({ status: 'finished', winnerSide: 'B' })
+			.where(eq(rubbers.id, 'early-MD2'));
+		await recalculateTieResult('tie-early-decision', '2026-06-15T03:00:00.000Z');
+		tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, 'tie-early-decision') });
+		expect(tie).toMatchObject({ status: 'finished', teamScoreA: 3, teamScoreB: 1 });
+	});
+
 	test('cutoffTie cancels all remaining rubbers after a team reaches three wins', async () => {
 		await seedTeams();
 		await cfTestDb.db.insert(ties).values({

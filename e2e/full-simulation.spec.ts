@@ -509,6 +509,18 @@ async function processTie(page: Page, tieId: string, isKnockout: boolean) {
 		console.log(`    Rubber ${i + 1}/${matchUrls.length}...`);
 		await scoreFullMatch(page, url, ws, isKnockout);
 	}
+
+	// Confirm the tie result so it appears on the public standings/live board.
+	await page.goto(tieUrl);
+	await page.waitForTimeout(200);
+	const confirmTieBtn = page.getByRole('button', { name: '結果を確定' });
+	if (await confirmTieBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+		await confirmTieBtn.click();
+		await page.waitForTimeout(200);
+		console.log('  Tie result confirmed');
+	} else {
+		console.log('  WARNING: "結果を確定" button not visible — tie result was not confirmed');
+	}
 }
 
 async function createTeamAccount(page: Page, teamKey: keyof typeof TEAM_IDS) {
