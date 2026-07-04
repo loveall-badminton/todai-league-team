@@ -128,7 +128,7 @@
 
 {#if formObj}
 	<form {@attach attachForm} {...formObj} class="hidden">
-		{#each hiddenFields as field (field.name)}
+		{#each hiddenFields as field, index (`${field.name}-${index}`)}
 			<input type="hidden" name={field.name} value={field.value} />
 		{/each}
 	</form>

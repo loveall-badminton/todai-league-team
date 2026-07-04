@@ -29,7 +29,7 @@
 	<div class="grid gap-1">
 		<span class="text-sm font-medium text-zinc-700">大会名</span>
 		<AppInput {...updateSettings.fields.eventName.as('text', settings.eventName ?? '')} required />
-		{#each updateSettings.fields.eventName.issues() ?? [] as issue (issue.message)}
+		{#each updateSettings.fields.eventName.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 			<span class="text-xs text-red-600">{issue.message}</span>
 		{/each}
 	</div>

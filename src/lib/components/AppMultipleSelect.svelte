@@ -22,9 +22,12 @@
 		onValueChange?: (value: string[]) => void;
 	} = $props();
 
+	let normalizedItems = $derived(
+		Array.from(new Map(items.map((item) => [item.value, item])).values())
+	);
 	let selectedLabels = $derived(
 		value
-			.map((selectedValue) => items.find((item) => item.value === selectedValue)?.label)
+			.map((selectedValue) => normalizedItems.find((item) => item.value === selectedValue)?.label)
 			.filter((label): label is string => !!label)
 	);
 	let displayLabel = $derived(selectedLabels.length > 0 ? selectedLabels.join('、') : placeholder);
@@ -36,7 +39,7 @@
 	name={fieldName}
 	bind:value
 	{disabled}
-	items={items.map((item) => ({
+	items={normalizedItems.map((item) => ({
 		value: item.value,
 		label: item.label,
 		disabled: item.disabled ?? false
@@ -62,7 +65,7 @@
 			sideOffset={4}
 		>
 			<Select.Viewport class="max-h-64 p-1">
-				{#each items as item (item.value)}
+				{#each normalizedItems as item, index (`${item.value}-${index}`)}
 					<Select.Item
 						value={item.value}
 						label={item.label}

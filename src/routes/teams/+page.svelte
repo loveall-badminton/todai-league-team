@@ -19,7 +19,7 @@
 	let { data }: PageProps = $props();
 
 	let showForm = $state(false);
-	let fileInput: HTMLInputElement;
+	let fileInput: HTMLInputElement | undefined;
 
 	$effect(() => {
 		const result = importTeams.result;
@@ -57,7 +57,7 @@
 			onchange={(e) => e.currentTarget.form?.requestSubmit()}
 		/>
 	</form>
-	<AppButton type="button" variant="secondary" onclick={() => fileInput.click()}>
+	<AppButton type="button" variant="secondary" onclick={() => fileInput?.click()}>
 		インポート
 	</AppButton>
 	<AppButton variant="secondary" href="/teams/export">エクスポート</AppButton>

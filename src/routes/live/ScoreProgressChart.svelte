@@ -16,7 +16,6 @@
 	let series = $derived(buildScoreProgressionSeries(points));
 
 	const margin = { top: 8, right: 12, bottom: 20, left: 28 };
-	let svgEl: SVGSVGElement | undefined = $state();
 	let width = $state(0);
 	let height = $state(0);
 
@@ -55,8 +54,8 @@
 	let tooltipX = $derived(tooltipIndex != null ? xScale(tooltipIndex) : null);
 
 	function onMouseMove(e: MouseEvent) {
-		if (!series || !svgEl) return;
-		const rect = svgEl.getBoundingClientRect();
+		if (!series) return;
+		const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
 		const mx = e.clientX - rect.left - margin.left;
 		const i = Math.round(xScale.invert(mx));
 		tooltipIndex = Math.max(0, Math.min(series.a.length - 1, i));
@@ -129,14 +128,7 @@
 		</div>
 		<div class="h-40 w-full" bind:clientWidth={width} bind:clientHeight={height}>
 			{#if width > 0 && height > 0}
-				<svg
-					bind:this={svgEl}
-					{width}
-					{height}
-					role="img"
-					onmousemove={onMouseMove}
-					onmouseleave={onMouseLeave}
-				>
+				<svg {width} {height} role="img" onmousemove={onMouseMove} onmouseleave={onMouseLeave}>
 					<g transform="translate({margin.left},{margin.top})">
 						<!-- Y grid lines + ticks -->
 						{#each yTicks as tick (tick)}
