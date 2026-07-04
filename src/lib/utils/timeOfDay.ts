@@ -27,6 +27,17 @@ export function toTimestamp(value: string, baseMs: number = Date.now()): number 
 	return Number.isNaN(parsed) ? null : parsed;
 }
 
+/**
+ * 残り分数を「n分」「n時間」「n時間n分」の形式にする。
+ * 60 分未満はそのまま分表記。0 以下の扱いは呼び出し側の責務。
+ */
+export function formatDurationMin(min: number): string {
+	if (min < 60) return `${min}分`;
+	const hours = Math.floor(min / 60);
+	const mins = min % 60;
+	return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`;
+}
+
 /** HH:mm から分数を引いた HH:mm を返す(日をまたぐ場合は 24 時間で折り返す)。 */
 export function subtractMinutesFromHhMm(value: string, minutes: number): string | null {
 	const hhMm = parseHhMm(value);

@@ -17,6 +17,7 @@
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { PageProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
+	import { formatDurationMin } from '$lib/utils/timeOfDay';
 
 	let { data }: PageProps = $props();
 
@@ -113,7 +114,7 @@
 												{#if min === null}
 													期限あり
 												{:else if min > 0}
-													あと {min} 分
+													あと {formatDurationMin(min)}
 												{:else}
 													期限超過
 												{/if}
@@ -234,7 +235,7 @@
 												: 'text-amber-700'}"
 										>
 											<AlarmClock class="size-3 shrink-0" />
-											開始まであと {startMin} 分
+											開始まであと {formatDurationMin(startMin)}
 										</span>
 									{/if}
 								</div>

@@ -26,6 +26,7 @@
 		saveLocalLineupDraft
 	} from '../lineupDraftStorage';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
+	import { formatDurationMin } from '$lib/utils/timeOfDay';
 
 	let { data }: PageProps = $props();
 
@@ -156,7 +157,7 @@
 							? 'text-amber-600'
 							: 'text-muted-foreground'}"
 			>
-				{remainingMin > 0 ? `あと ${remainingMin} 分` : '期限超過'}
+				{remainingMin > 0 ? `あと ${formatDurationMin(remainingMin)}` : '期限超過'}
 			</span>
 		{/if}
 	</div>

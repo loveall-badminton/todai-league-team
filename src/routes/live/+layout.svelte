@@ -4,6 +4,7 @@
 	import { AlarmClock } from '@lucide/svelte';
 	import type { LayoutProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
+	import { formatDurationMin } from '$lib/utils/timeOfDay';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -56,7 +57,9 @@
 									: urgentRemainingMin <= 10
 										? 'font-semibold text-amber-900'
 										: ''}
-							>{urgentRemainingMin > 0 ? `あと ${urgentRemainingMin} 分` : '締切済'}</span
+							>{urgentRemainingMin > 0
+								? `あと ${formatDurationMin(urgentRemainingMin)}`
+								: '締切済'}</span
 						>
 					{/if}
 				</span>
@@ -72,7 +75,9 @@
 									: urgentRemainingMin <= 10
 										? 'font-semibold text-amber-900'
 										: ''}
-							>{urgentRemainingMin > 0 ? `あと ${urgentRemainingMin} 分` : '締切済'}</span
+							>{urgentRemainingMin > 0
+								? `あと ${formatDurationMin(urgentRemainingMin)}`
+								: '締切済'}</span
 						>
 					{/if}
 				</span>

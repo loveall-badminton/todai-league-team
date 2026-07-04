@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { parseHhMm, subtractMinutesFromHhMm, toTimestamp } from './timeOfDay';
+import { formatDurationMin, parseHhMm, subtractMinutesFromHhMm, toTimestamp } from './timeOfDay';
 
 describe('parseHhMm', () => {
 	test('parses valid HH:mm strings', () => {
@@ -46,5 +46,22 @@ describe('subtractMinutesFromHhMm', () => {
 
 	test('returns null for non-HH:mm input', () => {
 		expect(subtractMinutesFromHhMm('2025-06-01T10:00:00.000Z', 10)).toBeNull();
+	});
+});
+
+describe('formatDurationMin', () => {
+	test('under an hour stays in minutes', () => {
+		expect(formatDurationMin(1)).toBe('1分');
+		expect(formatDurationMin(59)).toBe('59分');
+	});
+
+	test('exact hours omit minutes', () => {
+		expect(formatDurationMin(60)).toBe('1時間');
+		expect(formatDurationMin(120)).toBe('2時間');
+	});
+
+	test('hours and minutes combined', () => {
+		expect(formatDurationMin(61)).toBe('1時間1分');
+		expect(formatDurationMin(150)).toBe('2時間30分');
 	});
 });
