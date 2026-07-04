@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  本部PC(macOS)で 5分ごとに fetch-backup.sh を実行する launchd 設定。
+  1. このファイル内の /PATH/TO を実際のリポジトリパスに置き換える
+  2. EnvironmentVariables の BACKUP_DOWNLOAD_TOKEN を設定する
+  3. cp scripts/fetch-backup.plist ~/Library/LaunchAgents/jp.loveall.fetch-backup.plist
+  4. launchctl load ~/Library/LaunchAgents/jp.loveall.fetch-backup.plist
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>jp.loveall.fetch-backup</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/PATH/TO/todai-league/scripts/fetch-backup.sh</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>BACKUP_DOWNLOAD_TOKEN</key>
+		<string>REPLACE_WITH_LONG_RANDOM_TOKEN</string>
+	</dict>
+	<key>StartInterval</key>
+	<integer>300</integer>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/tmp/fetch-backup.log</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/fetch-backup.err</string>
+</dict>
+</plist>

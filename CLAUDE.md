@@ -24,6 +24,10 @@ pnpm db:push          # push schema to D1
 pnpm db:studio        # drizzle-kit studio
 pnpm db:migrate:staging  # apply pending migrations to staging D1 (remote)
 pnpm db:migrate:prod     # apply pending migrations to production D1 (remote)
+
+pnpm backup:dev       # BCP backup worker locally (port 4174)
+pnpm backup:check     # typecheck backup worker
+pnpm backup:deploy    # deploy backup worker
 ```
 
 `pnpm check` must be run with wrangler types already generated. `pnpm gen` handles that automatically; CI uses `pnpm gen:check` (no side effects).
@@ -82,6 +86,10 @@ Two wrangler config files serve distinct purposes and **must remain separate**:
 | `wrangler.adapter.jsonc` | Used only by `@sveltejs/adapter-cloudflare` at build time. Points `main` at `.svelte-kit/cloudflare/_worker.js` to avoid overwriting the custom entry point. |
 
 `src/worker.ts` bridges the two: it imports the SvelteKit adapter output via the `sveltekit-worker` alias (defined in `wrangler.jsonc`) and re-exports `LiveBoard` and `MatchActionCoordinator` so wrangler can find the DO classes.
+
+## Emergency backup (BCP)
+
+`workers/backup/` is an independent Hono worker (`todai-league-backup`) that generates the emergency paper-ops packet (emergency.html/pdf/md, state.json, scores.csv, event-log.ndjson) from D1 into the `todai-league-backups` R2 bucket on a cron, and serves it via token-protected download URLs. See `workers/backup/README.md` and `BCP.md`. Admin UI: `/settings/backup` (needs `BACKUP_WORKER_URL` / `BACKUP_SECRET` / `BACKUP_DOWNLOAD_TOKEN` env vars on the main app). The global event number (`lastEventId`) is `MAX(score_events.rowid)` scoped to the tournament.
 
 ## Domain terminology
 

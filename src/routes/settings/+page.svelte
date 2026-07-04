@@ -44,6 +44,19 @@
 	</div>
 </Card>
 
+<!-- Emergency backup -->
+<Card>
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<div>
+			<h2 class="font-semibold text-default">緊急バックアップ</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				障害時に紙運用へ切り替えるための緊急運営継続パケットを管理します。
+			</p>
+		</div>
+		<AppButton variant="secondary" href={resolve('/settings/backup')}>開く</AppButton>
+	</div>
+</Card>
+
 <!-- Scoring rules -->
 <section class="space-y-3">
 	<h2 class="font-semibold text-default">得点ルール</h2>

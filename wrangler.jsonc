@@ -35,6 +35,14 @@
 			"migrations_dir": "drizzle"
 		}
 	],
+	"services": [
+		{
+			// backup worker への内部呼び出し用。workers.dev への公開URL fetch は
+			// Worker 間サブリクエストとして失敗するため Service Binding を使う。
+			"binding": "BACKUP_WORKER",
+			"service": "todai-league-backup"
+		}
+	],
 	"durable_objects": {
 		"bindings": [
 			{
@@ -67,6 +75,7 @@
 		}
 	],
 	"vars": {
-		"BETTER_AUTH_URL": "https://todai-league.qwg2pfmvzk.workers.dev"
+		"BETTER_AUTH_URL": "https://todai-league.qwg2pfmvzk.workers.dev",
+		"BACKUP_WORKER_URL": "https://todai-league-backup.qwg2pfmvzk.workers.dev"
 	}
 }

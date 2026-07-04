@@ -47,7 +47,7 @@ export default defineConfig({
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
+					include: ['src/**/*.{test,spec}.{js,ts}', 'workers/**/*.{test,spec}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.cf.{test,spec}.{js,ts}']
 				}
 			},
@@ -56,7 +56,14 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				plugins: [
 					cloudflareTest({
-						wrangler: { configPath: './wrangler.jsonc' }
+						wrangler: { configPath: './wrangler.jsonc' },
+						miniflare: {
+							// wrangler.jsonc の BACKUP_WORKER は外部 Worker (todai-league-backup) への
+							// Service Binding。テストでは解決できないためスタブする。
+							serviceBindings: {
+								BACKUP_WORKER: () => new Response('backup worker stub', { status: 503 })
+							}
+						}
 					})
 				],
 				test: {

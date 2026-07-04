@@ -34,3 +34,4 @@ test-results/
 
 # Content Collections
 .content-collections
+.backup-secrets.local

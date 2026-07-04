@@ -1,0 +1,44 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	// メインアプリ (todai-league) とは独立した BCP 用 Worker。
+	// メインアプリや管理画面が落ちてもバックアップ生成・配信を継続するため、
+	// 同居させずに別デプロイとする。
+	"name": "todai-league-backup",
+	"compatibility_date": "2026-06-03",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "src/index.ts",
+	"workers_dev": true,
+	"observability": {
+		"logs": {
+			"enabled": true
+		}
+	},
+	"triggers": {
+		// 2分ごと: HTML / MD / JSON / CSV / NDJSON
+		// 30分ごと: 上記 + PDF (Browser Run のブラウザ時間を消費するため別スケジュール。
+		// Free プランは 10分/日 の上限があるため長めの間隔にしている)
+		"crons": ["*/2 * * * *", "*/30 * * * *"]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "todai-league",
+			"database_id": "ca60f5c9-9b5d-4b15-ae15-cbd70c7fee3e",
+			"migrations_dir": "../../drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BACKUP_BUCKET",
+			"bucket_name": "todai-league-backups"
+		}
+	],
+	"browser": {
+		"binding": "BROWSER"
+	}
+	// secrets (wrangler secret put -c workers/backup/wrangler.jsonc):
+	//   BACKUP_SECRET  — POST /backup-now 用 Bearer トークン
+	//   DOWNLOAD_TOKEN — ダウンロードURL用の長いランダムトークン
+	// vars (任意):
+	//   TOURNAMENT_ID — 対象大会を固定する場合に指定。未指定なら running > published の大会を自動選択
+}
