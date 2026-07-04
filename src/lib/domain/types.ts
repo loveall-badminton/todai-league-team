@@ -16,12 +16,7 @@ export type MatchStatus =
 	| 'cancelled';
 
 export type TerminalReason =
-	| 'normal'
-	| 'forfeit'
-	| 'retirement'
-	| 'disqualification'
-	| 'walkover'
-	| 'cancelled';
+	'normal' | 'forfeit' | 'retirement' | 'disqualification' | 'walkover' | 'cancelled';
 
 export interface GameScore {
 	A: number;

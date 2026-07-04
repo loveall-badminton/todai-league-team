@@ -26,8 +26,7 @@
 		children
 	}: {
 		formObj?:
-			| { method: HTMLFormAttributes['method']; action: HTMLFormAttributes['action'] }
-			| undefined;
+			{ method: HTMLFormAttributes['method']; action: HTMLFormAttributes['action'] } | undefined;
 		hiddenFields?: { name: string; value: string }[];
 		onConfirm?: ((payload?: unknown) => void | Promise<void>) | undefined;
 		confirmPayload?: (() => unknown | Promise<unknown>) | undefined;

@@ -3,11 +3,14 @@ import { drizzle } from 'drizzle-orm/d1';
 
 export type CfTestDb = ReturnType<typeof createCfTestDb>;
 
-const migrationModules = import.meta.glob('/drizzle/*.sql', { eager: true, query: '?raw' });
+const migrationModules = import.meta.glob<{ default: string }>('/drizzle/*.sql', {
+	eager: true,
+	query: '?raw'
+});
 
 const migrationSql = Object.keys(migrationModules)
 	.sort()
-	.map((k) => (migrationModules[k] as { default: string }).default)
+	.map((k) => migrationModules[k].default)
 	.join('\n')
 	.replace(/--> statement-breakpoint/g, ';');
 

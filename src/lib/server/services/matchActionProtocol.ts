@@ -58,5 +58,4 @@ export type MatchActionCoordinatorError = {
 };
 
 export type MatchActionCoordinatorResponse =
-	| MatchActionCoordinatorSuccess
-	| MatchActionCoordinatorError;
+	MatchActionCoordinatorSuccess | MatchActionCoordinatorError;
