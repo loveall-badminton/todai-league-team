@@ -20,6 +20,14 @@ describe('inferLineupDueAt', () => {
 		expect(inferLineupDueAt('not-a-date', 10, 'ten_minutes_before')).toBeNull();
 	});
 
+	test('subtracts minutes from HH:mm start time and returns HH:mm', () => {
+		expect(inferLineupDueAt('08:30', 10, 'ten_minutes_before')).toBe('08:20');
+	});
+
+	test('HH:mm subtraction wraps around midnight', () => {
+		expect(inferLineupDueAt('00:05', 10, 'ten_minutes_before')).toBe('23:55');
+	});
+
 	test('subtracts defaultMinutesBefore from scheduledStartAt', () => {
 		const result = inferLineupDueAt('2025-06-01T10:00:00.000Z', 10, 'ten_minutes_before');
 		expect(result).toBe('2025-06-01T09:50:00.000Z');

@@ -8,6 +8,7 @@ import {
 } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { rubbers, teams, ties } from '$lib/server/db/schema';
+import { subtractMinutesFromHhMm } from '$lib/utils/timeOfDay';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
 type LineupDuePolicy = 'first_match_before_opening' | 'ten_minutes_before' | 'manual';
@@ -188,6 +189,9 @@ export function inferLineupDueAt(
 	if (!scheduledStartAt || policy === 'manual' || policy === 'first_match_before_opening') {
 		return null;
 	}
+	// 開始予定時刻は "08:30" のような HH:mm で保存される。その場合は期限も HH:mm で返す。
+	const hhMmDue = subtractMinutesFromHhMm(scheduledStartAt, defaultMinutesBefore);
+	if (hhMmDue !== null) return hhMmDue;
 	const date = new Date(scheduledStartAt);
 	if (Number.isNaN(date.getTime())) return null;
 	date.setMinutes(date.getMinutes() - defaultMinutesBefore);

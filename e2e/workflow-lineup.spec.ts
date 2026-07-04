@@ -281,8 +281,9 @@ test.describe.serial('lineup full workflow', () => {
 		});
 
 		// Verify on tie page: rubber shows '結果確認待ち' until admin confirms
+		// (審判名は IconMeta で表示され、「審判:」ラベルは aria-label/tooltip 側にある)
 		await page.goto(tieUrl);
-		await expect(page.getByText('審判：審判 太郎').first()).toBeVisible({ timeout: 5000 });
+		await expect(page.getByLabel('審判: 審判 太郎').first()).toBeVisible({ timeout: 5000 });
 		await expect(page.getByRole('button', { name: '運営承認' }).first()).toBeVisible({
 			timeout: 5000
 		});
