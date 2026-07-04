@@ -8,8 +8,8 @@ import { getRequestEvent } from '$app/server';
  * 無い環境では BACKUP_WORKER_URL への通常 fetch にフォールバックする。
  */
 export function fetchBackupWorker(path: string, init?: RequestInit): Promise<Response> {
-	const platform = getRequestEvent().platform as { env?: { BACKUP_WORKER?: Fetcher } } | undefined;
-	const binding = platform?.env?.BACKUP_WORKER;
+	const platform = getRequestEvent().platform;
+	const binding = platform?.env.BACKUP_WORKER;
 	if (binding) {
 		// binding 経由ではホスト名は使われないが、URL は絶対URLである必要がある
 		return binding.fetch(`https://backup-worker${path}`, init);
