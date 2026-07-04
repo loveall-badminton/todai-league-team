@@ -11,6 +11,7 @@
 	} from '@lucide/svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import IconMeta from '$lib/components/IconMeta.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
@@ -92,10 +93,13 @@
 									</p>
 									<div class="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
 										{#if tie.scheduledStartAt}
-											<span class="inline-flex items-center gap-1 font-medium text-zinc-500">
-												<Clock class="size-3 shrink-0" />
-												開始: {tie.scheduledStartAt}
-											</span>
+											<IconMeta
+												Icon={Clock}
+												label="開始"
+												value={tie.scheduledStartAt}
+												class="font-medium text-zinc-500"
+												iconClass="size-3 shrink-0"
+											/>
 										{/if}
 										{#if tie.lineupDueAt}
 											{@const min = remainingMin(tie.lineupDueAt)}

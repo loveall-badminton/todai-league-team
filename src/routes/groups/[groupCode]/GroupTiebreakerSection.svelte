@@ -4,10 +4,12 @@
 	import Card from '$lib/components/Card.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
+	import IconMeta from '$lib/components/IconMeta.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { Award } from '@lucide/svelte';
 	import { createTiebreaker, syncTiebreaker } from './group.remote';
 
 	type TiebreakerDiscipline = 'MD' | 'XD' | 'WD';
@@ -200,7 +202,14 @@
 							<p class="text-xs text-muted-foreground">
 								{tiebreakerStatusLabel(item.status)}
 								{#if item.winnerTeamId}
-									/ 勝者: {teamName(item.winnerTeamId)}
+									<span class="mx-1">/</span>
+									<IconMeta
+										Icon={Award}
+										label="勝者"
+										value={teamName(item.winnerTeamId)}
+										class="text-xs text-muted-foreground"
+										iconClass="size-3 shrink-0"
+									/>
 								{/if}
 							</p>
 						</div>

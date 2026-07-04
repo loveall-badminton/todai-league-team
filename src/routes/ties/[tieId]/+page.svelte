@@ -9,6 +9,7 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import IconMeta from '$lib/components/IconMeta.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { RubberRow } from '$lib/types/entities';
@@ -22,7 +23,7 @@
 		tieStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
 	import type { EntityOption } from '$lib/types/entities';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { ArrowLeft, Award, UserRound } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import {
@@ -201,9 +202,13 @@
 					<span class="text-4xl font-bold tabular-nums">{tie.teamScoreB}</span>
 				</div>
 				{#if winnerName(tie.winnerTeamId)}
-					<p class="mt-1 text-[11px] font-medium text-emerald-700">
-						勝者: {winnerName(tie.winnerTeamId)}
-					</p>
+					<IconMeta
+						Icon={Award}
+						label="勝者"
+						value={winnerName(tie.winnerTeamId)!}
+						class="mt-1 text-[11px] font-medium text-emerald-700"
+						iconClass="size-3 shrink-0"
+					/>
 				{/if}
 			</div>
 		</Card>
@@ -414,7 +419,13 @@
 		<td class="px-4 py-3">
 			<div class="flex flex-wrap items-center gap-2">
 				{#if row.refereeName}
-					<span class="text-xs text-zinc-700">審判：{row.refereeName}</span>
+					<IconMeta
+						Icon={UserRound}
+						label="審判"
+						value={row.refereeName}
+						class="text-xs text-zinc-700"
+						iconClass="size-3 shrink-0"
+					/>
 				{/if}
 				{#if row.matchId}
 					<AppButton

@@ -10,7 +10,8 @@
 	} from '$lib/domain/tokyoLeagueLabels';
 	import AppTabs from '$lib/components/AppTabs.svelte';
 	import Card from '$lib/components/Card.svelte';
-	import { ChevronDown } from '@lucide/svelte';
+	import IconMeta from '$lib/components/IconMeta.svelte';
+	import { ChevronDown, MapPin } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
 	import { filterScorePointsByGame, getScoreProgressionGameNos } from '$lib/utils/scoreProgression';
 
@@ -140,9 +141,13 @@
 		<p class="text-xs font-medium text-muted">
 			{phaseLabel(tie.phase)} · {tie.tieCode}
 		</p>
-		<p class="mt-0.5 text-[11px] text-muted">
-			コート: {courtDisplayLabel(tie.venue, tie.courtBlockCode)}
-		</p>
+		<IconMeta
+			Icon={MapPin}
+			label="コート"
+			value={courtDisplayLabel(tie.venue, tie.courtBlockCode)}
+			class="mt-0.5 text-[11px] text-muted"
+			iconClass="size-3 shrink-0"
+		/>
 		<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
 			<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
 			<div class="text-center">

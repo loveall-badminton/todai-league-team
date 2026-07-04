@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ArrowRight, ChevronDown, GripVertical } from '@lucide/svelte';
+	import { ArrowRight, Award, ChevronDown, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
 	import AppButton from '$lib/components/AppButton.svelte';
+	import IconMeta from '$lib/components/IconMeta.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
@@ -92,9 +93,14 @@
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</span>
 							{#if tie.winnerTeamId}
-								<p class="text-[10px] font-medium text-emerald-700">
-									勝者: {tie.winnerTeamId === tie.teamAId ? tie.teamAName : tie.teamBName}
-								</p>
+								<IconMeta
+									Icon={Award}
+									label="勝者"
+									value={(tie.winnerTeamId === tie.teamAId ? tie.teamAName : tie.teamBName) ??
+										'未定'}
+									class="text-[10px] font-medium text-emerald-700"
+									iconClass="size-3 shrink-0"
+								/>
 							{/if}
 							<p class="text-[10px] text-zinc-400">種目</p>
 						</div>
