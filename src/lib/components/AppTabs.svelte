@@ -16,6 +16,10 @@
 		listClass?: string;
 		triggerClass?: string;
 	} = $props();
+
+	let normalizedItems = $derived(
+		Array.from(new Map(items.map((item) => [item.value, item])).values())
+	);
 </script>
 
 <Tabs.Root
@@ -26,7 +30,7 @@
 	}}
 >
 	<Tabs.List class={cn('flex scrollbar-none gap-1.5 overflow-x-auto pb-0.5', listClass)}>
-		{#each items as item (item.value)}
+		{#each normalizedItems as item, index (`${item.value}-${index}`)}
 			<Tabs.Trigger
 				value={item.value}
 				class={cn(

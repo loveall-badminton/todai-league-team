@@ -28,12 +28,15 @@
 		'aria-invalid'?: boolean | 'false' | 'true';
 	} = $props();
 
-	let selectedLabel = $derived(items.find((i) => i.value === value)?.label ?? placeholder);
+	let normalizedItems = $derived(
+		Array.from(new Map(items.map((item) => [item.value, item])).values())
+	);
+	let selectedLabel = $derived(normalizedItems.find((i) => i.value === value)?.label ?? placeholder);
 	const invalid = $derived(ariaInvalid === true || ariaInvalid === 'true');
-	let triggerRef: HTMLButtonElement | null = $state(null);
 
-	$effect(() => {
-		const form = triggerRef?.closest('form');
+	// form reset 後も選択値を維持する(hidden input だけリセットされるのを防ぐ)
+	function keepValueOnFormReset(node: HTMLElement) {
+		const form = node.closest('form');
 		if (!form) return;
 		const handleReset = async () => {
 			const valueBeforeReset = value;
@@ -42,7 +45,7 @@
 		};
 		form.addEventListener('reset', handleReset, { capture: true });
 		return () => form.removeEventListener('reset', handleReset, { capture: true });
-	});
+	}
 </script>
 
 <Select.Root
@@ -52,11 +55,11 @@
 	{required}
 	{disabled}
 	{...restProps}
-	items={items.map((i) => ({ value: i.value, label: i.label, disabled: false }))}
+	items={normalizedItems.map((i) => ({ value: i.value, label: i.label, disabled: false }))}
 	onValueChange={(v) => onValueChange?.(v ?? '')}
 >
 	<Select.Trigger
-		bind:ref={triggerRef}
+		{@attach keepValueOnFormReset}
 		aria-invalid={ariaInvalid}
 		class={cn(
 			'flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 disabled:opacity-50',
@@ -72,9 +75,9 @@
 	<Select.Content
 		class="z-50 min-w-32 overflow-hidden rounded-xl border border-border bg-white shadow-md"
 		sideOffset={4}
-	>
-		<Select.Viewport class="p-1">
-			{#each items as item (item.value)}
+		>
+			<Select.Viewport class="p-1">
+			{#each normalizedItems as item, index (`${item.value}-${index}`)}
 				<Select.Item
 					value={item.value}
 					label={item.label}

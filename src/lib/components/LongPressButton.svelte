@@ -17,7 +17,6 @@
 		type?: 'submit' | 'button';
 	} = $props();
 
-	let btnEl: HTMLButtonElement | undefined = $state();
 	let pressing = $state(false);
 	let progress = $state(0);
 	let timerId: ReturnType<typeof setTimeout> | null = null;
@@ -43,20 +42,17 @@
 		rafId = requestAnimationFrame(tickProgress);
 	}
 
-	function submitForm() {
-		btnEl?.closest('form')?.requestSubmit();
-	}
-
 	function onTouchStart(e: TouchEvent) {
 		if (disabled) return;
 		e.preventDefault();
+		const form = (e.currentTarget as HTMLButtonElement).closest('form');
 		pressing = true;
 		startTime = Date.now();
 		progress = 0;
 		rafId = requestAnimationFrame(tickProgress);
 		timerId = setTimeout(() => {
 			cancelPress();
-			submitForm();
+			form?.requestSubmit();
 		}, threshold);
 	}
 
@@ -72,7 +68,6 @@
 </script>
 
 <button
-	bind:this={btnEl}
 	class={cn('relative touch-none select-none', className)}
 	{disabled}
 	{type}
