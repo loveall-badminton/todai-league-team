@@ -32,21 +32,6 @@ function storageKey(tieId: string, teamId: string) {
 	return `${storagePrefix}:${tieId}:${teamId}`;
 }
 
-function formDataString(formData: FormData, key: string) {
-	const value = formData.get(key);
-	return typeof value === 'string' ? value : '';
-}
-
-export function lineupDraftItemsFromFormData(formData: FormData): LocalLineupDraft {
-	const items = RUBBER_DEFINITIONS.map((rubber, index) => ({
-		rubberCode: rubber.code,
-		player1Id: formDataString(formData, `items[${index}].player1Id`),
-		player2Id: formDataString(formData, `items[${index}].player2Id`)
-	}));
-
-	return v.parse(localLineupDraftSchema, items);
-}
-
 export function loadLocalLineupDraft(tieId: string, teamId: string): LocalLineupDraft | null {
 	const parsed = loadJsonFromLocalStorage(storageKey(tieId, teamId), localLineupDraftSchema);
 	if (!parsed) return null;

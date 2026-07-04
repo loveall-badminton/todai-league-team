@@ -3,6 +3,8 @@
 	import type { EntityOption } from '$lib/types/entities';
 	import { ArrowLeft } from '@lucide/svelte';
 	import Card from '$lib/components/Card.svelte';
+	import Callout from '$lib/components/Callout.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
 	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -19,7 +21,11 @@
 	import { shouldRefreshTieLineups } from '$lib/realtime/updates';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
-	import { loadLocalLineupDraft, saveLocalLineupDraft } from '../lineupDraftStorage';
+	import {
+		clearLocalLineupDraft,
+		loadLocalLineupDraft,
+		saveLocalLineupDraft
+	} from '../lineupDraftStorage';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 
 	let { data }: PageProps = $props();
@@ -38,6 +44,22 @@
 
 	const statusBadgeClass = lineupStatusBadgeClass;
 	let draftItems = $state(initialDraftItems());
+	// この端末に、現在表示中の内容(提出済み内容)と異なる下書きが見つかった場合にセットする。
+	// 見つかった時点では自動適用せず、ユーザーが選ぶまでバナーで待機する。
+	let pendingLocalDraft = $state<DraftItem[] | null>(null);
+
+	function draftItemsEqual(a: DraftItem[], b: DraftItem[]): boolean {
+		if (a.length !== b.length) return false;
+		return a.every((item, i) => {
+			const other = b[i];
+			return (
+				other !== undefined &&
+				item.rubberCode === other.rubberCode &&
+				item.player1Id === other.player1Id &&
+				item.player2Id === other.player2Id
+			);
+		});
+	}
 
 	function filteredPlayers(discipline: string, order: 1 | 2): Player[] {
 		return _filteredPlayers(discipline, order, data.players);
@@ -68,12 +90,27 @@
 		}
 	}
 
+	function applyPendingLocalDraft() {
+		if (!pendingLocalDraft) return;
+		draftItems = pendingLocalDraft;
+		pendingLocalDraft = null;
+	}
+
+	function discardPendingLocalDraft() {
+		clearLocalLineupDraft(data.tie.id, data.team.id);
+		pendingLocalDraft = null;
+	}
+
 	onMount(() => {
 		const localDraft = loadLocalLineupDraft(data.tie.id, data.team.id);
 		if (!localDraft) return;
 
-		draftItems = localDraft;
-		toast.info('この端末に保存した下書きを復元しました');
+		// 提出済み内容と同一なら復元の余地がないため何もしない
+		if (draftItemsEqual(localDraft, draftItems)) return;
+
+		// 提出済み内容と異なる下書きは、他端末からの提出等で古くなっている可能性があるため
+		// 自動適用せず、ユーザーに選んでもらう
+		pendingLocalDraft = localDraft;
 	});
 
 	const { remainingMin: calcRemainingMin } = useLineupClock();
@@ -128,7 +165,7 @@
 
 <!-- Locked/revealed: read-only display -->
 {#if isLocked}
-	<Card class="overflow-hidden">
+	<Card class="overflow-hidden" flush>
 		<div class="border-b border-border-subtle px-5 py-4">
 			<p class="text-sm text-muted-foreground">
 				{status === 'revealed'
@@ -156,6 +193,22 @@
 		</div>
 	</Card>
 {:else}
+	{#if pendingLocalDraft}
+		<Callout variant="warning">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<p>この端末に、現在表示中の内容とは異なる下書きが保存されています。読み込みますか?</p>
+				<div class="flex shrink-0 gap-2">
+					<AppButton type="button" variant="secondary" size="sm" onclick={discardPendingLocalDraft}>
+						破棄する
+					</AppButton>
+					<AppButton type="button" size="sm" onclick={applyPendingLocalDraft}
+						>下書きを読み込む</AppButton
+					>
+				</div>
+			</div>
+		</Callout>
+	{/if}
+
 	{#if isSubmitted}
 		<div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
 			提出済みです。変更する場合はそのまま編集して再提出してください。

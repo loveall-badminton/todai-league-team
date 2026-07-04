@@ -4,9 +4,9 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import type { SelectItem } from '$lib/types/ui';
-	import type { RubberCode } from '$lib/domain/tokyoLeague';
+	import { type RubberCode } from '$lib/domain/tokyoLeague';
 	import { lineup } from './lineup.remote';
-	import { clearLocalLineupDraft, lineupDraftItemsFromFormData } from '../lineupDraftStorage';
+	import { clearLocalLineupDraft, type LocalLineupDraft } from '../lineupDraftStorage';
 
 	type RubberDef = { code: RubberCode; discipline: string };
 
@@ -44,6 +44,14 @@
 			toastError(error);
 		}
 	});
+
+	let draftItems: LocalLineupDraft = $derived(
+		rubberDefinitions.map((rubber) => ({
+			rubberCode: rubber.code,
+			player1Id: draftValue(rubber.code, 1),
+			player2Id: draftValue(rubber.code, 2)
+		})) as LocalLineupDraft
+	);
 
 	function toastResult(result: { message?: string; warnings?: string[] } | undefined) {
 		if (!result?.message) {
@@ -119,8 +127,7 @@
 			<input {...itemField.rubberCode.as('hidden', rubber.code)} />
 			<p class="mb-2.5 text-xs font-medium text-muted-foreground">{rubberLabel(rubber.code)}</p>
 			<div class="grid grid-cols-2 gap-2">
-				{#each [1, 2] as order (order)}
-					{@const typedOrder = order as 1 | 2}
+				{#each [1, 2] as const as typedOrder (typedOrder)}
 					{@const slotPlayers = filteredPlayers(rubber.discipline, typedOrder)}
 					{@const playerItems: SelectItem[] = [
 						{ value: '', label: '未入力' },
@@ -135,12 +142,26 @@
 								{...itemField.player1Id.as('select')}
 								items={playerItems}
 								placeholder="未入力"
+								onValueChange={(value) => {
+									const item = draftItems.find((i) => i.rubberCode === rubber.code);
+									if (item) {
+										item.player1Id = value;
+										draftItems = [...draftItems];
+									}
+								}}
 							/>
 						{:else}
 							<AppSelect
 								{...itemField.player2Id.as('select')}
 								items={playerItems}
 								placeholder="未入力"
+								onValueChange={(value) => {
+									const item = draftItems.find((i) => i.rubberCode === rubber.code);
+									if (item) {
+										item.player2Id = value;
+										draftItems = [...draftItems];
+									}
+								}}
 							/>
 						{/if}
 					</div>
@@ -153,13 +174,7 @@
 		<AppButton
 			type="button"
 			disabled={lineup.pending > 0}
-			onclick={(event) => {
-				// AppSelect(bits-ui)の選択は remote form のフィールド状態(field.value())には
-				// 反映されないため、提出時と同じく DOM(FormData)から現在値を読む
-				const form = (event.currentTarget as HTMLElement | null)?.closest('form');
-				if (!form) return;
-				onSaveDraft(lineupDraftItemsFromFormData(new FormData(form)));
-			}}
+			onclick={() => onSaveDraft(draftItems)}
 			variant="secondary"
 		>
 			下書き保存
