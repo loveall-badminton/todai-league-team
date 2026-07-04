@@ -3,9 +3,11 @@
 	import { cn } from '$lib/utils/cn';
 	import {
 		buildScoresheetByGame,
+		buildSheetColumns,
 		type EventRow,
 		type GameState,
-		type MatchPlayer
+		type MatchPlayer,
+		type SheetColumn
 	} from './scoresheetHelpers';
 
 	let {
@@ -18,9 +20,20 @@
 		players: MatchPlayer[];
 	} = $props();
 
-	let scoresheetByGame = $derived(buildScoresheetByGame(events, games, players));
+	let scoresheetByGame = $derived(
+		buildScoresheetByGame(events, games, players).map((game) => ({
+			...game,
+			columns: buildSheetColumns(game)
+		}))
+	);
 	let aPlayers = $derived(players.filter((p) => p.side === 'A'));
 	let bPlayers = $derived(players.filter((p) => p.side === 'B'));
+
+	function cellScore(column: SheetColumn, playerId: string, side: 'A' | 'B'): number | null {
+		const cell = column.cells.find((c) => c.playerId === playerId);
+		if (!cell) return null;
+		return side === 'A' ? cell.scoreA : cell.scoreB;
+	}
 </script>
 
 <Card class="overflow-hidden">
@@ -42,7 +55,6 @@
 				<table class="w-full border-collapse text-xs">
 					<tbody>
 						{#each aPlayers as player (player.id)}
-							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
 							<tr class={cn('w-fit border-b border-border-subtle')}>
 								<td
 									class="sticky left-0 z-10 border-r border-border bg-pink-50 px-2 py-1.5 font-medium whitespace-nowrap text-pink-800"
@@ -54,31 +66,19 @@
 								</td>
 								<td class="p-0">
 									<div class="flex items-stretch">
-										{#each game.serviceRuns as run, ri (ri)}
-											{#if run.serverPlayerId === player.id}
-												{#each run.scores as entry, si (ri + '-' + si)}
-													<div
-														class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-pink-700 tabular-nums"
-													>
-														{entry.scoreA}
-													</div>
-												{/each}
-												{#if ri < game.serviceRuns.length - 1}
-													<div class="flex items-center border-r-2 border-zinc-300"></div>
-												{/if}
-											{:else}
-												<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
-												{#each run.scores as _entry, si (ri + '-' + si)}
-													<div class="min-w-7 border-r border-border-subtle px-1 py-1.5"></div>
-												{/each}
-												{#if ri < game.serviceRuns.length - 1}
-													<div class="flex items-center border-r-2 border-zinc-300"></div>
-												{/if}
+										{#each game.columns as column, ci (ci)}
+											{@const score = cellScore(column, player.id, 'A')}
+											<div
+												class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-pink-700 tabular-nums"
+											>
+												{score ?? ''}
+											</div>
+											{#if column.serviceOver && ci < game.columns.length - 1}
+												<div class="flex items-center border-r-2 border-zinc-300"></div>
 											{/if}
-										{/each}
-										{#if playerRuns.length === 0 && game.serviceRuns.length === 0}
+										{:else}
 											<div class="px-2 py-1.5 text-zinc-300">—</div>
-										{/if}
+										{/each}
 									</div>
 								</td>
 							</tr>
@@ -94,12 +94,9 @@
 							</td>
 							<td class="border-y-2 border-zinc-400 bg-zinc-100 p-0">
 								<div class="flex items-stretch">
-									{#each game.serviceRuns as run, ri (ri)}
-										<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
-										{#each run.scores as _entry, si (ri + '-' + si)}
-											<div class="min-w-7 border-r border-zinc-300 px-1 py-0.5"></div>
-										{/each}
-										{#if ri < game.serviceRuns.length - 1}
+									{#each game.columns as column, ci (ci)}
+										<div class="min-w-7 border-r border-zinc-300 px-1 py-0.5"></div>
+										{#if column.serviceOver && ci < game.columns.length - 1}
 											<div class="border-r-2 border-zinc-300"></div>
 										{/if}
 									{/each}
@@ -110,7 +107,6 @@
 
 					<tbody>
 						{#each bPlayers as player (player.id)}
-							{@const playerRuns = game.serviceRuns.filter((r) => r.serverPlayerId === player.id)}
 							<tr class={cn('w-fit border-b border-border-subtle')}>
 								<td
 									class="sticky left-0 z-10 border-r border-border bg-cyan-50 px-2 py-1.5 font-medium whitespace-nowrap text-cyan-800"
@@ -122,31 +118,19 @@
 								</td>
 								<td class="p-0">
 									<div class="flex items-stretch">
-										{#each game.serviceRuns as run, ri (ri)}
-											{#if run.serverPlayerId === player.id}
-												{#each run.scores as entry, si (ri + '-' + si)}
-													<div
-														class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-cyan-700 tabular-nums"
-													>
-														{entry.scoreB}
-													</div>
-												{/each}
-												{#if ri < game.serviceRuns.length - 1}
-													<div class="flex items-center border-r-2 border-zinc-300"></div>
-												{/if}
-											{:else}
-												<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
-												{#each run.scores as _entry, si (ri + '-' + si)}
-													<div class="min-w-7 border-r border-border-subtle px-1 py-1.5"></div>
-												{/each}
-												{#if ri < game.serviceRuns.length - 1}
-													<div class="flex items-center border-r-2 border-zinc-300"></div>
-												{/if}
+										{#each game.columns as column, ci (ci)}
+											{@const score = cellScore(column, player.id, 'B')}
+											<div
+												class="flex min-w-7 items-center justify-center border-r border-border-subtle px-1 py-1.5 font-medium text-cyan-700 tabular-nums"
+											>
+												{score ?? ''}
+											</div>
+											{#if column.serviceOver && ci < game.columns.length - 1}
+												<div class="flex items-center border-r-2 border-zinc-300"></div>
 											{/if}
-										{/each}
-										{#if playerRuns.length === 0 && game.serviceRuns.length === 0}
+										{:else}
 											<div class="px-2 py-1.5 text-zinc-300">—</div>
-										{/if}
+										{/each}
 									</div>
 								</td>
 							</tr>

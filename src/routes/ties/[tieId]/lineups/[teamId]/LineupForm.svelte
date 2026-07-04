@@ -172,7 +172,7 @@
 		</div>
 	{/each}
 
-	<div class="flex items-center justify-end gap-3 px-5 py-4">
+	<div class="flex items-end sm:items-center justify-end gap-3 px-5 py-4 flex-col sm:flex-row">
 		<span class="text-xs text-muted">入力内容はこの端末に自動保存されます</span>
 		<AppButton type="submit" disabled={lineup.pending > 0}>
 			{lineup.pending > 0 ? '送信中…' : '提出する'}

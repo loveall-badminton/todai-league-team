@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { buildScoresheetByGame, type EventRow, type GameSheet } from './scoresheetHelpers';
+import {
+	buildScoresheetByGame,
+	buildSheetColumns,
+	type EventRow,
+	type GameSheet
+} from './scoresheetHelpers';
 import type { GameState, MatchPlayer } from '$lib/domain/types';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -489,6 +494,52 @@ describe('buildScoresheetByGame: game-ending rally', () => {
 		const s1Run = result[0].serviceRuns.find((r) => r.serverPlayerId === 's1')!;
 		// (0,0) + (21,15)
 		expect(s1Run.scores).toHaveLength(2);
+	});
+});
+
+// ─── buildSheetColumns ────────────────────────────────────────────────────────
+
+describe('buildSheetColumns', () => {
+	const players = [makePlayer('s1', 'A'), makePlayer('r1', 'B')];
+
+	test('initial server 0 and receiver 0 share the same column', () => {
+		resetSeq();
+		const events = [matchStarted('s1', 'r1')];
+		const [sheet] = buildScoresheetByGame(events, [], players);
+		const columns = buildSheetColumns(sheet);
+		expect(columns).toHaveLength(1);
+		expect(columns[0].cells.map((c) => c.playerId).sort()).toEqual(['r1', 's1']);
+	});
+
+	test('rallies append one column each after the shared start column', () => {
+		resetSeq();
+		const events = [
+			matchStarted('s1', 'r1'),
+			rallyWon({ side: 'A', scoreA: 1, scoreB: 0, serverBefore: 's1', serverAfter: 's1' }),
+			rallyWon({ side: 'B', scoreA: 1, scoreB: 1, serverBefore: 's1', serverAfter: 'r1' })
+		];
+		const [sheet] = buildScoresheetByGame(events, [], players);
+		const columns = buildSheetColumns(sheet);
+		// 開始列(0/0) + ラリー2本 = 3列
+		expect(columns).toHaveLength(3);
+		expect(columns[0].cells).toHaveLength(2);
+		expect(columns[1].cells).toEqual([{ playerId: 's1', side: 'A', scoreA: 1, scoreB: 0 }]);
+		// サービスオーバーの太線は s1 のラン最終列の後
+		expect(columns[1].serviceOver).toBe(true);
+		expect(columns[2].cells).toEqual([{ playerId: 'r1', side: 'B', scoreA: 1, scoreB: 1 }]);
+	});
+
+	test('receiver winning the first rally keeps the shared start column', () => {
+		resetSeq();
+		const events = [
+			matchStarted('s1', 'r1'),
+			rallyWon({ side: 'B', scoreA: 0, scoreB: 1, serverBefore: 's1', serverAfter: 'r1' })
+		];
+		const [sheet] = buildScoresheetByGame(events, [], players);
+		const columns = buildSheetColumns(sheet);
+		expect(columns).toHaveLength(2);
+		expect(columns[0].cells).toHaveLength(2);
+		expect(columns[0].serviceOver).toBe(true);
 	});
 });
 

@@ -21,7 +21,12 @@
 import { execSync, type ExecSyncOptions } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildSeedScoreEvents } from '../src/lib/seed/scoreEventSeed';
+import {
+	buildSeedScoreEvents,
+	type SeedScoreEvent,
+	type SeedService,
+	type SeedSlot
+} from '../src/lib/seed/scoreEventSeed';
 
 const DB_NAME = process.argv.find((a) => a.startsWith('--db='))?.slice(5) ?? 'todai-league-staging';
 const BASE_URL =
@@ -162,33 +167,49 @@ function insertMatchWithState(params: {
 
 	const plan = LINEUP_PLAN[rubber.code];
 
-	// service state (playing のみ)
-	const serving = current.a >= current.b ? 'A' : 'B';
-	const servingScore = serving === 'A' ? current.a : current.b;
-	const serviceCourt = servingScore % 2 === 0 ? 'right' : 'left';
-	const serverPlayerId = `msp-${matchId}-${serving}-1`;
-	const receiverPlayerId = `msp-${matchId}-${serving === 'A' ? 'B' : 'A'}-1`;
-	const courtAssignments = {
-		A: { right: `msp-${matchId}-A-1`, left: `msp-${matchId}-A-2` },
-		B: { right: `msp-${matchId}-B-1`, left: `msp-${matchId}-B-2` }
-	};
-	const service = isPlaying
-		? {
-				discipline: 'doubles',
-				servingSide: serving,
-				serviceCourt,
-				serverPlayerId,
-				receiverPlayerId,
-				courtAssignments,
-				initialServerPlayerId: `msp-${matchId}-A-1`,
-				initialReceiverPlayerId: `msp-${matchId}-B-1`
-			}
-		: null;
-
-	// snapshot state
 	// ライブページのスコア推移は score_events から構築されるため、
 	// ゲームスコアと整合するラリー単位のイベント列も一緒に挿入する
-	const scoreEvents = status === 'scheduled' ? [] : buildSeedScoreEvents(games, params.seed);
+	const scoreEvents =
+		status === 'scheduled'
+			? []
+			: buildSeedScoreEvents(games, params.seed, { lastGameInProgress: isPlaying });
+
+	// service state (playing のみ): 最終イベントのリプレイ結果と一致させる
+	const lastService = scoreEvents[scoreEvents.length - 1]?.serviceAfter ?? null;
+	const slotId = (slot: SeedSlot) => `msp-${matchId}-${slot[0]}-${slot[1]}`;
+	const toServiceState = (svc: SeedService | null) => {
+		if (!svc) return null;
+		const otherCourt = svc.serviceCourt === 'right' ? 'left' : 'right';
+		const partner = (slot: SeedSlot): SeedSlot =>
+			`${slot[0]}${slot[1] === '1' ? '2' : '1'}` as SeedSlot;
+		return {
+			discipline: 'doubles',
+			servingSide: svc.servingSide,
+			serviceCourt: svc.serviceCourt,
+			serverPlayerId: slotId(svc.serverSlot),
+			receiverPlayerId: slotId(svc.receiverSlot),
+			courtAssignments: {
+				[svc.servingSide]: {
+					[svc.serviceCourt]: slotId(svc.serverSlot),
+					[otherCourt]: slotId(partner(svc.serverSlot))
+				},
+				[svc.servingSide === 'A' ? 'B' : 'A']: {
+					[svc.serviceCourt]: slotId(svc.receiverSlot),
+					[otherCourt]: slotId(partner(svc.receiverSlot))
+				}
+			},
+			initialServerPlayerId: `msp-${matchId}-A-1`,
+			initialReceiverPlayerId: `msp-${matchId}-B-1`
+		};
+	};
+	const service = isPlaying ? toServiceState(lastService) : null;
+	const serving = service?.servingSide ?? null;
+	const serviceCourt = service?.serviceCourt ?? null;
+	const serverPlayerId = service?.serverPlayerId ?? null;
+	const receiverPlayerId = service?.receiverPlayerId ?? null;
+	const courtAssignments = service?.courtAssignments ?? {};
+
+	// snapshot state
 	const lastSeqNo = scoreEvents.length === 0 ? 0 : scoreEvents[scoreEvents.length - 1].seqNo;
 	const stateGames = games.map((g, i) => ({
 		gameNo: i + 1,
@@ -260,9 +281,67 @@ function insertMatchWithState(params: {
 	push(
 		`INSERT INTO match_snapshots (match_id, seq_no, state_json, updated_at) VALUES ('${matchId}', ${lastSeqNo}, '${esc(JSON.stringify(state))}', '${NOW}');`
 	);
+	// Undo は「rally_won は直前イベントの afterState を beforeState として使う」
+	// 前提なので、payload_json に各イベント時点の afterState を入れておく必要がある
+	// (空 payload だと Undo target does not contain beforeState で失敗する)。
+	const buildEventState = (ev: SeedScoreEvent) => {
+		const evGames: typeof stateGames = [];
+		for (let gameNo = 1; gameNo < ev.gameNo; gameNo++) {
+			const g = games[gameNo - 1];
+			evGames.push({
+				gameNo,
+				score: { A: g.a, B: g.b },
+				winnerSide: g.a > g.b ? 'A' : 'B',
+				midGameIntervalTaken: Math.max(g.a, g.b) >= 8,
+				changeEndsRequired: false,
+				changeEndsCompleted: false
+			});
+		}
+		const target = games[ev.gameNo - 1] ?? { a: 0, b: 0 };
+		const gameDone =
+			ev.eventType === 'rally_won' &&
+			ev.scoreAAfter === target.a &&
+			ev.scoreBAfter === target.b &&
+			!(isPlaying && ev.gameNo === games.length);
+		evGames.push({
+			gameNo: ev.gameNo,
+			score: { A: ev.scoreAAfter, B: ev.scoreBAfter },
+			winnerSide: gameDone ? (ev.scoreAAfter > ev.scoreBAfter ? 'A' : 'B') : null,
+			midGameIntervalTaken: Math.max(ev.scoreAAfter, ev.scoreBAfter) >= 8,
+			changeEndsRequired: false,
+			changeEndsCompleted: false
+		});
+		return {
+			...state,
+			status: 'playing',
+			currentGameNo: ev.gameNo,
+			games: evGames,
+			gamesWon: {
+				A: evGames.filter((g) => g.winnerSide === 'A').length,
+				B: evGames.filter((g) => g.winnerSide === 'B').length
+			},
+			winnerSide: null,
+			terminalReason: null,
+			confirmedFromStatus: undefined,
+			service: toServiceState(ev.serviceAfter),
+			lastSeqNo: ev.seqNo,
+			createdAt: params.startedAt ?? NOW,
+			updatedAt: params.startedAt ?? NOW
+		};
+	};
+	let prevEventState: ReturnType<typeof buildEventState> | null = null;
 	for (const ev of scoreEvents) {
+		const afterState = buildEventState(ev);
+		const payload = {
+			afterState,
+			// 本番の書き込み経路と同じく rally_won 以外は beforeState も保存する
+			...(ev.eventType !== 'rally_won' && prevEventState ? { beforeState: prevEventState } : {})
+		};
+		prevEventState = afterState;
+		const sb = ev.serviceBefore;
+		const sa = ev.serviceAfter;
 		push(
-			`INSERT INTO score_events (id, match_id, seq_no, event_type, side, game_no, score_a_before, score_b_before, score_a_after, score_b_after, idempotency_key, created_at) VALUES ('se-${matchId}-${ev.seqNo}', '${matchId}', ${ev.seqNo}, '${ev.eventType}', ${sqlStr(ev.side)}, ${ev.gameNo}, ${ev.scoreABefore}, ${ev.scoreBBefore}, ${ev.scoreAAfter}, ${ev.scoreBAfter}, 'seed-${matchId}-${ev.seqNo}', '${params.startedAt ?? NOW}');`
+			`INSERT INTO score_events (id, match_id, seq_no, event_type, side, game_no, score_a_before, score_b_before, score_a_after, score_b_after, serving_side_before, service_court_before, server_player_id_before, receiver_player_id_before, serving_side_after, service_court_after, server_player_id_after, receiver_player_id_after, idempotency_key, payload_json, created_at) VALUES ('se-${matchId}-${ev.seqNo}', '${matchId}', ${ev.seqNo}, '${ev.eventType}', ${sqlStr(ev.side)}, ${ev.gameNo}, ${ev.scoreABefore}, ${ev.scoreBBefore}, ${ev.scoreAAfter}, ${ev.scoreBAfter}, ${sqlStr(sb?.servingSide ?? null)}, ${sqlStr(sb?.serviceCourt ?? null)}, ${sqlStr(sb ? slotId(sb.serverSlot) : null)}, ${sqlStr(sb ? slotId(sb.receiverSlot) : null)}, ${sqlStr(sa?.servingSide ?? null)}, ${sqlStr(sa?.serviceCourt ?? null)}, ${sqlStr(sa ? slotId(sa.serverSlot) : null)}, ${sqlStr(sa ? slotId(sa.receiverSlot) : null)}, 'seed-${matchId}-${ev.seqNo}', '${esc(JSON.stringify(payload))}', '${params.startedAt ?? NOW}');`
 		);
 	}
 	push(

@@ -26,6 +26,8 @@ interface ServiceRun {
 	serverPlayerId: string;
 	side: 'A' | 'B';
 	scores: ScoreEntry[];
+	/** ゲーム開始時に置くレシーバー側の 0(独立した列ではなく開始列に統合する) */
+	isPlaceholder?: boolean;
 }
 
 export interface GameSheet {
@@ -95,7 +97,8 @@ export function buildScoresheetByGame(
 			runs.push({
 				serverPlayerId: receiverId ?? '',
 				side: receiverSide,
-				scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
+				scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }],
+				isPlaceholder: true
 			});
 		}
 
@@ -109,7 +112,8 @@ export function buildScoresheetByGame(
 			runs.push({
 				serverPlayerId: receiverId ?? '',
 				side: receiverSide,
-				scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }]
+				scores: [{ scoreA: 0, scoreB: 0, isServiceOver: true }],
+				isPlaceholder: true
 			});
 
 			currentRun = {
@@ -186,4 +190,46 @@ export function buildScoresheetByGame(
 	}
 
 	return result;
+}
+
+export interface SheetCell {
+	playerId: string;
+	side: 'A' | 'B';
+	scoreA: number;
+	scoreB: number;
+}
+
+export interface SheetColumn {
+	cells: SheetCell[];
+	/** この列の後にサービスオーバーの太線を引く */
+	serviceOver: boolean;
+}
+
+/**
+ * サービスラン列を表示用の列に変換する。紙のスコアシートと同様、
+ * ゲーム開始時のサーバー 0 とレシーバー 0(placeholder)は同じ列に置く。
+ */
+export function buildSheetColumns(sheet: GameSheet): SheetColumn[] {
+	const columns: SheetColumn[] = [];
+	let pending: SheetCell[] = [];
+
+	for (const run of sheet.serviceRuns) {
+		if (run.isPlaceholder) {
+			pending.push({ playerId: run.serverPlayerId, side: run.side, scoreA: 0, scoreB: 0 });
+			continue;
+		}
+		run.scores.forEach((entry, i) => {
+			const cells: SheetCell[] = [
+				{ playerId: run.serverPlayerId, side: run.side, scoreA: entry.scoreA, scoreB: entry.scoreB }
+			];
+			if (i === 0 && pending.length > 0) {
+				cells.push(...pending);
+				pending = [];
+			}
+			columns.push({ cells, serviceOver: entry.isServiceOver });
+		});
+	}
+	if (pending.length > 0) columns.push({ cells: pending, serviceOver: false });
+
+	return columns;
 }

@@ -75,8 +75,8 @@ describe('buildSeedScoreEvents', () => {
 		const events = buildSeedScoreEvents(games, 7);
 		events.forEach((e, i) => expect(e.seqNo).toBe(i + 1));
 		const totalPoints = games.reduce((sum, g) => sum + g.a + g.b, 0);
-		// match_started + game_started × ゲーム数 + ラリー数
-		expect(events).toHaveLength(1 + games.length + totalPoints);
+		// match_started + game_started × (第2ゲーム以降) + ラリー数
+		expect(events).toHaveLength(1 + (games.length - 1) + totalPoints);
 	});
 
 	test('games が空なら match_started のみ', () => {
