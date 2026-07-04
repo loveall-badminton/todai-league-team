@@ -21,6 +21,7 @@
 import { execSync, type ExecSyncOptions } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { buildSeedScoreEvents } from '../src/lib/seed/scoreEventSeed';
 
 const DB_NAME = process.argv.find((a) => a.startsWith('--db='))?.slice(5) ?? 'todai-league-staging';
 const BASE_URL =
@@ -185,8 +186,10 @@ function insertMatchWithState(params: {
 		: null;
 
 	// snapshot state
-	const totalPoints = games.reduce((sum, g) => sum + g.a + g.b, 0);
-	const lastSeqNo = status === 'scheduled' ? 0 : totalPoints + games.length + 1;
+	// ライブページのスコア推移は score_events から構築されるため、
+	// ゲームスコアと整合するラリー単位のイベント列も一緒に挿入する
+	const scoreEvents = status === 'scheduled' ? [] : buildSeedScoreEvents(games, params.seed);
+	const lastSeqNo = scoreEvents.length === 0 ? 0 : scoreEvents[scoreEvents.length - 1].seqNo;
 	const stateGames = games.map((g, i) => ({
 		gameNo: i + 1,
 		score: { A: g.a, B: g.b },
@@ -257,6 +260,11 @@ function insertMatchWithState(params: {
 	push(
 		`INSERT INTO match_snapshots (match_id, seq_no, state_json, updated_at) VALUES ('${matchId}', ${lastSeqNo}, '${esc(JSON.stringify(state))}', '${NOW}');`
 	);
+	for (const ev of scoreEvents) {
+		push(
+			`INSERT INTO score_events (id, match_id, seq_no, event_type, side, game_no, score_a_before, score_b_before, score_a_after, score_b_after, idempotency_key, created_at) VALUES ('se-${matchId}-${ev.seqNo}', '${matchId}', ${ev.seqNo}, '${ev.eventType}', ${sqlStr(ev.side)}, ${ev.gameNo}, ${ev.scoreABefore}, ${ev.scoreBBefore}, ${ev.scoreAAfter}, ${ev.scoreBAfter}, 'seed-${matchId}-${ev.seqNo}', '${params.startedAt ?? NOW}');`
+		);
+	}
 	push(
 		`INSERT INTO match_service_states (match_id, game_no, serving_side, service_court, server_player_id, receiver_player_id, court_assignments_json, updated_at) VALUES ('${matchId}', ${currentGameNo}, ${sqlStr(isPlaying ? serving : null)}, ${sqlStr(isPlaying ? serviceCourt : null)}, ${sqlStr(isPlaying ? serverPlayerId : null)}, ${sqlStr(isPlaying ? receiverPlayerId : null)}, '${esc(JSON.stringify(isPlaying ? courtAssignments : {}))}', '${NOW}');`
 	);
