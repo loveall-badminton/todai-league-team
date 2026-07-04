@@ -35,9 +35,15 @@
 		children?: Snippet;
 	} = $props();
 
-	let teamItems = $derived(teams.map((team) => ({ value: team.id, label: team.name })));
+	let teamItems = $derived(
+		Array.from(
+			new Map(teams.map((team) => [team.id, { value: team.id, label: team.name }])).values()
+		)
+	);
 	let assignedTeamIds = $derived(
-		tie.officiatingTeamIds ?? (tie.officiatingTeamId ? [tie.officiatingTeamId] : [])
+		Array.from(
+			new Set(tie.officiatingTeamIds ?? (tie.officiatingTeamId ? [tie.officiatingTeamId] : []))
+		)
 	);
 
 	let formId = $props.id();
