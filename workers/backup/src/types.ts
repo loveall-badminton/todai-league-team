@@ -86,11 +86,37 @@ export interface MatchSideRow {
 }
 
 export interface MatchSidePlayerRow {
+	id: string;
 	match_id: string;
 	side: string;
 	player_order: number;
 	name: string;
 	team_name: string | null;
+}
+
+/** 進行中試合のスコアシート描画用イベント行 */
+export interface ScoresheetEventRow {
+	match_id: string;
+	seq_no: number;
+	event_type: string;
+	side: string | null;
+	game_no: number | null;
+	score_a_after: number | null;
+	score_b_after: number | null;
+	server_player_id_before: string | null;
+	server_player_id_after: string | null;
+	receiver_player_id_before: string | null;
+	receiver_player_id_after: string | null;
+	target_seq_no: number | null;
+}
+
+export interface LineupRow {
+	tie_id: string;
+	side: string;
+	status: string;
+	rubber_code: string;
+	player1_name: string | null;
+	player2_name: string | null;
 }
 
 export interface MatchSnapshotRow {
@@ -125,5 +151,7 @@ export interface BackupState {
 	matchSides: MatchSideRow[];
 	matchSidePlayers: MatchSidePlayerRow[];
 	matchSnapshots: MatchSnapshotRow[];
+	lineups: LineupRow[];
+	scoreEvents: ScoresheetEventRow[];
 	recentEvents: EventRow[];
 }

@@ -12,5 +12,5 @@
 		"forceConsistentCasingInFileNames": true,
 		"types": ["@cloudflare/workers-types"]
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "../../src/lib/domain/scoresheet.ts", "../../src/lib/domain/types.ts"]
 }

@@ -2,11 +2,13 @@ import type {
 	BackupState,
 	CourtRow,
 	EventRow,
+	LineupRow,
 	MatchRow,
 	MatchSidePlayerRow,
 	MatchSideRow,
 	MatchSnapshotRow,
 	RubberRow,
+	ScoresheetEventRow,
 	TeamRow,
 	TieRow
 } from './types';
@@ -58,6 +60,8 @@ export async function collectSnapshot(db: D1Database, tournamentId?: string): Pr
 		matchSides,
 		matchSidePlayers,
 		matchSnapshots,
+		lineups,
+		scoreEvents,
 		recentEvents,
 		lastEvent
 	] = await db.batch([
@@ -109,7 +113,7 @@ export async function collectSnapshot(db: D1Database, tournamentId?: string): Pr
 			.bind(tournament.id),
 		db
 			.prepare(
-				`SELECT p.match_id, p.side, p.player_order, p.name, p.team_name
+				`SELECT p.id, p.match_id, p.side, p.player_order, p.name, p.team_name
 				 FROM match_side_players p JOIN matches m ON m.id = p.match_id
 				 WHERE m.tournament_id = ?
 				 ORDER BY p.match_id, p.side, p.player_order`
@@ -120,6 +124,30 @@ export async function collectSnapshot(db: D1Database, tournamentId?: string): Pr
 				`SELECT s.match_id, s.state_json
 				 FROM match_snapshots s JOIN matches m ON m.id = s.match_id
 				 WHERE m.tournament_id = ?`
+			)
+			.bind(tournament.id),
+		// オーダー(未公開の draft/submitted も含む — このパケットは本部専用)
+		db.prepare(
+			`SELECT ls.tie_id, ls.side, ls.status, li.rubber_code,
+			        p1.name AS player1_name, p2.name AS player2_name
+			 FROM lineup_submissions ls
+			 JOIN lineup_items li ON li.submission_id = ls.id
+			 LEFT JOIN team_players p1 ON p1.id = li.player1_id
+			 LEFT JOIN team_players p2 ON p2.id = li.player2_id
+			 ORDER BY ls.tie_id, ls.side, li.rubber_code`
+		),
+		// 進行中試合の全イベント(紙スコアシートに審判画面と同じ点数推移グリッドを描くため)
+		db
+			.prepare(
+				`SELECT se.match_id, se.seq_no, se.event_type, se.side, se.game_no,
+				        se.score_a_after, se.score_b_after,
+				        se.server_player_id_before, se.server_player_id_after,
+				        se.receiver_player_id_before, se.receiver_player_id_after,
+				        se.target_seq_no
+				 FROM score_events se JOIN matches m ON m.id = se.match_id
+				 WHERE m.tournament_id = ?
+				   AND m.status NOT IN ('finished', 'confirmed', 'forfeited', 'retired', 'cancelled')
+				 ORDER BY se.match_id, se.seq_no`
 			)
 			.bind(tournament.id),
 		db
@@ -156,6 +184,8 @@ export async function collectSnapshot(db: D1Database, tournamentId?: string): Pr
 		matchSides: (matchSides.results ?? []) as unknown as MatchSideRow[],
 		matchSidePlayers: (matchSidePlayers.results ?? []) as unknown as MatchSidePlayerRow[],
 		matchSnapshots: (matchSnapshots.results ?? []) as unknown as MatchSnapshotRow[],
+		lineups: (lineups.results ?? []) as unknown as LineupRow[],
+		scoreEvents: (scoreEvents.results ?? []) as unknown as ScoresheetEventRow[],
 		recentEvents: ((recentEvents.results ?? []) as unknown as EventRow[]).slice().reverse()
 	};
 }

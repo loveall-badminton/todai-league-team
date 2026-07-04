@@ -43,6 +43,17 @@ export function renderEmergencyMarkdown(view: EmergencyView): string {
 	}
 	lines.push('');
 
+	lines.push('## オーダー表');
+	lines.push('');
+	lines.push(`| 対戦 | チーム | 状態 | ${RUBBER_ORDER.join(' | ')} |`);
+	lines.push(`| ---- | ------ | ---- | ${RUBBER_ORDER.map(() => '---').join(' | ')} |`);
+	for (const lv of view.lineups) {
+		lines.push(
+			`| ${cell(lv.tieLabel)} | ${cell(lv.teamName)} | ${cell(lv.statusLabel)} | ${lv.pairCells.map(cell).join(' | ')} |`
+		);
+	}
+	lines.push('');
+
 	lines.push('## 未実施試合');
 	lines.push('');
 	lines.push('| 優先 | 対戦 | 種目 | コート候補 | 備考 |');

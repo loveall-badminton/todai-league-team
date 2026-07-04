@@ -164,10 +164,38 @@ function fixtureState(): BackupState {
 			{ match_id: 'match-2', side: 'B', display_name: 'B大学' }
 		],
 		matchSidePlayers: [
-			{ match_id: 'match-2', side: 'A', player_order: 1, name: 'A1', team_name: 'A大学' },
-			{ match_id: 'match-2', side: 'A', player_order: 2, name: 'A2', team_name: 'A大学' },
-			{ match_id: 'match-2', side: 'B', player_order: 1, name: 'B1', team_name: 'B大学' },
-			{ match_id: 'match-2', side: 'B', player_order: 2, name: 'B2', team_name: 'B大学' }
+			{
+				id: 'p-a1',
+				match_id: 'match-2',
+				side: 'A',
+				player_order: 1,
+				name: 'A1',
+				team_name: 'A大学'
+			},
+			{
+				id: 'p-a2',
+				match_id: 'match-2',
+				side: 'A',
+				player_order: 2,
+				name: 'A2',
+				team_name: 'A大学'
+			},
+			{
+				id: 'p-b1',
+				match_id: 'match-2',
+				side: 'B',
+				player_order: 1,
+				name: 'B1',
+				team_name: 'B大学'
+			},
+			{
+				id: 'p-b2',
+				match_id: 'match-2',
+				side: 'B',
+				player_order: 2,
+				name: 'B2',
+				team_name: 'B大学'
+			}
 		],
 		matchSnapshots: [
 			{
@@ -178,6 +206,100 @@ function fixtureState(): BackupState {
 						{ gameNo: 2, score: { A: 11, B: 9 }, winnerSide: null }
 					]
 				})
+			}
+		],
+		lineups: [
+			{
+				tie_id: 'tie-1',
+				side: 'A',
+				status: 'revealed',
+				rubber_code: 'WD1',
+				player1_name: 'A1',
+				player2_name: 'A2'
+			},
+			{
+				tie_id: 'tie-1',
+				side: 'A',
+				status: 'revealed',
+				rubber_code: 'XD1',
+				player1_name: 'A1',
+				player2_name: 'A2'
+			},
+			{
+				tie_id: 'tie-1',
+				side: 'A',
+				status: 'revealed',
+				rubber_code: 'MD3',
+				player1_name: 'A3',
+				player2_name: 'A4'
+			},
+			{
+				tie_id: 'tie-1',
+				side: 'B',
+				status: 'submitted',
+				rubber_code: 'WD1',
+				player1_name: 'B1',
+				player2_name: 'B2'
+			},
+			{
+				tie_id: 'tie-1',
+				side: 'B',
+				status: 'submitted',
+				rubber_code: 'XD1',
+				player1_name: 'B1',
+				player2_name: 'B2'
+			},
+			{
+				tie_id: 'tie-1',
+				side: 'B',
+				status: 'submitted',
+				rubber_code: 'MD3',
+				player1_name: 'B3',
+				player2_name: 'B4'
+			}
+		],
+		scoreEvents: [
+			{
+				match_id: 'match-2',
+				seq_no: 1,
+				event_type: 'match_started',
+				side: null,
+				game_no: 1,
+				score_a_after: 0,
+				score_b_after: 0,
+				server_player_id_before: null,
+				server_player_id_after: 'p-a1',
+				receiver_player_id_before: null,
+				receiver_player_id_after: 'p-b1',
+				target_seq_no: null
+			},
+			{
+				match_id: 'match-2',
+				seq_no: 2,
+				event_type: 'rally_won',
+				side: 'A',
+				game_no: 1,
+				score_a_after: 1,
+				score_b_after: 0,
+				server_player_id_before: 'p-a1',
+				server_player_id_after: 'p-a1',
+				receiver_player_id_before: 'p-b1',
+				receiver_player_id_after: 'p-b2',
+				target_seq_no: null
+			},
+			{
+				match_id: 'match-2',
+				seq_no: 3,
+				event_type: 'rally_won',
+				side: 'B',
+				game_no: 1,
+				score_a_after: 1,
+				score_b_after: 1,
+				server_player_id_before: 'p-a1',
+				server_player_id_after: 'p-b2',
+				receiver_player_id_before: 'p-b2',
+				receiver_player_id_after: 'p-a1',
+				target_seq_no: null
 			}
 		],
 		recentEvents: [
@@ -225,6 +347,25 @@ describe('buildEmergencyView', () => {
 		// match_snapshots からゲームスコアを復元する
 		expect(view.courts[0].current?.gamesLabel).toBe('21-18, 11-9');
 	});
+
+	it('オーダーを tie × side ごとに集計する', () => {
+		const view = buildEmergencyView(fixtureState());
+		expect(view.lineups).toHaveLength(2);
+		expect(view.lineups[0].teamName).toBe('A大学');
+		expect(view.lineups[0].statusLabel).toBe('公開済');
+		expect(view.lineups[0].pairCells).toEqual(['A1・A2', 'A1・A2', 'A3・A4', '-', '-']);
+		expect(view.lineups[1].teamName).toBe('B大学');
+		expect(view.lineups[1].statusLabel).toBe('提出済');
+	});
+
+	it('オーダー提出済みかつ未終了の試合だけ紙スコアシート対象にする', () => {
+		const view = buildEmergencyView(fixtureState());
+
+		expect(view.scoresheets).toHaveLength(2);
+		expect(view.scoresheets.map((sheet) => sheet.rubberCode)).toEqual(['XD1', 'MD3']);
+		expect(view.scoresheets[0].namesA).toEqual(['A1', 'A2']);
+		expect(view.scoresheets[1].namesB).toEqual(['B3', 'B4']);
+	});
 });
 
 describe('renderEmergencyHtml', () => {
@@ -237,10 +378,18 @@ describe('renderEmergencyHtml', () => {
 		expect(html).toContain('コート別進行状況');
 		expect(html).toContain('団体戦別勝敗状況');
 		expect(html).toContain('未実施試合');
+		expect(html).toContain('オーダー表');
+		expect(html).toContain('A1・A2');
 		expect(html).toContain('復旧後の再入力手順');
-		expect(html).toContain('紙スコアシート — コート 1');
-		// 手書き開始番号は lastEventId + 1
-		expect(html).toContain('>1843<');
+		expect(html).toContain('バドミントン・ダブルス用スコアシート');
+		expect(html).toContain('試合番号');
+		expect(html).toContain('主審署名');
+		expect(html).toContain('結果確認');
+		expect(html).toContain('第1ゲーム');
+		expect(html).toContain('A3');
+		expect(html).toContain('B4');
+		expect(html).toContain('sheet-grid');
+		expect(html).toContain('service-over');
 		expect(html).toContain('A1/A2 vs B1/B2');
 		expect(html).toContain('@page');
 	});
@@ -253,6 +402,8 @@ describe('renderEmergencyMarkdown', () => {
 		expect(md).toContain('最終イベント番号: 1842');
 		expect(md).toContain('| WD1 | XD1 | MD3 | MD2 | MD1 |');
 		expect(md).toContain('## 障害時の運営手順');
+		expect(md).toContain('## オーダー表');
+		expect(md).toContain('B1・B2');
 	});
 });
 

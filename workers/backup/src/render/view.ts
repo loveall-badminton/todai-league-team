@@ -44,8 +44,19 @@ export function matchStatusLabel(status: string): string {
 	return MATCH_STATUS_LABEL[status] ?? status;
 }
 
+const LINEUP_STATUS_LABEL: Record<string, string> = {
+	draft: '下書き',
+	submitted: '提出済',
+	locked: '承認済',
+	revealed: '公開済'
+};
+
 export function tieStatusLabel(status: string): string {
 	return TIE_STATUS_LABEL[status] ?? status;
+}
+
+export function lineupStatusLabel(status: string): string {
+	return LINEUP_STATUS_LABEL[status] ?? status;
 }
 
 export function phaseLabel(phase: string): string {
@@ -88,6 +99,13 @@ interface GameStateLite {
 	winnerSide: 'A' | 'B' | null;
 }
 
+export interface SheetPlayer {
+	id: string;
+	side: 'A' | 'B';
+	order: number;
+	name: string;
+}
+
 export interface MatchView {
 	match: MatchRow;
 	rubber: RubberRow | null;
@@ -97,6 +115,7 @@ export interface MatchView {
 	sideAName: string;
 	sideBName: string;
 	playersLabel: string;
+	players: SheetPlayer[];
 	games: GameStateLite[];
 	gamesLabel: string;
 	currentScoreLabel: string;
@@ -115,6 +134,32 @@ export interface TieView {
 	resultLabel: string;
 }
 
+export interface LineupSideView {
+	tieLabel: string;
+	teamName: string;
+	statusLabel: string;
+	/** RUBBER_ORDER 順のペア表記("山田・田中"、未定は '-') */
+	pairCells: string[];
+}
+
+/** 紙スコアシート1枚分のデータ(オーダー提出済み・未終了の試合) */
+export interface ScoresheetView {
+	matchView: MatchView | null;
+	matchNo: number | null;
+	courtName: string | null;
+	rubberCode: string;
+	tieLabel: string;
+	roundLabel: string | null;
+	teamAName: string;
+	teamBName: string;
+	/** [選手1, 選手2](不明は空文字) */
+	namesA: [string, string];
+	namesB: [string, string];
+	/** 第1〜3ゲームの確定スコア(未実施・進行中は null) */
+	gameScores: Array<{ a: number; b: number } | null>;
+	startAtJst: string | null;
+}
+
 export interface EmergencyView {
 	state: BackupState;
 	generatedAtJst: string;
@@ -124,6 +169,8 @@ export interface EmergencyView {
 	pendingMatches: MatchView[];
 	finishedMatches: MatchView[];
 	ties: TieView[];
+	lineups: LineupSideView[];
+	scoresheets: ScoresheetView[];
 }
 
 export function buildEmergencyView(state: BackupState): EmergencyView {
@@ -137,10 +184,18 @@ export function buildEmergencyView(state: BackupState): EmergencyView {
 		sidesByMatch.get(s.match_id)!.set(s.side, s.display_name);
 	}
 	const playersByMatchSide = new Map<string, string[]>();
+	const sheetPlayersByMatch = new Map<string, SheetPlayer[]>();
 	for (const p of state.matchSidePlayers) {
 		const key = `${p.match_id}:${p.side}`;
 		if (!playersByMatchSide.has(key)) playersByMatchSide.set(key, []);
 		playersByMatchSide.get(key)!.push(p.name);
+		if (!sheetPlayersByMatch.has(p.match_id)) sheetPlayersByMatch.set(p.match_id, []);
+		sheetPlayersByMatch.get(p.match_id)!.push({
+			id: p.id,
+			side: p.side === 'B' ? 'B' : 'A',
+			order: p.player_order,
+			name: p.name
+		});
 	}
 
 	const matches: MatchView[] = state.matches.map((m) => {
@@ -177,6 +232,7 @@ export function buildEmergencyView(state: BackupState): EmergencyView {
 			sideAName: sidesByMatch.get(m.id)?.get('A') ?? playersA,
 			sideBName: sidesByMatch.get(m.id)?.get('B') ?? playersB,
 			playersLabel: `${playersA} vs ${playersB}`,
+			players: sheetPlayersByMatch.get(m.id) ?? [],
 			games,
 			gamesLabel,
 			currentScoreLabel,
@@ -231,6 +287,105 @@ export function buildEmergencyView(state: BackupState): EmergencyView {
 			};
 		});
 
+	// オーダー表: tie × side ごとに 1 行(提出のある側のみ)
+	const lineupKeys: string[] = [];
+	const lineupByKey = new Map<string, { status: string; pairs: Map<string, string> }>();
+	for (const l of state.lineups) {
+		const key = `${l.tie_id}:${l.side}`;
+		if (!lineupByKey.has(key)) {
+			lineupKeys.push(key);
+			lineupByKey.set(key, { status: l.status, pairs: new Map() });
+		}
+		const pair = [l.player1_name, l.player2_name].filter(Boolean).join('・');
+		lineupByKey.get(key)!.pairs.set(l.rubber_code, pair || '-');
+	}
+	const lineups: LineupSideView[] = lineupKeys
+		.sort((a, b) => {
+			const ta = tieById.get(a.split(':')[0]);
+			const tb = tieById.get(b.split(':')[0]);
+			return (ta?.display_order ?? 0) - (tb?.display_order ?? 0) || a.localeCompare(b);
+		})
+		.map((key) => {
+			const [tieId, side] = key.split(':');
+			const tie = tieById.get(tieId);
+			if (!tie || tie.status === 'cancelled') return null;
+			const entry = lineupByKey.get(key)!;
+			const teamName = (side === 'A' ? tie.team_a_name : tie.team_b_name) ?? side;
+			return {
+				tieLabel: `${tie.tie_code} ${tie.team_a_name ?? '未定'} vs ${tie.team_b_name ?? '未定'}`,
+				teamName,
+				statusLabel: lineupStatusLabel(entry.status),
+				pairCells: RUBBER_ORDER.map((code) => entry.pairs.get(code) ?? '-')
+			};
+		})
+		.filter((v): v is LineupSideView => v !== null);
+
+	// 紙スコアシート: 両チームのオーダーが提出済み(submitted/locked/revealed)の
+	// 対戦について、終了していない試合を1枚ずつ出力する
+	const SUBMITTED_LINEUP = new Set(['submitted', 'locked', 'revealed']);
+	const TERMINAL_MATCH = new Set(['finished', 'confirmed', 'forfeited', 'retired', 'cancelled']);
+	const lineupPairByTieSideRubber = new Map<string, [string, string]>();
+	const lineupStatusByTieSide = new Map<string, string>();
+	for (const l of state.lineups) {
+		lineupStatusByTieSide.set(`${l.tie_id}:${l.side}`, l.status);
+		lineupPairByTieSideRubber.set(`${l.tie_id}:${l.side}:${l.rubber_code}`, [
+			l.player1_name ?? '',
+			l.player2_name ?? ''
+		]);
+	}
+	const jstTime = (iso: string | null): string | null =>
+		iso
+			? new Intl.DateTimeFormat('ja-JP', {
+					timeZone: 'Asia/Tokyo',
+					hour: '2-digit',
+					minute: '2-digit'
+				}).format(new Date(iso))
+			: null;
+
+	const scoresheets: ScoresheetView[] = [];
+	for (const t of state.ties) {
+		if (t.status === 'cancelled') continue;
+		const statusA = lineupStatusByTieSide.get(`${t.id}:A`);
+		const statusB = lineupStatusByTieSide.get(`${t.id}:B`);
+		if (!statusA || !SUBMITTED_LINEUP.has(statusA)) continue;
+		if (!statusB || !SUBMITTED_LINEUP.has(statusB)) continue;
+
+		const tieRubbers = rubbersByTie.get(t.id) ?? [];
+		for (const code of RUBBER_ORDER) {
+			const rubber = tieRubbers.find((r) => r.code === code);
+			if (!rubber || rubber.status === 'skipped' || rubber.winner_side) continue;
+			const mv = rubber.match_id ? (matchViewById.get(rubber.match_id) ?? null) : null;
+			if (mv && TERMINAL_MATCH.has(mv.match.status)) continue;
+
+			const sidePair = (side: 'A' | 'B'): [string, string] => {
+				const fromMatch = mv?.players.filter((p) => p.side === side) ?? [];
+				if (fromMatch.length > 0) {
+					return [fromMatch[0]?.name ?? '', fromMatch[1]?.name ?? ''];
+				}
+				return lineupPairByTieSideRubber.get(`${t.id}:${side}:${code}`) ?? ['', ''];
+			};
+			const gameScores: Array<{ a: number; b: number } | null> = [0, 1, 2].map((i) => {
+				const g = mv?.games[i];
+				return g && g.winnerSide ? { a: g.score.A, b: g.score.B } : null;
+			});
+
+			scoresheets.push({
+				matchView: mv,
+				matchNo: mv?.match.match_no ?? null,
+				courtName: mv?.match.court_name ?? null,
+				rubberCode: code,
+				tieLabel: `${t.tie_code} ${t.team_a_name ?? '未定'} vs ${t.team_b_name ?? '未定'}`,
+				roundLabel: t.round_label,
+				teamAName: t.team_a_name ?? '',
+				teamBName: t.team_b_name ?? '',
+				namesA: sidePair('A'),
+				namesB: sidePair('B'),
+				gameScores,
+				startAtJst: jstTime(mv?.match.actual_start_at ?? null)
+			});
+		}
+	}
+
 	return {
 		state,
 		generatedAtJst: formatJst(state.generatedAt),
@@ -239,6 +394,8 @@ export function buildEmergencyView(state: BackupState): EmergencyView {
 		activeMatches,
 		pendingMatches,
 		finishedMatches,
-		ties
+		ties,
+		lineups,
+		scoresheets
 	};
 }
