@@ -19,7 +19,6 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { shouldRefreshTieLineups } from '$lib/realtime/updates';
-	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import {
 		clearLocalLineupDraft,
@@ -78,16 +77,10 @@
 		return order === 1 ? (item?.player1Id ?? '') : (item?.player2Id ?? '');
 	}
 
-	function saveLocalDraft(items: DraftItem[]) {
-		const saved = saveLocalLineupDraft(data.tie.id, data.team.id, items);
+	// 選択が変わるたびに端末へ自動保存する。
+	function handleDraftChange(items: DraftItem[]) {
 		draftItems = items;
-		if (saved) {
-			toast.success('下書きをこの端末に保存しました');
-		} else {
-			toast.error('この端末に保存できませんでした', {
-				description: 'プライベートブラウズ等でストレージが使えない可能性があります'
-			});
-		}
+		saveLocalLineupDraft(data.tie.id, data.team.id, items);
 	}
 
 	function applyPendingLocalDraft() {
@@ -227,7 +220,7 @@
 				{filteredPlayers}
 				{slotLabel}
 				{rubberLabel}
-				onSaveDraft={saveLocalDraft}
+				onDraftChange={handleDraftChange}
 				tieId={data.tie.id}
 				teamId={data.team.id}
 			/>

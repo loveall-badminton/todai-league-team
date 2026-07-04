@@ -19,11 +19,7 @@ describe('tieMatchesFilter', () => {
 
 	test.each([
 		['group_a', 'group_a'],
-		['group_b', 'group_b'],
-		['semifinal', 'semifinal'],
-		['final', 'final'],
-		['third_place', 'third_place'],
-		['fifth_place', 'fifth_place']
+		['group_b', 'group_b']
 	] as [TieFilter, string][])(
 		'filter=%s matches tie with phase=%s and rejects others',
 		(filter, phase) => {
@@ -32,11 +28,29 @@ describe('tieMatchesFilter', () => {
 		}
 	);
 
+	test('finals: matches all finals-bracket phases and rejects group/tiebreaker phases', () => {
+		for (const phase of ['semifinal', 'final', 'third_place', 'fifth_place']) {
+			expect(tieMatchesFilter(tie(phase, 'playing'), 'finals')).toBe(true);
+		}
+		expect(tieMatchesFilter(tie('group_a', 'playing'), 'finals')).toBe(false);
+		expect(tieMatchesFilter(tie('ranking_tiebreaker', 'playing'), 'finals')).toBe(false);
+	});
+
 	// ─── status filters ───────────────────────────────────────────────────────
 
 	test('lineup_pending: matches only when status is lineup_pending', () => {
 		expect(tieMatchesFilter(tie('group_a', 'lineup_pending'), 'lineup_pending')).toBe(true);
 		expect(tieMatchesFilter(tie('group_a', 'playing'), 'lineup_pending')).toBe(false);
+	});
+
+	test('lineup_submitted: matches only when status is lineup_submitted', () => {
+		expect(tieMatchesFilter(tie('group_a', 'lineup_submitted'), 'lineup_submitted')).toBe(true);
+		expect(tieMatchesFilter(tie('group_a', 'ready'), 'lineup_submitted')).toBe(false);
+	});
+
+	test('ready: matches only when status is ready', () => {
+		expect(tieMatchesFilter(tie('group_a', 'ready'), 'ready')).toBe(true);
+		expect(tieMatchesFilter(tie('group_a', 'lineup_submitted'), 'ready')).toBe(false);
 	});
 
 	test('playing: matches only when status is playing', () => {
@@ -71,8 +85,8 @@ describe('tieMatchesFilter', () => {
 
 	// ─── VALID_TIE_FILTERS completeness ───────────────────────────────────────
 
-	test('VALID_TIE_FILTERS contains all 11 filter values', () => {
-		expect(VALID_TIE_FILTERS).toHaveLength(11);
+	test('VALID_TIE_FILTERS contains all 10 filter values', () => {
+		expect(VALID_TIE_FILTERS).toHaveLength(10);
 		expect(VALID_TIE_FILTERS).toContain('all');
 		expect(VALID_TIE_FILTERS).toContain('schedule_changed');
 	});

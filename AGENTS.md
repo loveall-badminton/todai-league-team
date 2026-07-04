@@ -9,7 +9,7 @@ pnpm deploy           # build + wrangler deploy
 pnpm check            # svelte-check (requires wrangler types — run gen first)
 pnpm lint             # prettier --check + eslint (run format first to fix)
 pnpm format           # prettier --write
-pnpm test             # vitest run (unit + component, 667 tests)
+pnpm test             # vitest run (unit + component)
 pnpm test:unit        # vitest watch
 pnpm test:coverage    # vitest coverage (90% line / 80% branch thresholds)
 
@@ -33,12 +33,12 @@ pnpm db:studio        # drizzle-kit studio
 
 ## Dual wrangler config — DO NOT MERGE
 
-| File                     | Purpose                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `wrangler.jsonc`         | Production. `main: "src/worker.ts"` exports both the SvelteKit handler and `LiveBoard` DO class. |
-| `wrangler.adapter.jsonc` | Build only. Points `main` at `.svelte-kit/cloudflare/_worker.js`. The adapter uses this config.  |
+| File                     | Purpose                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `wrangler.jsonc`         | Production. `main: "src/worker.ts"` exports the SvelteKit handler and the DO classes.           |
+| `wrangler.adapter.jsonc` | Build only. Points `main` at `.svelte-kit/cloudflare/_worker.js`. The adapter uses this config. |
 
-`src/worker.ts` imports the adapter output via the `sveltekit-worker` alias (in `wrangler.jsonc`) and re-exports `LiveBoard`.
+`src/worker.ts` imports the adapter output via the `sveltekit-worker` alias (in `wrangler.jsonc`) and re-exports `LiveBoard` and `MatchActionCoordinator`.
 
 ## Route conventions
 
@@ -81,11 +81,11 @@ export const create = form(v.object({ name: v.string() }), async ({ name }) => {
 src/lib/domain/         # Pure functions, no DB/server deps (types, scoring, service, tokyoLeague)
 src/lib/server/db/      # Drizzle schema, auth schema, DB client
 src/lib/server/repositories/  # DB queries (matchRepo, scoreEventRepo, tournamentRepo, tokyoLeagueRepo)
-src/lib/server/services/      # Orchestration (matchActionService, tieService, lineupService, etc.)
+src/lib/server/services/      # Orchestration (matchActionCore, tieOperationService, lineupService, etc.)
 src/lib/server/realtime/      # WebSocket broadcast helpers (notifyLiveBoard, notifyMatch)
 src/lib/realtime/       # Shared (client+server) channel types, WebSocket client wrapper
 src/lib/components/     # Shared UI components (AppButton, Card, etc.)
-src/parties/            # Durable Objects (LiveBoard.ts)
+src/parties/            # Durable Objects (LiveBoard.ts, MatchActionCoordinator.ts)
 ```
 
 ## Domain layer (`src/lib/domain/`)
@@ -95,26 +95,30 @@ Pure TypeScript. Key exports:
 - `types.ts` — `Side`, `MatchState`, `ServiceState`, `ScoreEventInput`, all event types
 - `scoring.ts` — `applyScoreEvent()`, `isGameWon()`, `isMatchWon()`, `createInitialMatchState()`
 - `service.ts` — `createInitialDoublesServiceState()`, `applyDoublesServiceAfterRally()`, helpers
+- `matchStatus.ts` — status predicates (`isTerminalMatchStatus()`, `isResultMatchStatus()`, etc.)
+- `tieProgress.ts` — `calculateTieResult()`, 3-win clinch / finished-state rules for ties
 
 The domain layer MUST NOT import from `$lib/server` or any SvelteKit module.
 
 ## Score event architecture
 
-All score changes go through `applyMatchAction()` in `matchActionService.ts`:
+All score changes go through `applyMatchActionWithRealtime()` (`matchRealtimeActionService.ts`), which delegates to `applySerializedMatchAction()` (`matchActionSerializedService.ts`):
 
-1. Read current state from `match_snapshots`
-2. Check idempotency key (duplicates return cached result)
-3. Apply domain logic via `applyScoreEvent()`
-4. Batch-write: `score_events` insert, `matches` update, `match_snapshots` upsert, `match_service_states` upsert
-5. If tied to a rubber, recalculate tie result
-6. Broadcast via WebSocket (notifyMatch, notifyLiveBoard)
+1. Route the action to the `MatchActionCoordinator` DO (one instance per matchId) to serialize concurrent writes; falls back to direct DB if the DO is unavailable
+2. The actual write is `applyMatchActionWithDb()` in `matchActionCore.ts`:
+   - Read current state from `match_snapshots`
+   - Check idempotency key (duplicates return cached result)
+   - Apply domain logic via `applyScoreEvent()`
+   - Batch-write: `score_events` insert, `matches` update, `match_snapshots` upsert, `match_service_states` upsert
+   - If tied to a rubber, recalculate tie result
+3. Broadcast via WebSocket (notifyScoreChange / notifyLiveBoard)
 
-**Never** directly update `matches.currentScoreA` without going through `applyMatchAction`.
+**Never** directly update `matches.currentScoreA` without going through this path.
 
 ## Realtime (WebSocket)
 
 - `src/parties/LiveBoard.ts` — PartyServer DO. One per channel. Broadcasts to connected clients.
-- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)`. Calls DO via `platform.env.LiveBoard.get(channel).fetch(broadcastUrl)`.
+- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)` / `notifyScoreChange(matchId, topics)`. Calls DO via `platform.env.LiveBoard.getByName(channel).fetch(broadcastUrl)`.
 - `src/lib/realtime/liveChannel.svelte.ts` — Client-side WebSocket wrapper with auto-reconnect.
 - `src/lib/components/RealtimeSync.svelte` — Toggle component; polls when WebSocket unavailable.
 

@@ -16,6 +16,8 @@ pnpm format           # prettier --write
 pnpm test             # vitest run (unit)
 pnpm test:unit        # vitest watch
 pnpm test:coverage    # vitest coverage
+pnpm test:e2e         # playwright (chromium project; needs test:e2e:server running)
+pnpm test:e2e:full    # playwright full-simulation project (excluded from normal runs)
 
 pnpm gen              # wrangler types → worker-configuration.d.ts (needed before check/build)
 pnpm db:push          # push schema to D1
@@ -46,20 +48,25 @@ The pre-commit hook (lefthook) runs format, lint, svelte-check, and tests in par
 
 - `types.ts` — `MatchState`, `ServiceState`, `ScoreEventInput` and all match event types
 - `scoring.ts` — rally/game scoring logic
+- `matchStatus.ts` — match/rubber status predicates (terminal, result, confirmable)
+- `tieProgress.ts` — tie result aggregation (`calculateTieResult`, 3-win clinch rules)
 - `tokyoLeague.ts` — rubber definitions, tie phases, finals bracket structure
 
 **Server services** (`src/lib/server/services/`): Orchestrate DB operations. Key services:
 
-- `tieOperationService.ts` — start/confirm a tie, calculate rubber/match results
-- `lineupService.ts` — lock/reveal lineup submissions
+- `tieOperationService.ts` — start/confirm/cutoff a tie, calculate rubber/match results. `startTie` requires both lineups to be `locked` (admin-approved) and reveals them if not yet revealed
+- `lineupService.ts` — save/submit/lock (approve)/reveal lineup submissions
+- `matchActionCore.ts` — `applyMatchActionWithDb`: the single write path for score events (idempotency check, domain logic, batch write, tie recalculation)
+- `matchActionSerializedService.ts` — routes score actions through the `MatchActionCoordinator` DO to serialize concurrent writes per match; falls back to direct DB when the DO is unavailable
 - `liveBoardService.ts` — aggregate live view data
 
 **Repository layer** (`src/lib/server/repositories/`): Drizzle queries. `tokyoLeagueRepository.ts` covers most list/update operations.
 
 **Realtime** (WebSocket live scores):
 
-- `src/parties/LiveBoard.ts` — Cloudflare Durable Object (partyserver `Server` class). One instance per named channel. Accepts POST `/broadcast` to fan-out messages to all connected WebSocket clients.
-- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)` called from server actions after mutations; reaches the DO via `platform.env.LiveBoard.getByName(channel).fetch(...)`.
+- `src/parties/LiveBoard.ts` — Cloudflare Durable Object (partyserver `Server` class). One instance per named channel. Accepts POST `/broadcast` to fan-out messages to all connected WebSocket clients; also hosts the L2 entry cache used by `layeredCache.ts`.
+- `src/parties/MatchActionCoordinator.ts` — Durable Object that serializes score-event writes per match (one instance per matchId).
+- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)` / `notifyScoreChange(matchId, topics)` called from server actions after mutations; reaches the DO via `platform.env.LiveBoard.getByName(channel).fetch(...)`.
 - `src/lib/realtime/channels.ts` — shared message schemas (Valibot), topic types, channel name helpers. Imported on both client and server.
 - `src/lib/realtime/liveChannel.svelte.ts` — client-side WebSocket wrapper (PartySocket). Reconnects on visibility change; validates incoming messages.
 - `src/lib/components/RealtimeSync.svelte` — UI toggle component; falls back to polling when WebSocket is unavailable.
@@ -71,10 +78,10 @@ Two wrangler config files serve distinct purposes and **must remain separate**:
 
 | File                     | Purpose                                                                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `wrangler.jsonc`         | Production deploy. `main: "src/worker.ts"` re-exports both the SvelteKit handler and the `LiveBoard` DO class.                                               |
+| `wrangler.jsonc`         | Production deploy. `main: "src/worker.ts"` re-exports the SvelteKit handler and the `LiveBoard` / `MatchActionCoordinator` DO classes.                       |
 | `wrangler.adapter.jsonc` | Used only by `@sveltejs/adapter-cloudflare` at build time. Points `main` at `.svelte-kit/cloudflare/_worker.js` to avoid overwriting the custom entry point. |
 
-`src/worker.ts` bridges the two: it imports the SvelteKit adapter output via the `sveltekit-worker` alias (defined in `wrangler.jsonc`) and re-exports `LiveBoard` so wrangler can find the DO class.
+`src/worker.ts` bridges the two: it imports the SvelteKit adapter output via the `sveltekit-worker` alias (defined in `wrangler.jsonc`) and re-exports `LiveBoard` and `MatchActionCoordinator` so wrangler can find the DO classes.
 
 ## Domain terminology
 

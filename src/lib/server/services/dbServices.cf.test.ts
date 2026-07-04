@@ -227,7 +227,7 @@ describe('lineupService DB flows', () => {
 		expect(tie).toMatchObject({ status: 'lineup_submitted', lineupsRevealedAt: null });
 	});
 
-	test('reports validation errors and due-date warning', async () => {
+	test('reports validation errors without due-date warning', async () => {
 		await seedTeams();
 		const tieId = await seedTie();
 		const validation = await validateLineup({
@@ -244,7 +244,7 @@ describe('lineupService DB flows', () => {
 				'チーム外の選手が含まれています'
 			])
 		);
-		expect(validation.warnings).toContain('提出期限を過ぎています');
+		expect(validation.warnings).toEqual([]);
 	});
 
 	test('rejects editing a locked draft and revealing incomplete submissions', async () => {

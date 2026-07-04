@@ -16,7 +16,7 @@
 		filteredPlayers,
 		slotLabel,
 		rubberLabel,
-		onSaveDraft,
+		onDraftChange,
 		tieId,
 		teamId
 	}: {
@@ -25,7 +25,7 @@
 		filteredPlayers: (discipline: string, order: 1 | 2) => { id: string; name: string }[];
 		slotLabel: (discipline: string, order: 1 | 2) => string;
 		rubberLabel: (code: RubberCode) => string;
-		onSaveDraft: (
+		onDraftChange: (
 			items: { rubberCode: string; player1Id: string | null; player2Id: string | null }[]
 		) => void;
 		tieId: string;
@@ -147,6 +147,7 @@
 									if (item) {
 										item.player1Id = value;
 										draftItems = [...draftItems];
+										onDraftChange(draftItems);
 									}
 								}}
 							/>
@@ -160,6 +161,7 @@
 									if (item) {
 										item.player2Id = value;
 										draftItems = [...draftItems];
+										onDraftChange(draftItems);
 									}
 								}}
 							/>
@@ -170,15 +172,8 @@
 		</div>
 	{/each}
 
-	<div class="flex justify-end gap-2 px-5 py-4">
-		<AppButton
-			type="button"
-			disabled={lineup.pending > 0}
-			onclick={() => onSaveDraft(draftItems)}
-			variant="secondary"
-		>
-			下書き保存
-		</AppButton>
+	<div class="flex items-center justify-end gap-3 px-5 py-4">
+		<span class="text-xs text-muted">入力内容はこの端末に自動保存されます</span>
 		<AppButton type="submit" disabled={lineup.pending > 0}>
 			{lineup.pending > 0 ? '送信中…' : '提出する'}
 		</AppButton>

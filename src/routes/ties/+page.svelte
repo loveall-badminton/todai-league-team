@@ -55,17 +55,32 @@
 		{ id: 'all', label: 'すべて' },
 		{ id: 'group_a', label: 'Aリーグ' },
 		{ id: 'group_b', label: 'Bリーグ' },
-		{ id: 'semifinal', label: '準決勝' },
-		{ id: 'final', label: '決勝' },
-		{ id: 'third_place', label: '3位決定戦' },
-		{ id: 'fifth_place', label: '5位決定戦' },
+		{ id: 'finals', label: '決勝トーナメント' },
 		{ id: 'lineup_pending', label: 'オーダー未提出' },
+		{ id: 'lineup_submitted', label: '承認待ち' },
+		{ id: 'ready', label: '開始可' },
 		{ id: 'playing', label: '進行中' },
 		{ id: 'finished', label: '結果確認待ち' },
 		{ id: 'schedule_changed', label: 'スケジュール変更' }
 	];
 
 	let filteredTies = $derived(allTies.filter((t) => tieMatchesFilter(t, filter)));
+
+	// 運営がいま対応すべき対戦のサマリー。クリックで該当フィルターへ移動する。
+	let actionItems = $derived(
+		(
+			[
+				{ id: 'lineup_submitted', label: 'オーダー承認待ち' },
+				{ id: 'ready', label: '開始できる対戦' },
+				{ id: 'finished', label: '結果確認待ち' }
+			] as const
+		)
+			.map((item) => ({
+				...item,
+				count: allTies.filter((t) => t.status === item.id).length
+			}))
+			.filter((item) => item.count > 0)
+	);
 
 	let tabItems = $derived(
 		filters.map((f) => ({
@@ -112,6 +127,24 @@
 
 {#if dialogOpen}
 	<TieCreateDialog bind:open={dialogOpen} data={tiesPage} />
+{/if}
+
+{#if actionItems.length > 0}
+	<div
+		class="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5"
+	>
+		<span class="text-xs font-semibold text-amber-800">要対応</span>
+		{#each actionItems as item (item.id)}
+			<button
+				type="button"
+				class="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
+				onclick={() => setFilter(item.id)}
+			>
+				{item.label}
+				<span class="font-semibold">{item.count}件</span>
+			</button>
+		{/each}
+	</div>
 {/if}
 
 <AppTabs value={filter} items={tabItems} onValueChange={setFilter} />

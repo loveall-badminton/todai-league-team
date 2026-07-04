@@ -206,6 +206,13 @@
 					{#each data.myOfficiatingTies as tie (tie.id)}
 						{@const rubbers = data.publicRubbersByTieId[tie.id] ?? []}
 						{@const playableRubbers = rubbers.filter((r) => r.matchId)}
+						{@const notStarted = [
+							'scheduled',
+							'lineup_pending',
+							'lineup_submitted',
+							'ready'
+						].includes(tie.status)}
+						{@const startMin = notStarted ? remainingMin(tie.scheduledStartAt) : null}
 						<Card class="overflow-hidden" flush>
 							<div class="border-b border-border-subtle bg-zinc-50/60 px-4 py-3">
 								<p class="text-sm font-semibold text-zinc-900">{tie.tieCode}</p>
@@ -217,6 +224,17 @@
 										<span class="inline-flex items-center gap-1 text-[11px] text-zinc-400">
 											<Clock class="size-3 shrink-0" />
 											{tie.scheduledStartAt}
+										</span>
+									{/if}
+									{#if startMin !== null && startMin > 0 && startMin <= 120}
+										<span
+											class="inline-flex items-center gap-1 text-[11px] font-semibold {startMin <=
+											10
+												? 'text-red-700'
+												: 'text-amber-700'}"
+										>
+											<AlarmClock class="size-3 shrink-0" />
+											開始まであと {startMin} 分
 										</span>
 									{/if}
 								</div>

@@ -61,13 +61,6 @@ export async function validateLineup(params: {
 
 	errors.push(...validateLineupRules(params.items, players));
 
-	const tie = await db.query.ties.findFirst({ where: eq(ties.id, params.tieId) });
-	if (tie?.lineupDueAt) {
-		const now = new Date(params.now ?? new Date().toISOString()).getTime();
-		const due = new Date(tie.lineupDueAt).getTime();
-		if (Number.isFinite(due) && now > due) warnings.push('提出期限を過ぎています');
-	}
-
 	return { errors: [...new Set(errors)], warnings: [...new Set(warnings)] };
 }
 
