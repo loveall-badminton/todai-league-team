@@ -120,10 +120,16 @@
 <header>
 	<a
 		class="text-sm text-muted-foreground hover:text-zinc-700 flex items-center"
-		href={resolve('/ties/[tieId]', { tieId: data.tie.id })}
+		href={data.user?.role === 'admin'
+			? resolve('/ties/[tieId]', { tieId: data.tie.id })
+			: resolve('/live/tasks')}
 	>
 		<ArrowLeft class="size-3" />
-		{data.tie.tieCode}
+		{#if data.user?.role === 'admin'}
+			{data.tie.tieCode}
+		{:else}
+			オーダー/審判
+		{/if}
 	</a>
 	<PageHeader
 		title={data.team.name}
