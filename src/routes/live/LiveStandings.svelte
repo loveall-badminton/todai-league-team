@@ -105,7 +105,7 @@
 							class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
 						>
 							<span
-								class="w-6 shrink-0 text-center text-sm font-bold tabular-nums {entry.confirmed
+								class="w-8 shrink-0 text-center text-sm font-bold tabular-nums {entry.confirmed
 									? 'text-zinc-800'
 									: 'text-zinc-300'}">{entry.rank}位</span
 							>
