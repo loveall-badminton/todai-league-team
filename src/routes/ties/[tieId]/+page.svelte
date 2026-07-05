@@ -405,6 +405,22 @@
 
 	<!-- Steps 3+: Rubber results -->
 {:else}
+	{#if tie.status === 'ready' && isRevealed}
+		<Card innerClass="flex items-center justify-between gap-2">
+			<p class="text-sm text-muted-foreground">オーダーは公開済みです。</p>
+			<ConfirmDialog
+				onConfirm={() => run(() => unrevealLineups())}
+				triggerLabel="公開を取り消す"
+				triggerClass="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+				title="オーダー公開を取り消しますか？"
+				description="公開を取り消すと、対抗戦は提出済みの状態に戻り、チームは承認解除後にオーダーを再編集できるようになります。"
+				confirmLabel="公開を取り消す"
+				confirmVariant="warning"
+				confirmClass="border border-amber-300"
+			/>
+		</Card>
+	{/if}
+
 	{#snippet rubberExtraHead()}
 		<th class="w-24 px-4 py-3 text-left text-xs font-medium text-muted">状態</th>
 		<th class="w-32 px-4 py-3 text-left text-xs font-medium text-muted">操作</th>
