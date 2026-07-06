@@ -31,9 +31,7 @@
 		confirmTie,
 		cutoffTie,
 		deleteTie,
-		getLiveRubbers,
-		getTieHeader,
-		getTieLineups,
+		getTieAdminPage,
 		lockLineup,
 		revealLineups,
 		startTie,
@@ -59,15 +57,11 @@
 	} from '$lib/realtime/updates';
 
 	const tieId = page.params.tieId!;
-	const liveRubbers = getLiveRubbers(tieId);
-	const tieHeaderQuery = getTieHeader(tieId);
-	const tieLineupsQuery = getTieLineups(tieId);
-	const [initialTieHeader, initialTieLineups] = await Promise.all([
-		tieHeaderQuery,
-		tieLineupsQuery
-	]);
-	let tieHeader = $derived(tieHeaderQuery.current ?? initialTieHeader);
-	let tieLineups = $derived(tieLineupsQuery.current ?? initialTieLineups);
+	const tieAdminQuery = getTieAdminPage(tieId);
+	const initialAdminData = await tieAdminQuery;
+	let adminData = $derived(tieAdminQuery.current ?? initialAdminData);
+	let tieHeader = $derived(adminData.header);
+	let tieLineups = $derived(adminData.lineups);
 	let tie = $derived(tieHeader.tie);
 	let rubbers = $derived(tieHeader.rubbers);
 	let teams = $derived(tieHeader.teams);
@@ -100,7 +94,7 @@
 	let liveScorePatches = $state<Record<string, RubberScorePatch>>({});
 
 	function toRubberRow(rubber: (typeof rubbers)[number]): RubberRow {
-		const liveBase = (liveRubbers.current ?? []).find((r) => r.id === rubber.id);
+		const liveBase = adminData.liveRubbers.find((r) => r.id === rubber.id);
 		const patch = rubber.matchId ? liveScorePatches[rubber.matchId] : undefined;
 		const live = liveBase && patch ? { ...liveBase, ...patch } : liveBase;
 		const status = live?.status ?? rubber.status;
@@ -152,47 +146,28 @@
 
 	const rubberStatusBgClass = rubberStatusTextClass;
 
-	type RefreshTarget = 'header' | 'lineups' | 'rubbers';
-
-	async function run(
-		fn: () => Promise<void>,
-		targets: RefreshTarget[] = ['header', 'lineups', 'rubbers']
-	) {
-		try {
-			await fn();
-			const refreshes = [];
-			if (targets.includes('header')) refreshes.push(tieHeaderQuery.refresh());
-			if (targets.includes('lineups')) refreshes.push(tieLineupsQuery.refresh());
-			if (targets.includes('rubbers')) refreshes.push(refreshLiveRubbers());
-			await Promise.all(refreshes);
-		} catch {
-			toast.error('操作に失敗しました');
-		}
-	}
-
-	const handleTieHeaderUpdate = createRealtimeQueryFlow({
-		refresh: () => tieHeaderQuery.refresh(),
-		shouldRefresh: (update) => shouldRefreshTieHeaderData(update, tie.id)
-	});
-
-	const handleTieLineupsUpdate = createRealtimeQueryFlow({
-		refresh: () => tieLineupsQuery.refresh(),
-		shouldRefresh: (update) => shouldRefreshTieLineups(update, tie.id)
-	});
-
 	// refresh 開始時点のパッチは取り直した結果より古いとみなして破棄する
 	// (切断中に進んだ得点が stale パッチで隠れたままになるのを防ぐ)。
 	// refresh 中に届いた新しいパッチは identity が変わるため残る。
-	async function refreshLiveRubbers() {
+	async function refreshAdminPage() {
 		const snapshot = Object.entries(liveScorePatches);
-		await liveRubbers.refresh();
+		await tieAdminQuery.refresh();
 		for (const [matchId, patch] of snapshot) {
 			if (liveScorePatches[matchId] === patch) delete liveScorePatches[matchId];
 		}
 	}
 
-	const handleLiveRubbersUpdate = createRealtimeQueryFlow({
-		refresh: refreshLiveRubbers,
+	async function run(fn: () => Promise<void>) {
+		try {
+			await fn();
+			await refreshAdminPage();
+		} catch {
+			toast.error('操作に失敗しました');
+		}
+	}
+
+	const handleAdminUpdate = createRealtimeQueryFlow({
+		refresh: refreshAdminPage,
 		applyUpdate: (update) => {
 			// score 更新はブロードキャストに載った MatchState をローカル適用し、
 			// 毎得点の refetch を避ける(Workers リクエスト削減)
@@ -202,11 +177,10 @@
 				liveScorePatches[state.matchId] = buildRubberScorePatch(state);
 				return 'applied';
 			}
-			return shouldRefreshTieLiveRubbers(
-				update,
-				tie.id,
-				rubbers.map((rubber) => rubber.matchId).filter((id): id is string => !!id)
-			)
+			const matchIds = rubbers.map((rubber) => rubber.matchId).filter((id): id is string => !!id);
+			return shouldRefreshTieHeaderData(update, tie.id) ||
+				shouldRefreshTieLineups(update, tie.id) ||
+				shouldRefreshTieLiveRubbers(update, tie.id, matchIds)
 				? 'refresh'
 				: 'ignore';
 		}
@@ -245,11 +219,7 @@
 		</Card>
 		<RealtimeSync
 			topics={realtimeTopics}
-			onUpdate={(u) => {
-				void handleTieHeaderUpdate(u);
-				void handleTieLineupsUpdate(u);
-				void handleLiveRubbersUpdate(u);
-			}}
+			onUpdate={(u) => void handleAdminUpdate(u)}
 			pollInterval={10000}
 		/>
 	</div>
@@ -279,18 +249,16 @@
 <!-- Action buttons -->
 <div class="flex flex-wrap items-center gap-2">
 	{#if canStart}
-		<AppButton onclick={() => run(() => startTie(), ['header', 'rubbers'])}>対戦を開始</AppButton>
+		<AppButton onclick={() => run(() => startTie())}>対戦を開始</AppButton>
 	{/if}
 
 	{#if canConfirm}
-		<AppButton variant="success" onclick={() => run(() => confirmTie(), ['header'])}
-			>結果を確定</AppButton
-		>
+		<AppButton variant="success" onclick={() => run(() => confirmTie())}>結果を確定</AppButton>
 	{/if}
 
 	{#if canCutoffTie}
 		<ConfirmDialog
-			onConfirm={() => run(() => cutoffTie(), ['header', 'rubbers'])}
+			onConfirm={() => run(() => cutoffTie())}
 			triggerLabel="残り種目を打ち切る"
 			triggerVariant="warning"
 			title="残りの種目をまとめて打ち切りますか？"
@@ -339,7 +307,7 @@
 			{teams}
 			onSaved={() => {
 				editing = false;
-				void tieHeaderQuery.refresh();
+				void refreshAdminPage();
 			}}
 		>
 			<div class="flex items-center gap-3 pt-1">
@@ -414,16 +382,11 @@
 		<Card innerClass="flex items-center justify-between gap-2">
 			<p class="text-sm text-muted-foreground">両チームのオーダーが揃っています。</p>
 			{#if isRevealed}
-				<AppButton
-					variant="secondary"
-					onclick={() => run(() => unrevealLineups(), ['header', 'lineups'])}
-				>
+				<AppButton variant="secondary" onclick={() => run(() => unrevealLineups())}>
 					公開を取り消す
 				</AppButton>
 			{:else}
-				<AppButton onclick={() => run(() => revealLineups(), ['header', 'lineups'])}>
-					オーダー公開
-				</AppButton>
+				<AppButton onclick={() => run(() => revealLineups())}>オーダー公開</AppButton>
 			{/if}
 		</Card>
 	{/if}
@@ -563,7 +526,7 @@
 				{#if (subStatus === 'locked' || subStatus === 'revealed') && !isRevealed}
 					{#if teamId}
 						<ConfirmDialog
-							onConfirm={() => run(() => unlockLineup({ teamId: teamId! }), ['header', 'lineups'])}
+							onConfirm={() => run(() => unlockLineup({ teamId: teamId! }))}
 							triggerLabel="承認を解除"
 							triggerClass="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-emphasis hover:bg-zinc-50"
 							title="オーダーの承認を解除しますか？"
@@ -578,7 +541,7 @@
 						<AppButton
 							variant="violet"
 							size="sm"
-							onclick={() => run(() => lockLineup({ teamId: teamId! }), ['header', 'lineups'])}
+							onclick={() => run(() => lockLineup({ teamId: teamId! }))}
 						>
 							承認する
 						</AppButton>

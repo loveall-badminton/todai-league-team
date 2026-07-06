@@ -24,8 +24,19 @@ const progressionCache = createLayeredJsonCache({
 	invalidateOn: ['score']
 });
 
+// 運営承認済み・中止の tie はもう変わらないため、エッジ TTL を延長して
+// 閲覧のたびの再計算(Workers 内サブリクエスト)を抑える。
+// DO 層のトピック失効は効き続けるので、万一変更されても数分で追従する。
+const SETTLED_TIE_TTL_SECONDS = 300;
+const settledTieTtl = (data: { tie: { status: string } } | null) =>
+	data && ['confirmed', 'cancelled'].includes(data.tie.status)
+		? SETTLED_TIE_TTL_SECONDS
+		: undefined;
+
 export const getTieDetail = query(v.string(), async (tieId) => {
-	return tieDetailCache.remember({ parts: [tieId] }, () => getTiePageData(tieId));
+	return tieDetailCache.remember({ parts: [tieId] }, () => getTiePageData(tieId), {
+		ttlSecondsFor: settledTieTtl
+	});
 });
 
 export const getTieProgression = query(v.string(), async (tieId) => {

@@ -4,7 +4,12 @@ import {
 	type MatchState,
 	type ScoreEventInput
 } from '$lib/domain/types';
-import { buildRealtimeScoreEvent, resolveRealtimeInput } from './refereeRealtime';
+import {
+	applyRefereeScorePayload,
+	buildRealtimeScoreEvent,
+	resolveRealtimeInput,
+	type RefereeLiveView
+} from './refereeRealtime';
 
 function createMatchState(overrides: Partial<MatchState> = {}): MatchState {
 	return {
@@ -76,5 +81,60 @@ describe('resolveRealtimeInput', () => {
 		};
 
 		expect(resolveRealtimeInput(input, 4)).toBe(input);
+	});
+});
+
+describe('applyRefereeScorePayload', () => {
+	function view(lastSeqNo: number): RefereeLiveView {
+		return {
+			state: createMatchState({ lastSeqNo }),
+			events: []
+		};
+	}
+
+	function payload(seqNo: number, type = 'rally_won') {
+		return {
+			state: createMatchState({ lastSeqNo: seqNo }),
+			event: { type, seqNo, side: 'A' as const, gameNo: 1, scoreA: 2, scoreB: 0 }
+		};
+	}
+
+	test('applies a consecutive event and appends it to the log', () => {
+		const next = applyRefereeScorePayload(payload(4), view(3));
+		expect(next).not.toBe('refresh');
+		expect(next).not.toBeNull();
+		if (next === 'refresh' || next === null) return;
+		expect(next.state.lastSeqNo).toBe(4);
+		expect(next.events).toHaveLength(1);
+		expect(next.events[0]).toMatchObject({
+			seqNo: 4,
+			eventType: 'rally_won',
+			scoreAAfter: 2,
+			scoreBAfter: 0
+		});
+	});
+
+	test('ignores an already-applied payload (duplicate)', () => {
+		expect(applyRefereeScorePayload(payload(3), view(3))).toBeNull();
+	});
+
+	test('requests refresh when events were missed (seqNo gap)', () => {
+		expect(applyRefereeScorePayload(payload(6), view(3))).toBe('refresh');
+	});
+
+	test('requests refresh for match-meta events like winner_confirmed', () => {
+		const p = {
+			state: createMatchState({ lastSeqNo: 3 }),
+			event: { type: 'winner_confirmed' }
+		};
+		expect(applyRefereeScorePayload(p, view(3))).toBe('refresh');
+	});
+
+	test('ignores payloads for another match', () => {
+		const p = {
+			state: createMatchState({ matchId: 'other-match', lastSeqNo: 4 }),
+			event: { type: 'rally_won', seqNo: 4 }
+		};
+		expect(applyRefereeScorePayload(p, view(3))).toBeNull();
 	});
 });

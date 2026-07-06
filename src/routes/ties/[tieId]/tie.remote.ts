@@ -22,19 +22,16 @@ import * as v from 'valibot';
 import { getTieHeaderData, getTieLineupsData } from './tiePageData';
 import { getMatchWithPlayers } from '$lib/server/repositories/matchRepository';
 
-export const getLiveRubbers = query(v.string(), async (tieId) => {
+// header / lineups / liveRubbers を1リクエストで返す(3クエリに分けると
+// 初期表示・全体 refresh のたびに Workers リクエストが3倍になるため)
+export const getTieAdminPage = query(v.string(), async (tieId) => {
 	requireAdmin();
-	return getPublicRubbers(tieId);
-});
-
-export const getTieHeader = query(v.string(), async (tieId) => {
-	requireAdmin();
-	return getTieHeaderData(tieId);
-});
-
-export const getTieLineups = query(v.string(), async (tieId) => {
-	requireAdmin();
-	return getTieLineupsData(tieId);
+	const [header, lineups, liveRubbers] = await Promise.all([
+		getTieHeaderData(tieId),
+		getTieLineupsData(tieId),
+		getPublicRubbers(tieId)
+	]);
+	return { header, lineups, liveRubbers };
 });
 
 export const startTie = command(async () => {
@@ -165,7 +162,16 @@ async function applyLifecycleMatchAction(
 		now: new Date().toISOString()
 	});
 	notifyScoreChange(matchId, ['score'], { score: result.scorePayload });
-	notifyLiveBoard(['schedule', 'standings']);
+	// 管理画面は必ず tie 配下で操作するため、payload を付けて関係ページだけに絞る
+	const tieId = getRequestEvent().params.tieId;
+	if (tieId) {
+		notifyLiveBoard(['schedule', 'standings'], {
+			schedule: { tieIds: [tieId], scopes: ['tie_header', 'rubbers'] },
+			standings: { tieIds: [tieId] }
+		});
+	} else {
+		notifyLiveBoard(['schedule', 'standings']);
+	}
 }
 
 async function getMatchSeqNo(matchId: string): Promise<number> {

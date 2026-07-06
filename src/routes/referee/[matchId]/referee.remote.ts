@@ -9,6 +9,7 @@ import {
 	getMatchPlayers,
 	getMatchWithPlayers,
 	getMatchState,
+	getTieContextForMatch,
 	updateMatchResultVerification
 } from '$lib/server/repositories/matchRepository';
 import {
@@ -26,7 +27,7 @@ async function applyAction(
 		state: Awaited<ReturnType<typeof getMatchState>>,
 		players: MatchPlayer[]
 	) => ScoreEventInput
-): Promise<{ error: string } | void> {
+): Promise<{ error: string } | { scorePayload: MatchActionRealtimeResult['scorePayload'] }> {
 	await requireRefereeMatchAccess(matchId);
 	const state = await getMatchState(matchId);
 	const players = await getMatchPlayers(matchId);
@@ -45,7 +46,9 @@ async function applyAction(
 		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 
-	broadcastScoreUpdate(matchId, primary.scorePayload);
+	await broadcastScoreUpdate(matchId, primary.scorePayload);
+	// クライアントはこの payload をローカル適用する(load 再実行を避ける)
+	return { scorePayload: primary.scorePayload };
 }
 
 export const start = form(
@@ -190,7 +193,7 @@ export const cutoff = form(async () => {
 		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
 	}
 	const afterState = await getMatchState(matchId);
-	broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
+	await broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
 });
 
 export const saveRefereeName = form(
@@ -231,7 +234,7 @@ export const confirmWinner = form(async () => {
 		updatedAt: new Date().toISOString()
 	});
 	const afterState = await getMatchState(matchId);
-	broadcastScoreUpdate(matchId, {
+	await broadcastScoreUpdate(matchId, {
 		state: afterState,
 		event: { type: 'winner_confirmed' } as const
 	});
@@ -255,13 +258,13 @@ export const unconfirmWinner = form(async () => {
 		updatedAt: new Date().toISOString()
 	});
 	const afterState = await getMatchState(matchId);
-	broadcastScoreUpdate(matchId, {
+	await broadcastScoreUpdate(matchId, {
 		state: afterState,
 		event: { type: 'winner_unconfirmed' } as const
 	});
 });
 
-function broadcastScoreUpdate(
+async function broadcastScoreUpdate(
 	matchId: string,
 	score:
 		| MatchActionRealtimeResult['scorePayload']
@@ -269,9 +272,22 @@ function broadcastScoreUpdate(
 ) {
 	notifyScoreChange(matchId, ['score'], { score });
 	// 試合が終局すると tie の対戦スコアや順位が変わるため、score を購読しない
-	// ボード・順位表ページにも refresh を促す
+	// ボード・順位表ページにも refresh を促す。payload なしだと全クライアントが
+	// 一斉 refresh するため、tie を特定して関係ページだけに絞る
 	if (isTerminalMatchStatus(score.state.status)) {
-		notifyLiveBoard(['schedule', 'standings']);
+		const context = await getTieContextForMatch(matchId).catch(() => null);
+		if (context) {
+			notifyLiveBoard(['schedule', 'standings'], {
+				schedule: {
+					tieIds: [context.tieId],
+					phases: [context.phase],
+					scopes: ['tie_header', 'rubbers']
+				},
+				standings: { tieIds: [context.tieId] }
+			});
+		} else {
+			notifyLiveBoard(['schedule', 'standings']);
+		}
 	}
 }
 

@@ -6,7 +6,14 @@ import type { MatchDiscipline, MatchPlayer, MatchState } from '$lib/domain/types
 import type { ScoringConfig } from '$lib/domain/types';
 import * as v from 'valibot';
 import type { RequestDb } from './matchStateStore';
-import { matchSidePlayers, matchSides, matchSnapshots, matches } from '$lib/server/db/schema';
+import {
+	matchSidePlayers,
+	matchSides,
+	matchSnapshots,
+	matches,
+	rubbers,
+	ties
+} from '$lib/server/db/schema';
 import {
 	buildMatchServiceStateUpsert,
 	buildMatchSnapshotUpsert,
@@ -48,6 +55,23 @@ export async function getMatchWithPlayers(matchId: string) {
 		match,
 		players: await getMatchPlayers(matchId)
 	};
+}
+
+/**
+ * 試合が属する tie のコンテキスト(ブロードキャストの絞り込み用)。
+ * 団体戦に属さない試合は null。
+ */
+export async function getTieContextForMatch(
+	matchId: string
+): Promise<{ tieId: string; phase: (typeof ties.$inferSelect)['phase'] } | null> {
+	const db = await getRequestDbOrThrow();
+	const rows = await db
+		.select({ tieId: ties.id, phase: ties.phase })
+		.from(rubbers)
+		.innerJoin(ties, eq(rubbers.tieId, ties.id))
+		.where(eq(rubbers.matchId, matchId))
+		.limit(1);
+	return rows[0] ?? null;
 }
 
 export async function updateMatchResultVerification(

@@ -5,7 +5,13 @@
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
 	import LongPressButton from '$lib/components/LongPressButton.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import { matchChannel } from '$lib/realtime/channels';
+	import { hasScoreUpdate, matchChannel, type LiveTopicPayloadMap } from '$lib/realtime/channels';
+	import type { RealtimeUpdate } from '$lib/realtime/updates';
+	import {
+		applyRefereeScorePayload,
+		type RefereeEventView,
+		type RefereeLiveView
+	} from './refereeRealtime';
 	import { cn } from '$lib/utils/cn';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -29,20 +35,56 @@
 
 	let { data, form: formResult }: PageProps = $props();
 
+	// 毎得点の invalidateAll(load 全再実行)を避けるため、スコアと
+	// イベントログは WS / フォーム結果の payload をローカル差分適用して表示する。
+	// load 再実行(invalidateAll)後は seqNo の新しい方を採用する。
+	let overlay = $state.raw<RefereeLiveView | null>(null);
+	let liveView = $derived(
+		overlay && overlay.state.lastSeqNo > data.state.lastSeqNo
+			? overlay
+			: { state: data.state, events: data.events as RefereeEventView[] }
+	);
+	let matchState = $derived(liveView.state);
+	let matchEvents = $derived(liveView.events);
+
+	function applyScorePayload(
+		payload: LiveTopicPayloadMap['score']
+	): 'applied' | 'refresh' | 'ignore' {
+		const next = applyRefereeScorePayload(payload, liveView);
+		if (next === 'refresh') return 'refresh';
+		if (next === null) return 'ignore';
+		overlay = next;
+		return 'applied';
+	}
+
+	function applyRealtimeUpdate(update: RealtimeUpdate<'score'>): 'applied' | 'refresh' | 'ignore' {
+		// フォールバックポーリング・キャッチアップ(data なし)は全取得
+		if (update.source === 'poll' || !hasScoreUpdate(update.data)) return 'refresh';
+		return applyScorePayload(update.data.score);
+	}
+
+	// 自分の操作はフォーム結果の payload で即時反映する(WS 断でも遅延しない)
+	$effect(() => {
+		const payload = (formResult as { scorePayload?: LiveTopicPayloadMap['score'] } | undefined)
+			?.scorePayload;
+		if (!payload) return;
+		if (applyScorePayload(payload) === 'refresh') void invalidateAll();
+	});
+
 	const courtSideSchema = v.picklist(['left', 'right']);
 	const manualChangeCountSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
 	let currentGame = $derived(
-		data.state.games.find((game) => game.gameNo === data.state.currentGameNo)
+		matchState.games.find((game) => game.gameNo === matchState.currentGameNo)
 	);
 
-	let isLocked = $derived(data.state.status === 'confirmed');
+	let isLocked = $derived(matchState.status === 'confirmed');
 	let isScoringLocked = $derived(isLocked || !!data.match.winnerConfirmedAt);
 
 	const undoableEventTypes = ['rally_won', 'match_started', 'game_started'];
-	let lastUndoableEvent = $derived(findLastUndoableEvent(data.events, undoableEventTypes));
+	let lastUndoableEvent = $derived(findLastUndoableEvent(matchEvents, undoableEventTypes));
 
-	function undoLabel(e: (typeof data.events)[number]): string {
+	function undoLabel(e: (typeof matchEvents)[number]): string {
 		return buildUndoLabel(
 			e as unknown as Parameters<typeof buildUndoLabel>[0],
 			sideAName,
@@ -59,11 +101,11 @@
 	let winnerConfirmed = $derived(!!data.match.winnerConfirmedAt);
 	let hasRefereeName = $derived(!!savedRefereeName.trim());
 	let winnerSideName = $derived(
-		data.state.winnerSide === 'A' ? sideAName : data.state.winnerSide === 'B' ? sideBName : null
+		matchState.winnerSide === 'A' ? sideAName : matchState.winnerSide === 'B' ? sideBName : null
 	);
 	let scoreText = $derived(
-		data.state.games.some((g) => g.winnerSide !== null)
-			? data.state.games
+		matchState.games.some((g) => g.winnerSide !== null)
+			? matchState.games
 					.filter((g) => g.winnerSide !== null)
 					.map((g) => `${g.score[leftSide]}-${g.score[rightSide]}`)
 					.join(', ')
@@ -71,7 +113,7 @@
 	);
 
 	let previousGameWinner = $derived(
-		data.state.games.find((g) => g.gameNo === data.state.currentGameNo - 1)?.winnerSide
+		matchState.games.find((g) => g.gameNo === matchState.currentGameNo - 1)?.winnerSide
 	);
 	let allPlayerItems = $derived(
 		previousGameWinner === 'B'
@@ -85,8 +127,8 @@
 	);
 
 	// ── Change-of-ends tracking ────────────────────────────────────────────────
-	let courtSideKey = $derived(`referee_side_${data.state.matchId}`);
-	let manualChangeCountKey = $derived(`referee_changecount_${data.state.matchId}`);
+	let courtSideKey = $derived(`referee_side_${matchState.matchId}`);
+	let manualChangeCountKey = $derived(`referee_changecount_${matchState.matchId}`);
 	let sideAStartsLeft = $state(true);
 
 	let manualChangeCount = $state(0);
@@ -147,8 +189,9 @@
 
 <RealtimeSync
 	topics={['score']}
-	channel={matchChannel(data.state.matchId)}
+	channel={matchChannel(matchState.matchId)}
 	refresh={() => invalidateAll()}
+	applyUpdate={applyRealtimeUpdate}
 	debounceMs={0}
 />
 
@@ -179,7 +222,7 @@
 						'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
 						accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
 					)}
-					disabled={data.state.status !== 'playing' || isScoringLocked}
+					disabled={matchState.status !== 'playing' || isScoringLocked}
 					onShortPress={() => toast.info('得点を記録するには長押ししてください')}
 				>
 					+1
@@ -196,14 +239,14 @@
 <div class="grid gap-4">
 	<!-- Header -->
 	<div class="text-center text-xs text-muted">
-		第{data.state.currentGameNo}ゲーム · ゲームカウント {data.state.gamesWon[leftSide]}–{data.state
+		第{matchState.currentGameNo}ゲーム · ゲームカウント {matchState.gamesWon[leftSide]}–{matchState
 			.gamesWon[rightSide]}
 	</div>
 
 	<!-- Match finished banner -->
-	{#if isConfirmableMatchStatus(data.state.status)}
+	{#if isConfirmableMatchStatus(matchState.status)}
 		<RefereeMatchFinishedCard
-			status={data.state.status as 'finished' | 'forfeited' | 'retired'}
+			status={matchState.status as 'finished' | 'forfeited' | 'retired'}
 			refereeName={savedRefereeName}
 			{winnerSideName}
 			{winnerConfirmed}
@@ -215,10 +258,10 @@
 	{/if}
 
 	<!-- Start game form -->
-	{#if data.state.status === 'scheduled' || data.state.status === 'interval'}
+	{#if matchState.status === 'scheduled' || matchState.status === 'interval'}
 		<Card>
 			<h2 class="mb-3 font-semibold">
-				{data.state.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
+				{matchState.status === 'scheduled' ? '試合開始' : '次ゲーム開始'}
 			</h2>
 
 			<div class="mb-4">
@@ -234,7 +277,7 @@
 				/>
 			</div>
 
-			{#if data.state.status === 'scheduled'}
+			{#if matchState.status === 'scheduled'}
 				<form {...start} class="grid gap-3 sm:grid-cols-2">
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
@@ -260,7 +303,7 @@
 				</form>
 			{:else}
 				<form {...startGame} class="grid gap-3 sm:grid-cols-2">
-					<input type="hidden" name="gameNo" value={data.state.currentGameNo} />
+					<input type="hidden" name="gameNo" value={matchState.currentGameNo} />
 					<div class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 						<AppSelect
@@ -300,7 +343,7 @@
 			leftSidePlayers[0]?.teamName,
 			currentGame?.score[leftSide] ?? 0,
 			leftAccent,
-			data.state.service?.servingSide === leftSide
+			matchState.service?.servingSide === leftSide
 		)}
 		{@render scoreCard(
 			rightSide,
@@ -308,7 +351,7 @@
 			rightSidePlayers[0]?.teamName,
 			currentGame?.score[rightSide] ?? 0,
 			rightAccent,
-			data.state.service?.servingSide === rightSide
+			matchState.service?.servingSide === rightSide
 		)}
 	</div>
 
@@ -332,7 +375,7 @@
 
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
-		service={data.state.service}
+		service={matchState.service}
 		{sideAIsLeft}
 		{leftAccent}
 		{rightAccent}
@@ -342,7 +385,7 @@
 	/>
 
 	<!-- Scoresheet -->
-	<RefereeScoresheet events={data.events} games={data.state.games} players={data.players} />
+	<RefereeScoresheet events={matchEvents} games={matchState.games} players={data.players} />
 
 	<!-- Advanced controls -->
 	{#if !isScoringLocked}
@@ -350,5 +393,5 @@
 	{/if}
 
 	<!-- Event log -->
-	<RefereeEventLog events={data.events} />
+	<RefereeEventLog events={matchEvents} />
 </div>

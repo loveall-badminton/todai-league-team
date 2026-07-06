@@ -1,7 +1,12 @@
 import { getRequestEvent } from '$app/server';
 import * as v from 'valibot';
 import { LIVE_BOARD_CHANNEL, type LiveTopic } from '$lib/realtime/channels';
-import { createJsonCache, type CacheKeyPart, type JsonCacheOptions } from './cache';
+import {
+	createJsonCache,
+	type CacheKeyPart,
+	type JsonCacheOptions,
+	type TtlSecondsFor
+} from './cache';
 
 /**
  * エッジキャッシュ(PoP ローカル・TTL)の上に LiveBoard DO の
@@ -89,8 +94,11 @@ export function createLayeredJsonCache<TSchema extends Schema>(
 		}
 	}
 
+	// DO 層エントリ TTL のスキーマ上限(LiveBoard 側 CacheEntryPutSchema の maxValue)
+	const DO_TTL_MAX_MS = 300_000;
+
 	// epoch は GET 時点のものを渡す。計算中に失効が走っていた場合 DO 側が PUT を拒否する
-	function putToDo(key: string, value: Output, epoch: number): void {
+	function putToDo(key: string, value: Output, epoch: number, ttlMs: number): void {
 		const stub = getLiveBoardStub();
 		if (!stub) return;
 		try {
@@ -101,7 +109,7 @@ export function createLayeredJsonCache<TSchema extends Schema>(
 					body: JSON.stringify({
 						key,
 						data: value,
-						ttlMs: doTtlMs,
+						ttlMs,
 						topics: [...options.invalidateOn],
 						epoch
 					})
@@ -118,21 +126,31 @@ export function createLayeredJsonCache<TSchema extends Schema>(
 		}
 	}
 
-	async function remember(input: CacheInput, compute: () => Promise<Output>): Promise<Output> {
+	async function remember(
+		input: CacheInput,
+		compute: () => Promise<Output>,
+		rememberOptions?: { ttlSecondsFor?: TtlSecondsFor<Output> }
+	): Promise<Output> {
 		const cached = await edge.get(input);
 		if (cached.ok && cached.hit) return cached.value;
+
+		const ttlFor = (value: Output) => rememberOptions?.ttlSecondsFor?.(value);
 
 		const key = await entryKey(input);
 		const fromDo = await getFromDo(key);
 		if (fromDo.hit) {
-			await edge.set(fromDo.value, input);
+			await edge.set(fromDo.value, { ...input, ttlSeconds: ttlFor(fromDo.value) });
 			return fromDo.value;
 		}
 
 		const fresh = await compute();
+		const ttlSeconds = ttlFor(fresh);
 		// epoch が取れなかった場合(DO 不達など)は古さを検証できないため DO には書かない
-		if (fromDo.epoch !== null) putToDo(key, fresh, fromDo.epoch);
-		await edge.set(fresh, input);
+		if (fromDo.epoch !== null) {
+			const doTtl = ttlSeconds !== undefined ? Math.min(ttlSeconds * 1000, DO_TTL_MAX_MS) : doTtlMs;
+			putToDo(key, fresh, fromDo.epoch, doTtl);
+		}
+		await edge.set(fresh, { ...input, ttlSeconds });
 		return fresh;
 	}
 

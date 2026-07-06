@@ -25,7 +25,13 @@ export const liveScoreEventSchema = v.object({
 	gameNo: v.optional(v.number()),
 	scoreA: v.optional(v.number()),
 	scoreB: v.optional(v.number()),
-	targetSeqNo: v.optional(v.number())
+	targetSeqNo: v.optional(v.number()),
+	// 審判画面のスコアシートをローカル差分適用するためのサービス情報
+	// (DB の score_events 行と同じ意味の値)
+	serverPlayerIdBefore: v.optional(v.nullable(v.string())),
+	receiverPlayerIdBefore: v.optional(v.nullable(v.string())),
+	serverPlayerIdAfter: v.optional(v.nullable(v.string())),
+	receiverPlayerIdAfter: v.optional(v.nullable(v.string()))
 });
 
 export type LiveScoreEvent = v.InferOutput<typeof liveScoreEventSchema>;

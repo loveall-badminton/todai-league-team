@@ -37,6 +37,8 @@ export type RememberOptions = {
 	blockingPut?: boolean;
 };
 
+export type TtlSecondsFor<T> = (value: T) => number | undefined;
+
 function getPlatformCache() {
 	const event = getRequestEvent();
 	const cacheStorage = event.platform?.caches as (CacheStorage & { default?: Cache }) | undefined;
@@ -195,7 +197,7 @@ export function createJsonCache<TSchema extends Schema>(options: JsonCacheOption
 
 	async function set(
 		value: Output,
-		input?: { parts?: CacheKeyPart[]; args?: unknown; blocking?: boolean }
+		input?: { parts?: CacheKeyPart[]; args?: unknown; blocking?: boolean; ttlSeconds?: number }
 	): Promise<void> {
 		if (!enabled || dev || isLocalRequest()) return;
 
@@ -209,7 +211,8 @@ export function createJsonCache<TSchema extends Schema>(options: JsonCacheOption
 
 		const cacheKey = await key(input);
 		const response = jsonResponse(parsed.output as JsonValue, {
-			ttlSeconds: options.ttlSeconds,
+			// 確定済みデータなど「もう変わらない」エントリはエントリ別に TTL を延長できる
+			ttlSeconds: input?.ttlSeconds ?? options.ttlSeconds,
 			tags: options.tags
 		});
 
