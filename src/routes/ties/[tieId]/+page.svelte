@@ -50,6 +50,8 @@
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import TieNotifyPanel from '$lib/components/TieNotifyPanel.svelte';
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
+	import { hasScoreUpdate } from '$lib/realtime/channels';
+	import { buildRubberScorePatch, type RubberScorePatch } from '$lib/realtime/scorePatch';
 	import {
 		shouldRefreshTieHeaderData,
 		shouldRefreshTieLiveRubbers,
@@ -92,8 +94,15 @@
 		return [item?.player1Id, item?.player2Id].filter((id): id is string => !!id);
 	};
 
+	// score トピックのブロードキャストに載った MatchState をローカル適用するパッチ。
+	// getLiveRubbers の refetch なしで得点表示を更新する(remote query の値は
+	// $state.raw のため、$state のパッチとしてマージする)。
+	let liveScorePatches = $state<Record<string, RubberScorePatch>>({});
+
 	function toRubberRow(rubber: (typeof rubbers)[number]): RubberRow {
-		const live = (liveRubbers.current ?? []).find((r) => r.id === rubber.id);
+		const liveBase = (liveRubbers.current ?? []).find((r) => r.id === rubber.id);
+		const patch = rubber.matchId ? liveScorePatches[rubber.matchId] : undefined;
+		const live = liveBase && patch ? { ...liveBase, ...patch } : liveBase;
 		const status = live?.status ?? rubber.status;
 		const statusSrc = live?.matchStatus ?? status;
 		return {
@@ -105,7 +114,7 @@
 			refereeName: rubber.refereeName,
 			winnerConfirmedAt: rubber.winnerConfirmedAt,
 			winnerConfirmedBySide: rubber.winnerConfirmedBySide,
-			winnerSide: rubber.winnerSide,
+			winnerSide: patch?.winnerSide ?? rubber.winnerSide,
 			playersA: lineupPlayers(rubber.code, 'A').map(playerName),
 			playersB: lineupPlayers(rubber.code, 'B').map(playerName),
 			loserLabel: statusSrc === 'forfeited' ? '棄権' : statusSrc === 'retired' ? 'リタイア' : null,
@@ -154,7 +163,7 @@
 			const refreshes = [];
 			if (targets.includes('header')) refreshes.push(tieHeaderQuery.refresh());
 			if (targets.includes('lineups')) refreshes.push(tieLineupsQuery.refresh());
-			if (targets.includes('rubbers')) refreshes.push(liveRubbers.refresh());
+			if (targets.includes('rubbers')) refreshes.push(refreshLiveRubbers());
 			await Promise.all(refreshes);
 		} catch {
 			toast.error('操作に失敗しました');
@@ -171,14 +180,36 @@
 		shouldRefresh: (update) => shouldRefreshTieLineups(update, tie.id)
 	});
 
+	// refresh 開始時点のパッチは取り直した結果より古いとみなして破棄する
+	// (切断中に進んだ得点が stale パッチで隠れたままになるのを防ぐ)。
+	// refresh 中に届いた新しいパッチは identity が変わるため残る。
+	async function refreshLiveRubbers() {
+		const snapshot = Object.entries(liveScorePatches);
+		await liveRubbers.refresh();
+		for (const [matchId, patch] of snapshot) {
+			if (liveScorePatches[matchId] === patch) delete liveScorePatches[matchId];
+		}
+	}
+
 	const handleLiveRubbersUpdate = createRealtimeQueryFlow({
-		refresh: () => liveRubbers.refresh(),
-		shouldRefresh: (update) =>
-			shouldRefreshTieLiveRubbers(
+		refresh: refreshLiveRubbers,
+		applyUpdate: (update) => {
+			// score 更新はブロードキャストに載った MatchState をローカル適用し、
+			// 毎得点の refetch を避ける(Workers リクエスト削減)
+			if (update.topics.includes('score') && hasScoreUpdate(update.data)) {
+				const state = update.data.score.state;
+				if (!rubbers.some((rubber) => rubber.matchId === state.matchId)) return 'ignore';
+				liveScorePatches[state.matchId] = buildRubberScorePatch(state);
+				return 'applied';
+			}
+			return shouldRefreshTieLiveRubbers(
 				update,
 				tie.id,
 				rubbers.map((rubber) => rubber.matchId).filter((id): id is string => !!id)
 			)
+				? 'refresh'
+				: 'ignore';
+		}
 	});
 </script>
 

@@ -4,8 +4,8 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveTieDetail from './LiveTieDetail.svelte';
 	import { hasScoreUpdate } from '$lib/realtime/channels';
-	import type { MatchState } from '$lib/domain/types';
-	import { isConfirmableMatchStatus, rubberStatusForMatchStatus } from '$lib/domain/matchStatus';
+	import { buildRubberScorePatch } from '$lib/realtime/scorePatch';
+	import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getTieDetail, getTieProgression } from './tie-detail.remote';
 	import type { TiePageData } from '$lib/server/services/liveBoardService';
@@ -35,7 +35,6 @@
 
 	let progression = $state<{ current: ProgressionRealtimeState | null }>({ current: null });
 	let expandedRubberId = $state<string | null>(null);
-	let progressionEverLoaded = false;
 
 	async function loadProgression() {
 		try {
@@ -47,10 +46,8 @@
 	}
 
 	function handleExpand() {
-		if (!progressionEverLoaded) {
-			progressionEverLoaded = true;
-			void loadProgression();
-		}
+		// 閉じている間のイベントは差分適用されないことがあるため、展開のたびに取り直す
+		void loadProgression();
 	}
 
 	function applyProgressionEvent(
@@ -66,24 +63,16 @@
 		return 'applied';
 	}
 
-	function buildScorePatch(state: MatchState): Partial<RubberSummary> {
-		const currentGame = state.games.find((g) => g.gameNo === state.currentGameNo);
-		const patch: Partial<RubberSummary> = {
-			gamesScore: `${state.gamesWon.A}-${state.gamesWon.B}`,
-			pointScore: currentGame ? `${currentGame.score.A}-${currentGame.score.B}` : null,
-			gameDetails: state.games.map((g) => ({
-				gameNo: g.gameNo,
-				scoreA: g.score.A,
-				scoreB: g.score.B,
-				winnerSide: g.winnerSide
-			})),
-			matchStatus: state.status,
-			winnerSide: state.winnerSide
-		};
-		const rubberStatus = rubberStatusForMatchStatus(state.status);
-		// 未開始(scheduled)への巻き戻しはこの画面では扱わないため上書きしない
-		if (rubberStatus && rubberStatus !== 'scheduled') patch.status = rubberStatus;
-		return patch;
+	// refresh で取り直したデータより古いパッチが上書きし続けると、切断中に進んだ
+	// 得点が反映されない(切断中に試合が終わると固まったままになる)。refresh 開始
+	// 時点のパッチは結果より古いとみなして破棄する。refresh 中に届いた新しい
+	// パッチは identity が変わるため残る。
+	async function refreshTieDetail() {
+		const snapshot = Object.entries(scorePatches);
+		await tieDetailQuery.refresh();
+		for (const [matchId, patch] of snapshot) {
+			if (scorePatches[matchId] === patch) delete scorePatches[matchId];
+		}
 	}
 
 	// tie-detail のエッジキャッシュ(TTL 3秒)を跨いでから取り直す。
@@ -95,7 +84,7 @@
 		if (reconcileTimer !== null) return;
 		reconcileTimer = setTimeout(() => {
 			reconcileTimer = null;
-			tieDetailQuery.refresh();
+			void refreshTieDetail();
 			if (expandedRubberId !== null) void loadProgression();
 		}, RECONCILE_DELAY_MS);
 	}
@@ -107,11 +96,14 @@
 	});
 
 	function refreshAll() {
-		tieDetailQuery.refresh();
+		void refreshTieDetail();
 		if (expandedRubberId !== null) void loadProgression();
 	}
 
 	function applyUpdate(update: RealtimeUpdate): 'applied' | 'refresh' | 'ignore' {
+		// フォールバックポーリングと再接続時のキャッチアップ(data なし)は
+		// 取りこぼし回収のため常に全体 refresh する
+		if (update.source === 'poll') return 'refresh';
 		if (!update.data || !hasScoreUpdate(update.data)) {
 			if (update.topics.includes('schedule') && update.data?.schedule?.tieIds?.includes(tieId)) {
 				return 'refresh';
@@ -121,7 +113,7 @@
 		const state = update.data.score.state;
 		const rubber = rubbers.find((r) => r.matchId === state.matchId);
 		if (!rubber) return 'ignore';
-		scorePatches[state.matchId] = buildScorePatch(state);
+		scorePatches[state.matchId] = buildRubberScorePatch(state);
 		const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
 		if (progResult === 'refresh') return 'refresh';
 		if (isConfirmableMatchStatus(state.status)) {

@@ -70,6 +70,48 @@ describe('applyRealtimeProgressionEvent', () => {
 		]);
 	});
 
+	test('ignores an already-received event (duplicate seqNo)', () => {
+		const initialEvents = [rally(1, 1, 0), rally(2, 1, 1)];
+		const result = applyRealtimeProgressionEvent(
+			'm1',
+			{ type: 'rally_won', seqNo: 2 },
+			{
+				eventsByMatchId: { m1: initialEvents },
+				byMatchId: { m1: buildProgressionFromEvents(initialEvents) }
+			}
+		);
+
+		expect(result).toBeNull();
+	});
+
+	test('requests refresh when events were missed (seqNo gap)', () => {
+		const initialEvents = [rally(1, 1, 0)];
+		const result = applyRealtimeProgressionEvent(
+			'm1',
+			{ type: 'rally_won', seqNo: 3, gameNo: 1, scoreA: 2, scoreB: 1 },
+			{
+				eventsByMatchId: { m1: initialEvents },
+				byMatchId: { m1: buildProgressionFromEvents(initialEvents) }
+			}
+		);
+
+		expect(result).toBe('refresh');
+	});
+
+	test('requests refresh when the event has no seqNo', () => {
+		const initialEvents = [rally(1, 1, 0)];
+		const result = applyRealtimeProgressionEvent(
+			'm1',
+			{ type: 'rally_won' },
+			{
+				eventsByMatchId: { m1: initialEvents },
+				byMatchId: { m1: buildProgressionFromEvents(initialEvents) }
+			}
+		);
+
+		expect(result).toBe('refresh');
+	});
+
 	test('requests refresh when the live page has no event history for the match', () => {
 		const result = applyRealtimeProgressionEvent(
 			'missing',

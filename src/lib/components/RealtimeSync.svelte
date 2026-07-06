@@ -106,9 +106,28 @@
 		});
 	}
 
+	// バックグラウンド中は WS が凍結され、close イベントなしに実質切断されている
+	// ことがある(特に iOS)。一定時間隠れていた後に復帰したら、接続状態に
+	// かかわらず一度だけ catch-up refresh して取りこぼしを回収する。
+	const CATCH_UP_AFTER_HIDDEN_MS = 30_000;
+	let hiddenAt: number | null = null;
+
+	function onVisibilityChange() {
+		if (document.visibilityState === 'hidden') {
+			hiddenAt = Date.now();
+			return;
+		}
+		const hiddenMs = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+		hiddenAt = null;
+		if (!enabled || hiddenMs < CATCH_UP_AFTER_HIDDEN_MS) return;
+		void handleUpdate({ topics: [...topics], source: 'poll', channel });
+	}
+
 	onMount(() => {
 		startChannel();
+		document.addEventListener('visibilitychange', onVisibilityChange);
 		return () => {
+			document.removeEventListener('visibilitychange', onVisibilityChange);
 			liveChannel?.close();
 			liveChannel = null;
 		};
