@@ -215,12 +215,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// 静的アセット — 認証もDBも完全スキップ
 	if (
 		pathname.startsWith('/_app/immutable/') ||
-		pathname === '/_app/version.json' ||
 		pathname.startsWith('/favicon') ||
 		pathname === '/robots.txt'
 	) {
 		const response = await resolve(event);
 		response.headers.set('cache-control', 'public, max-age=31536000, immutable');
+		return response;
+	}
+	if (pathname === '/_app/version.json') {
+		const response = await resolve(event);
+		response.headers.set('cache-control', 'public, max-age=300, stale-while-revalidate=600');
 		return response;
 	}
 

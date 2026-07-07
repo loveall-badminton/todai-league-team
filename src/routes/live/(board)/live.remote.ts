@@ -9,8 +9,7 @@ const scheduleCache = createLayeredJsonCache({
 	schema: ScheduleDataSchema,
 	ttlSeconds: CACHE_TTL.schedule,
 	tags: ['live', 'schedule'],
-	// スコア進行・順位変動でも対戦カードの status / teamScore が変わる
-	invalidateOn: ['schedule', 'score', 'standings', 'finals']
+	invalidateOn: ['schedule', 'standings', 'finals']
 });
 
 export const getSchedulePageData = query(async () => {

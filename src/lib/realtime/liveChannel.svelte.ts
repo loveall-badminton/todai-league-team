@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import PartySocket from 'partysocket';
 import { parseLiveMessage, type LiveMessage } from './channels';
 
-type LiveChannelStatus = 'connecting' | 'open' | 'closed';
+export type LiveChannelStatus = 'connecting' | 'open' | 'closed';
 
 export interface LiveChannelOptions {
 	channel: string;

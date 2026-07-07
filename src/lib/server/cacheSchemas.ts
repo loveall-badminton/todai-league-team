@@ -177,8 +177,8 @@ export const StandingsDataSchema = v.object({
 });
 
 export const CACHE_TTL = {
-	tieDetail: 3,
-	tieProgression: 10,
-	standings: 5,
-	schedule: 3
+	tieDetail: 10,
+	tieProgression: 30,
+	standings: 30,
+	schedule: 15
 } as const;

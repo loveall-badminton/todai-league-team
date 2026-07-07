@@ -9,7 +9,7 @@ const standingsCache = createLayeredJsonCache({
 	schema: StandingsDataSchema,
 	ttlSeconds: CACHE_TTL.standings,
 	tags: ['live', 'standings'],
-	invalidateOn: ['standings', 'score', 'schedule']
+	invalidateOn: ['standings', 'schedule']
 });
 
 export const getStandingsPageData = query(async () => {

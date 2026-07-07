@@ -75,9 +75,9 @@
 		}
 	}
 
-	// tie-detail のエッジキャッシュ(TTL 3秒)を跨いでから取り直す。
+	// tie-detail のエッジキャッシュ(TTL 10秒)を跨いでから取り直す。
 	// 即時 refresh だと更新前のキャッシュを引いてローカル適用済みの表示を巻き戻すことがある。
-	const RECONCILE_DELAY_MS = 4000;
+	const RECONCILE_DELAY_MS = 11000;
 	let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function scheduleReconcileRefresh() {
@@ -139,7 +139,7 @@
 		topics={['score', 'schedule'] as const}
 		refresh={refreshAll}
 		{applyUpdate}
-		pollInterval={8000}
+		pollInterval={15000}
 	/>
 {/snippet}
 

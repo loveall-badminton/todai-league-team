@@ -9,7 +9,8 @@
 		type LiveTopic,
 		type LiveUpdateData
 	} from '$lib/realtime/channels';
-	import { createLiveChannel, type LiveChannel } from '$lib/realtime/liveChannel.svelte';
+	import type { LiveChannel } from '$lib/realtime/liveChannel.svelte';
+	import { subscribeSharedLiveChannel } from '$lib/realtime/sharedLiveChannel';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { computePollDelay } from '$lib/realtime/polling';
 	import { createRealtimeQueryFlow, type RealtimeApplyResult } from '$lib/realtime/queryFlow';
@@ -77,7 +78,7 @@
 	function startChannel() {
 		if (!enabled || dev) return;
 		liveChannel?.close();
-		liveChannel = createLiveChannel({
+		liveChannel = subscribeSharedLiveChannel({
 			channel,
 			onStatusChange: (status) => {
 				if (status !== 'open' && connected) needsCatchUp = true;
