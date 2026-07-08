@@ -16,7 +16,8 @@ const match = {
 	currentScoreA: 15,
 	currentScoreB: 12,
 	currentGameNo: 2,
-	status: 'playing' as const
+	status: 'playing' as const,
+	lastSeqNo: 3
 };
 
 const gameScores = [{ matchId: 'match-1', gameNo: 1, scoreA: 21, scoreB: 15 }];
@@ -71,6 +72,7 @@ describe('createPublicRubberSummaries', () => {
 			sideAPlayers: null,
 			sideBPlayers: null
 		});
+		expect(summaries[0].lastSeqNo).toBe(3);
 	});
 
 	test('shows lineup names after tie lineups are revealed', () => {
@@ -153,7 +155,8 @@ describe('createPublicRubberSummaries', () => {
 			currentScoreA: 0,
 			currentScoreB: 0,
 			currentGameNo: 1,
-			status: 'scheduled' as const
+			status: 'scheduled' as const,
+			lastSeqNo: 0
 		};
 		const summaries = createPublicRubberSummaries({
 			rubbers: [{ ...rubber, matchId: 'match-s' }],

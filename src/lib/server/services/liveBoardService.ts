@@ -29,6 +29,7 @@ export type LiveGameScore = {
 export type PublicRubberSummary = typeof rubbers.$inferSelect & {
 	winnerSide: 'A' | 'B' | null;
 	matchStatus: typeof matches.$inferSelect.status | null;
+	lastSeqNo: number | null;
 	gamesScore: string | null; // games won: "1-0"
 	pointScore: string | null; // current game points: "4-3"
 	gameDetails: LiveGameScore[]; // per-game: [{gameNo:1,scoreA:21,scoreB:15}, ...]
@@ -42,7 +43,14 @@ type PublicRubberInput = Pick<
 >;
 type PublicMatchInput = Pick<
 	typeof matches.$inferSelect,
-	'id' | 'gamesWonA' | 'gamesWonB' | 'currentScoreA' | 'currentScoreB' | 'currentGameNo' | 'status'
+	| 'id'
+	| 'gamesWonA'
+	| 'gamesWonB'
+	| 'currentScoreA'
+	| 'currentScoreB'
+	| 'currentGameNo'
+	| 'status'
+	| 'lastSeqNo'
 >;
 type PublicGameScoreInput = { matchId: string; gameNo: number; scoreA: number; scoreB: number };
 type PublicLineupSubmissionInput = Pick<typeof lineupSubmissions.$inferSelect, 'id' | 'side'>;
@@ -121,6 +129,7 @@ export function createPublicRubberSummaries<TRubber extends PublicRubberInput>(p
 			...rubber,
 			winnerSide: rubber.winnerSide ?? null,
 			matchStatus: match?.status ?? null,
+			lastSeqNo: match?.lastSeqNo ?? null,
 			status: rubberStatusForMatch(rubber.status, match),
 			gamesScore: scores.gamesScore,
 			pointScore: scores.pointScore,
@@ -301,7 +310,8 @@ export async function getBatchedPublicRubbers(
 				currentScoreA: matches.currentScoreA,
 				currentScoreB: matches.currentScoreB,
 				currentGameNo: matches.currentGameNo,
-				status: matches.status
+				status: matches.status,
+				lastSeqNo: matches.lastSeqNo
 			})
 			.from(matches)
 			.where(inArray(matches.id, batch))
@@ -387,6 +397,7 @@ export async function getTiePageData(tieId: string) {
 			matchId: r.matchId,
 			status: r.status,
 			matchStatus: r.matchStatus,
+			lastSeqNo: r.lastSeqNo,
 			winnerSide: r.winnerSide,
 			sideAPlayers: r.sideAPlayers,
 			sideBPlayers: r.sideBPlayers,

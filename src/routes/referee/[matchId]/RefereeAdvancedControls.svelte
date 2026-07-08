@@ -1,18 +1,26 @@
 <script lang="ts">
 	import type { LetCalledInput } from '$lib/domain/types';
+	import type { LiveTopicPayloadMap } from '$lib/realtime/channels';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { cutoff, letCalled, forfeit, retire } from './referee.remote';
+	import { cutoffCommand, letCalledCommand, forfeitCommand, retireCommand } from './referee.remote';
+
+	type ScoreActionResult = {
+		error?: string;
+		scorePayload?: LiveTopicPayloadMap['score'];
+	};
 
 	let {
 		sideAName,
-		sideBName
+		sideBName,
+		applyScoreAction
 	}: {
 		sideAName: string;
 		sideBName: string;
+		applyScoreAction: (run: () => Promise<ScoreActionResult>) => Promise<void>;
 	} = $props();
 
 	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
@@ -39,7 +47,10 @@
 				<AppSelect name="letReason" bind:value={letReason} items={letReasonItems} />
 				<AppInput name="letNote" bind:value={letNote} placeholder="メモ" />
 				<ConfirmDialog
-					formObj={letCalled}
+					onConfirm={() =>
+						applyScoreAction(() =>
+							letCalledCommand({ reason: letReason, note: letNote || undefined })
+						)}
 					hiddenFields={[
 						{ name: 'reason', value: letReason },
 						{ name: 'note', value: letNote }
@@ -58,8 +69,7 @@
 		<CollapsibleSection title="棄権">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					formObj={forfeit.for('A')}
-					hiddenFields={[{ name: 'side', value: 'A' }]}
+					onConfirm={() => applyScoreAction(() => forfeitCommand({ side: 'A' }))}
 					triggerLabel="{sideAName} 棄権"
 					triggerVariant="danger"
 					title="{sideAName}を棄権にしますか？"
@@ -68,8 +78,7 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					formObj={forfeit.for('B')}
-					hiddenFields={[{ name: 'side', value: 'B' }]}
+					onConfirm={() => applyScoreAction(() => forfeitCommand({ side: 'B' }))}
 					triggerLabel="{sideBName} 棄権"
 					triggerVariant="danger"
 					title="{sideBName}を棄権にしますか？"
@@ -83,8 +92,7 @@
 		<CollapsibleSection title="リタイア">
 			<div class="grid grid-cols-2 gap-2">
 				<ConfirmDialog
-					formObj={retire.for('A')}
-					hiddenFields={[{ name: 'side', value: 'A' }]}
+					onConfirm={() => applyScoreAction(() => retireCommand({ side: 'A' }))}
 					triggerLabel="{sideAName} リタイア"
 					triggerVariant="danger"
 					title="{sideAName}をリタイアにしますか？"
@@ -93,8 +101,7 @@
 					confirmVariant="danger"
 				/>
 				<ConfirmDialog
-					formObj={retire.for('B')}
-					hiddenFields={[{ name: 'side', value: 'B' }]}
+					onConfirm={() => applyScoreAction(() => retireCommand({ side: 'B' }))}
 					triggerLabel="{sideBName} リタイア"
 					triggerVariant="danger"
 					title="{sideBName}をリタイアにしますか？"
@@ -107,7 +114,7 @@
 
 		<CollapsibleSection title="打ち切り">
 			<ConfirmDialog
-				formObj={cutoff}
+				onConfirm={() => applyScoreAction(() => cutoffCommand())}
 				triggerLabel="打ち切りにする"
 				triggerVariant="danger"
 				triggerFullWidth

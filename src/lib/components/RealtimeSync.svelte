@@ -11,6 +11,7 @@
 	} from '$lib/realtime/channels';
 	import type { LiveChannel } from '$lib/realtime/liveChannel.svelte';
 	import { subscribeSharedLiveChannel } from '$lib/realtime/sharedLiveChannel';
+	import { getRealtimeConnectionManager } from '$lib/realtime/realtimeConnectionContext';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { computePollDelay } from '$lib/realtime/polling';
 	import { createRealtimeQueryFlow, type RealtimeApplyResult } from '$lib/realtime/queryFlow';
@@ -55,6 +56,7 @@
 	let connected = $state(false);
 	let fallbackActive = $state(false);
 	let liveChannel: LiveChannel | null = null;
+	const realtimeConnectionManager = getRealtimeConnectionManager();
 	// 接続断(または手動 OFF)の間に流れたイベントは受信できないため、
 	// 再接続時に一度だけ全体 refresh してキャッチアップする
 	let needsCatchUp = $state(false);
@@ -78,7 +80,8 @@
 	function startChannel() {
 		if (!enabled || dev) return;
 		liveChannel?.close();
-		liveChannel = subscribeSharedLiveChannel({
+		const subscribe = realtimeConnectionManager?.subscribe ?? subscribeSharedLiveChannel;
+		liveChannel = subscribe({
 			channel,
 			onStatusChange: (status) => {
 				if (status !== 'open' && connected) needsCatchUp = true;

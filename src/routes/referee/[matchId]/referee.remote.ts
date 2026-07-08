@@ -1,5 +1,5 @@
 import { isConfirmableMatchStatus, isTerminalMatchStatus } from '$lib/domain/matchStatus';
-import { form, getRequestEvent } from '$app/server';
+import { command, form, getRequestEvent } from '$app/server';
 import { otherSide } from '$lib/domain/scoring';
 import { LetReasonSchema, SideSchema } from '$lib/domain/schemas';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
@@ -16,6 +16,7 @@ import {
 	applyMatchActionWithRealtime,
 	type MatchActionRealtimeResult
 } from '$lib/server/services/matchRealtimeActionService';
+import { getScheduleTieData } from '$lib/server/services/livePageService';
 import { cancelMatchRubber } from '$lib/server/services/tieOperationService';
 import * as v from 'valibot';
 
@@ -127,6 +128,18 @@ export const rallyWon = form(v.object({ side: sideSchema }), async ({ side }) =>
 	return result ?? {};
 });
 
+export const rallyWonCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'rally_won',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo,
+		side
+	}));
+	return result ?? {};
+});
+
 export const undo = form(async () => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
@@ -138,7 +151,37 @@ export const undo = form(async () => {
 	return result ?? {};
 });
 
+export const undoCommand = command(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'undo',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo
+	}));
+	return result ?? {};
+});
+
 export const letCalled = form(
+	v.object({
+		reason: LetReasonSchema,
+		note: v.optional(v.string())
+	}),
+	async ({ reason, note }) => {
+		const event = getRequestEvent();
+		const matchId = event.params.matchId!;
+		const result = await applyAction(matchId, (state) => ({
+			type: 'let_called',
+			idempotencyKey: crypto.randomUUID(),
+			observedSeqNo: state.lastSeqNo,
+			reason,
+			note: note || undefined
+		}));
+		return result ?? {};
+	}
+);
+
+export const letCalledCommand = command(
 	v.object({
 		reason: LetReasonSchema,
 		note: v.optional(v.string())
@@ -170,7 +213,33 @@ export const forfeit = form(v.object({ side: sideSchema }), async ({ side }) => 
 	return result ?? {};
 });
 
+export const forfeitCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'side_forfeited',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo,
+		side,
+		reason: 'withdrawal'
+	}));
+	return result ?? {};
+});
+
 export const retire = form(v.object({ side: sideSchema }), async ({ side }) => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'side_retired',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo,
+		side,
+		reason: 'injury'
+	}));
+	return result ?? {};
+});
+
+export const retireCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	const result = await applyAction(matchId, (state) => ({
@@ -194,6 +263,21 @@ export const cutoff = form(async () => {
 	}
 	const afterState = await getMatchState(matchId);
 	await broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
+});
+
+export const cutoffCommand = command(async () => {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	await requireRefereeMatchAccess(matchId);
+	try {
+		await cancelMatchRubber(matchId);
+	} catch (err) {
+		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
+	}
+	const afterState = await getMatchState(matchId);
+	const scorePayload = { state: afterState, event: { type: 'cutoff' } as const };
+	await broadcastScoreUpdate(matchId, scorePayload);
+	return { scorePayload };
 });
 
 export const saveRefereeName = form(
@@ -277,11 +361,13 @@ async function broadcastScoreUpdate(
 	if (isTerminalMatchStatus(score.state.status)) {
 		const context = await getTieContextForMatch(matchId).catch(() => null);
 		if (context) {
+			const scheduleTie = await getScheduleTieData(context.tieId).catch(() => null);
 			notifyLiveBoard(['schedule', 'standings'], {
 				schedule: {
 					tieIds: [context.tieId],
 					phases: [context.phase],
-					scopes: ['tie_header', 'rubbers']
+					scopes: ['tie_header', 'rubbers'],
+					...(scheduleTie ? { ties: [scheduleTie] } : {})
 				},
 				standings: { tieIds: [context.tieId] }
 			});

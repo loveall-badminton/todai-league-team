@@ -6,6 +6,8 @@
 		disabled = false,
 		threshold = 450,
 		onShortPress,
+		onLongPress,
+		onclick,
 		children,
 		type = 'submit'
 	}: {
@@ -13,6 +15,8 @@
 		disabled?: boolean;
 		threshold?: number;
 		onShortPress?: () => void;
+		onLongPress?: () => void;
+		onclick?: (event: MouseEvent) => void;
 		children: import('svelte').Snippet;
 		type?: 'submit' | 'button';
 	} = $props();
@@ -52,7 +56,8 @@
 		rafId = requestAnimationFrame(tickProgress);
 		timerId = setTimeout(() => {
 			cancelPress();
-			form?.requestSubmit();
+			if (onLongPress) onLongPress();
+			else form?.requestSubmit();
 		}, threshold);
 	}
 
@@ -71,6 +76,7 @@
 	class={cn('relative touch-none select-none', className)}
 	{disabled}
 	{type}
+	{onclick}
 	ontouchstart={onTouchStart}
 	ontouchend={onTouchEnd}
 	ontouchcancel={onTouchEnd}

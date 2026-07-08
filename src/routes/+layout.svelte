@@ -22,9 +22,15 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import Logout from './logout.svelte';
 	import { Toaster } from 'svelte-sonner';
+	import { onDestroy } from 'svelte';
+	import { createPersistentLiveConnectionManager } from '$lib/realtime/persistentLiveConnectionManager.svelte';
+	import { setRealtimeConnectionManager } from '$lib/realtime/realtimeConnectionContext';
 
 	let { data, children }: LayoutProps = $props();
 	let drawerOpen = $state(false);
+	const realtimeConnectionManager = createPersistentLiveConnectionManager();
+	setRealtimeConnectionManager(realtimeConnectionManager);
+	onDestroy(() => realtimeConnectionManager.closeAll());
 
 	type NavItem = {
 		label: string;

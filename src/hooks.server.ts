@@ -10,11 +10,15 @@ import * as v from 'valibot';
 const PUBLIC_PATHS = ['/auth/login', '/auth/bootstrap'];
 const PROFILE_PATHS = ['/admin', '/ties', '/scores', '/referee', '/live'];
 
-const authCache = new WeakMap<D1Database, ReturnType<typeof createAuth>>();
+const authCache = new WeakMap<D1Database, Map<string, ReturnType<typeof createAuth>>>();
 type Auth = ReturnType<typeof createAuth>;
 type SessionResult = Awaited<ReturnType<Auth['api']['getSession']>>;
 type NonNullSessionResult = NonNullable<SessionResult>;
 type CachedSessionShape = v.InferOutput<typeof SessionCacheSchema>;
+type AuthEnv = Env & {
+	BETTER_AUTH_SECRET?: string;
+	BETTER_AUTH_URL?: string;
+};
 
 function isMutation(method: string) {
 	return method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
@@ -46,6 +50,19 @@ function getAuthCacheKey(request: Request): string | null {
 		getCookieValue(cookie, '__Secure-better-auth.session_token');
 	if (!token) return null;
 	return `session:${token}`;
+}
+
+function getAuthOrigin(eventUrl: URL, env: AuthEnv): string {
+	const configured = env.BETTER_AUTH_URL?.trim();
+	return configured || eventUrl.origin;
+}
+
+function getAuthSecret(env: AuthEnv): string {
+	const secret = env.BETTER_AUTH_SECRET?.trim();
+	if (!secret) {
+		throw new Error('BETTER_AUTH_SECRET is not configured');
+	}
+	return secret;
 }
 
 // Cross-isolate session cache using CF Edge Cache (shared per datacenter, avoids HMAC re-verification)
@@ -229,11 +246,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Auth インスタンスをキャッシュ（isolate 内で再利用）
-	const env = platform.env;
-	let auth = authCache.get(db);
+	const env = platform.env as AuthEnv;
+	const authOrigin = getAuthOrigin(event.url, env);
+	const authSecret = getAuthSecret(env);
+	let authByOrigin = authCache.get(db);
+	if (!authByOrigin) {
+		authByOrigin = new Map();
+		authCache.set(db, authByOrigin);
+	}
+	let auth = authByOrigin.get(authOrigin);
 	if (!auth) {
-		auth = createAuth(db, { secret: env.BETTER_AUTH_SECRET, url: env.BETTER_AUTH_URL });
-		authCache.set(db, auth);
+		auth = createAuth(db, { secret: authSecret, url: authOrigin });
+		authByOrigin.set(authOrigin, auth);
 	}
 	event.locals.auth = auth;
 

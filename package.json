@@ -6,8 +6,8 @@
 	"scripts": {
 		"dev": "LAUNCH_EDITOR=zed vite dev",
 		"clean:cf": "rm -rf .svelte-kit/cloudflare .svelte-kit/output",
-		"gen": "pnpm run clean:cf && wrangler types",
-		"gen:check": "pnpm run clean:cf && wrangler types --check",
+		"gen": "pnpm run clean:cf && wrangler types --env-file .env.wrangler-types",
+		"gen:check": "pnpm run clean:cf && wrangler types --env-file .env.wrangler-types --check",
 		"build": "pnpm run gen:check && vite build",
 		"preview": "wrangler dev --port 4173",
 		"preview:e2e": "wrangler dev --port 4173 --persist-to .wrangler/e2e-state",
@@ -27,6 +27,7 @@
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
+		"db:migrate:deploy": "wrangler d1 migrations apply DB --config wrangler.jsonc --remote",
 		"db:studio": "drizzle-kit studio",
 		"db:migrate:staging": "wrangler d1 migrations apply todai-league-staging --config wrangler.staging.jsonc --remote",
 		"db:migrate:prod": "wrangler d1 migrations apply todai-league --config wrangler.jsonc --remote",
@@ -34,7 +35,25 @@
 		"backup:check": "tsc -p workers/backup/tsconfig.json",
 		"backup:deploy": "wrangler deploy -c workers/backup/wrangler.jsonc",
 		"auth:schema": "pnpm dlx auth@latest generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"deploy": "pnpm run build && wrangler deploy -c wrangler.jsonc"
+		"cf:ensure-secrets": "node scripts/ensure-cloudflare-secrets.mjs",
+		"cf:deploy-worker": "wrangler deploy -c wrangler.jsonc",
+		"deploy": "pnpm run build && pnpm run cf:deploy-worker && pnpm run cf:ensure-secrets && pnpm run db:migrate:deploy && pnpm run cf:deploy-worker"
+	},
+	"cloudflare": {
+		"bindings": {
+			"BETTER_AUTH_SECRET": {
+				"description": "Generated automatically on first deploy by scripts/ensure-cloudflare-secrets.mjs. Do not rotate unless you intentionally want to invalidate existing sessions."
+			},
+			"BETTER_AUTH_URL": {
+				"description": "Optional. Leave unset to use the request origin automatically. Set only when forcing a canonical auth origin."
+			},
+			"BACKUP_WORKER_URL": {
+				"description": "Optional. Public URL for the backup Worker if the backup feature is deployed."
+			},
+			"BACKUP_DOWNLOAD_TOKEN": {
+				"description": "Optional. Token used by the backup settings page when the backup Worker is deployed."
+			}
+		}
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.18.0",

@@ -22,7 +22,7 @@
 	import RefereeEventLog from './RefereeEventLog.svelte';
 	import RefereeMatchFinishedCard from './RefereeMatchFinishedCard.svelte';
 	import RefereeScoresheet from './RefereeScoresheet.svelte';
-	import { rallyWon, start, startGame, undo } from './referee.remote';
+	import { rallyWonCommand, start, startGame, undoCommand } from './referee.remote';
 	import { loadJsonFromLocalStorage, saveJsonToLocalStorage } from '$lib/utils/localStorage';
 	import {
 		undoLabel as buildUndoLabel,
@@ -63,6 +63,26 @@
 		return applyScorePayload(update.data.score);
 	}
 
+	type ScoreActionResult = {
+		error?: string;
+		scorePayload?: LiveTopicPayloadMap['score'];
+	};
+
+	async function applyScoreAction(run: () => Promise<ScoreActionResult>) {
+		try {
+			const result = await run();
+			if (result.error) {
+				toast.error(result.error);
+				return;
+			}
+			if (result.scorePayload && applyScorePayload(result.scorePayload) === 'refresh') {
+				await invalidateAll();
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '操作に失敗しました');
+		}
+	}
+
 	// 自分の操作はフォーム結果の payload で即時反映する(WS 断でも遅延しない)
 	$effect(() => {
 		const payload = (formResult as { scorePayload?: LiveTopicPayloadMap['score'] } | undefined)
@@ -80,6 +100,7 @@
 
 	let isLocked = $derived(matchState.status === 'confirmed');
 	let isScoringLocked = $derived(isLocked || !!data.match.winnerConfirmedAt);
+	let scoreActionPending = $derived(rallyWonCommand.pending > 0 || undoCommand.pending > 0);
 
 	const undoableEventTypes = ['rally_won', 'match_started', 'game_started'];
 	let lastUndoableEvent = $derived(findLastUndoableEvent(matchEvents, undoableEventTypes));
@@ -215,19 +236,19 @@
 		{/if}
 		<p class="mt-1 text-5xl leading-none font-bold tabular-nums sm:text-7xl">{score}</p>
 		<div class="mt-4">
-			<form {...rallyWon.for(side)}>
-				<input {...rallyWon.fields.side.as('hidden', side)} />
-				<LongPressButton
-					class={cn(
-						'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
-						accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
-					)}
-					disabled={matchState.status !== 'playing' || isScoringLocked}
-					onShortPress={() => toast.info('得点を記録するには長押ししてください')}
-				>
-					+1
-				</LongPressButton>
-			</form>
+			<LongPressButton
+				type="button"
+				class={cn(
+					'h-20 w-full rounded-2xl text-2xl font-bold text-white active:scale-95 disabled:bg-zinc-200 disabled:text-muted',
+					accent === 'pink' ? 'bg-pink-600 hover:bg-pink-700' : 'bg-cyan-600 hover:bg-cyan-700'
+				)}
+				disabled={matchState.status !== 'playing' || isScoringLocked || scoreActionPending}
+				onclick={() => applyScoreAction(() => rallyWonCommand({ side }))}
+				onLongPress={() => applyScoreAction(() => rallyWonCommand({ side }))}
+				onShortPress={() => toast.info('得点を記録するには長押ししてください')}
+			>
+				+1
+			</LongPressButton>
 		</div>
 	</Card>
 {/snippet}
@@ -358,20 +379,19 @@
 	<!-- Change-of-ends -->
 	<CourtSideToggle ontoggle={doChangeEnds} />
 	<!-- Undo button -->
-	<form {...undo} class="contents">
-		<AppButton
-			class="flex w-full flex-col rounded-xl bg-zinc-950 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-muted disabled:opacity-50"
-			type="submit"
-			disabled={!lastUndoableEvent || isScoringLocked}
-		>
-			<span class="flex items-center gap-1 text-xs text-zinc-300">
-				<Undo2 class="size-3" />取り消し
-			</span>
-			<span class="block leading-tight wrap-break-word">
-				{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
-			</span>
-		</AppButton>
-	</form>
+	<AppButton
+		class="flex w-full flex-col rounded-xl bg-zinc-950 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-muted disabled:opacity-50"
+		type="button"
+		disabled={!lastUndoableEvent || isScoringLocked || scoreActionPending}
+		onclick={() => applyScoreAction(() => undoCommand())}
+	>
+		<span class="flex items-center gap-1 text-xs text-zinc-300">
+			<Undo2 class="size-3" />取り消し
+		</span>
+		<span class="block leading-tight wrap-break-word">
+			{lastUndoableEvent ? undoLabel(lastUndoableEvent) : '—'}
+		</span>
+	</AppButton>
 
 	<!-- Court diagram -->
 	<RefereeCourtDiagram
@@ -389,7 +409,7 @@
 
 	<!-- Advanced controls -->
 	{#if !isScoringLocked}
-		<RefereeAdvancedControls {sideAName} {sideBName} />
+		<RefereeAdvancedControls {sideAName} {sideBName} {applyScoreAction} />
 	{/if}
 
 	<!-- Event log -->

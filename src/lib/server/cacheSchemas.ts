@@ -63,6 +63,7 @@ const PublicRubberSummarySchema = v.object({
 	status: RubberStatusSchema,
 	winnerSide: v.nullable(v.picklist(['A', 'B'])),
 	matchStatus: MatchStatusSchema,
+	lastSeqNo: NullableNumber,
 	gamesScore: NullableString,
 	pointScore: NullableString,
 	gameDetails: v.array(LiveGameScoreSchema),
@@ -129,7 +130,8 @@ export const ScheduleDataSchema = v.array(
 		status: TieStatusSchema,
 		teamScoreA: v.number(),
 		teamScoreB: v.number(),
-		phase: TiePhaseSchema
+		phase: TiePhaseSchema,
+		updatedAt: v.string()
 	})
 );
 

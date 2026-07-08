@@ -80,6 +80,9 @@ BACKUP_SECRET=<backup worker と同じ値>
 BACKUP_DOWNLOAD_TOKEN=<DOWNLOAD_TOKEN と同じ値>
 ```
 
+メインアプリから backup Worker への接続は Service Binding ではなく、
+`BACKUP_WORKER_URL` の公開エンドポイント + token で行う。
+
 ## 本部PC
 
 `scripts/fetch-backup.sh` で最新パケットを `~/tournament-backup/` に保存できる。

@@ -173,7 +173,11 @@
 			// 毎得点の refetch を避ける(Workers リクエスト削減)
 			if (update.topics.includes('score') && hasScoreUpdate(update.data)) {
 				const state = update.data.score.state;
-				if (!rubbers.some((rubber) => rubber.matchId === state.matchId)) return 'ignore';
+				const rubber = rubbers.find((rubber) => rubber.matchId === state.matchId);
+				if (!rubber) return 'ignore';
+				const liveBase = adminData.liveRubbers.find((r) => r.id === rubber.id);
+				const currentSeqNo = liveScorePatches[state.matchId]?.lastSeqNo ?? liveBase?.lastSeqNo ?? 0;
+				if (state.lastSeqNo < currentSeqNo) return 'ignore';
 				liveScorePatches[state.matchId] = buildRubberScorePatch(state);
 				return 'applied';
 			}

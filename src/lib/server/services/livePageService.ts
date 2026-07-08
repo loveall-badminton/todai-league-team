@@ -22,7 +22,8 @@ function mapScheduleTie(t: ScheduleTieRow) {
 		status: t.status,
 		teamScoreA: t.teamScoreA,
 		teamScoreB: t.teamScoreB,
-		phase: t.phase
+		phase: t.phase,
+		updatedAt: t.updatedAt
 	};
 }
 
@@ -129,6 +130,12 @@ export async function getScheduleData() {
 	return tiesRaw.map(mapScheduleTie);
 }
 export type ScheduleData = Awaited<ReturnType<typeof getScheduleData>>;
+
+export async function getScheduleTieData(tieId: string): Promise<ScheduleData[number] | null> {
+	const tiesRaw = await listTies();
+	const tie = tiesRaw.find((row) => row.id === tieId);
+	return tie ? mapScheduleTie(tie) : null;
+}
 
 export async function getStandingsData() {
 	const [allStandings, teamsRaw, scheduleRaw] = await Promise.all([

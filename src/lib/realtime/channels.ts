@@ -17,6 +17,16 @@ const tiePhaseSchema = v.picklist([
 	'ranking_tiebreaker'
 ] as const);
 const scheduleScopeSchema = v.picklist(['tie_header', 'lineups', 'rubbers'] as const);
+const tieStatusSchema = v.picklist([
+	'scheduled',
+	'lineup_pending',
+	'lineup_submitted',
+	'ready',
+	'playing',
+	'finished',
+	'confirmed',
+	'cancelled'
+] as const);
 
 export const liveScoreEventSchema = v.object({
 	type: v.string(),
@@ -50,7 +60,27 @@ export const liveSchedulePayloadSchema = v.object({
 	tieIds: v.optional(v.array(v.string())),
 	matchIds: v.optional(v.array(v.string())),
 	phases: v.optional(v.array(tiePhaseSchema)),
-	scopes: v.optional(v.array(scheduleScopeSchema))
+	scopes: v.optional(v.array(scheduleScopeSchema)),
+	ties: v.optional(
+		v.array(
+			v.object({
+				id: v.string(),
+				tieCode: v.string(),
+				teamAId: v.nullable(v.string()),
+				teamBId: v.nullable(v.string()),
+				winnerTeamId: v.nullable(v.string()),
+				scheduledStartAt: v.nullable(v.string()),
+				lineupDueAt: v.nullable(v.string()),
+				teamAName: v.nullable(v.string()),
+				teamBName: v.nullable(v.string()),
+				status: tieStatusSchema,
+				teamScoreA: v.number(),
+				teamScoreB: v.number(),
+				phase: tiePhaseSchema,
+				updatedAt: v.string()
+			})
+		)
+	)
 });
 
 export const liveFinalsPayloadSchema = v.object({

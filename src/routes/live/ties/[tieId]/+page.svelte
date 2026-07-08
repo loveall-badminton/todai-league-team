@@ -113,6 +113,10 @@
 		const state = update.data.score.state;
 		const rubber = rubbers.find((r) => r.matchId === state.matchId);
 		if (!rubber) return 'ignore';
+		const currentSeqNo = scorePatches[state.matchId]?.lastSeqNo ?? rubber.lastSeqNo ?? 0;
+		if (state.lastSeqNo < currentSeqNo) {
+			return 'ignore';
+		}
 		scorePatches[state.matchId] = buildRubberScorePatch(state);
 		const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
 		if (progResult === 'refresh') return 'refresh';

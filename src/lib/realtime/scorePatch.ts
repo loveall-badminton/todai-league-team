@@ -2,6 +2,7 @@ import { rubberStatusForMatchStatus } from '$lib/domain/matchStatus';
 import type { MatchState } from '$lib/domain/types';
 
 export type RubberScorePatch = {
+	lastSeqNo: number;
 	gamesScore: string;
 	pointScore: string | null;
 	gameDetails: {
@@ -23,6 +24,7 @@ export type RubberScorePatch = {
 export function buildRubberScorePatch(state: MatchState): RubberScorePatch {
 	const currentGame = state.games.find((g) => g.gameNo === state.currentGameNo);
 	const patch: RubberScorePatch = {
+		lastSeqNo: state.lastSeqNo,
 		gamesScore: `${state.gamesWon.A}-${state.gamesWon.B}`,
 		pointScore: currentGame ? `${currentGame.score.A}-${currentGame.score.B}` : null,
 		gameDetails: state.games.map((g) => ({

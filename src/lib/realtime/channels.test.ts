@@ -83,7 +83,29 @@ describe('realtime channel contracts', () => {
 		const parsed = parseLiveMessage(
 			createLiveUpdatedMessage(['standings', 'schedule', 'finals'], {
 				standings: { groupCodes: ['A'], tieIds: ['tie-1'] },
-				schedule: { tieIds: ['tie-1'], phases: ['group_a'], scopes: ['tie_header'] },
+				schedule: {
+					tieIds: ['tie-1'],
+					phases: ['group_a'],
+					scopes: ['tie_header'],
+					ties: [
+						{
+							id: 'tie-1',
+							tieCode: 'A-1',
+							teamAId: 'team-a',
+							teamBId: 'team-b',
+							winnerTeamId: null,
+							scheduledStartAt: null,
+							lineupDueAt: null,
+							teamAName: 'A',
+							teamBName: 'B',
+							status: 'finished',
+							teamScoreA: 3,
+							teamScoreB: 1,
+							phase: 'group_a',
+							updatedAt: '2026-07-08T07:00:00.000Z'
+						}
+					]
+				},
 				finals: { tieIds: ['x-1'], phases: ['final'] }
 			})
 		);
@@ -93,6 +115,7 @@ describe('realtime channel contracts', () => {
 		expect(parsed.data?.standings?.groupCodes).toEqual(['A']);
 		expect(parsed.data?.schedule?.phases).toEqual(['group_a']);
 		expect(parsed.data?.schedule?.scopes).toEqual(['tie_header']);
+		expect(parsed.data?.schedule?.ties?.[0]?.teamScoreA).toBe(3);
 		expect(parsed.data?.finals?.phases).toEqual(['final']);
 	});
 
