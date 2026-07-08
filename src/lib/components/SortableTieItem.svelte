@@ -84,7 +84,7 @@
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
 					{#if tie.status === 'playing' || tie.status === 'finished' || tie.status === 'confirmed'}
-						<div class="text-center">
+						<div class="flex flex-col items-end">
 							<span
 								class="text-sm font-bold tabular-nums {tie.status === 'playing'
 									? 'text-emerald-700'
@@ -102,7 +102,6 @@
 									iconClass="size-3 shrink-0"
 								/>
 							{/if}
-							<p class="text-[10px] text-zinc-400">種目</p>
 						</div>
 					{/if}
 					<ChevronDown

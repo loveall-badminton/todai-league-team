@@ -2,7 +2,6 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveSchedule from '../LiveSchedule.svelte';
-	import LiveFinalsBoard from '../LiveFinalsBoard.svelte';
 	import { getSchedulePageData } from './live.remote';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -22,15 +21,6 @@
 
 	let playingTies = $derived(scheduleRows.filter((t) => t.status === 'playing'));
 	let playingCount = $derived(playingTies.length);
-
-	const FINALS_PHASES = new Set([
-		'semifinal',
-		'final',
-		'third_place',
-		'fifth_place',
-		'ranking_tiebreaker'
-	]);
-	let hasFinals = $derived(scheduleRows.some((t) => FINALS_PHASES.has(t.phase)));
 
 	async function refreshSchedule() {
 		const snapshot = Object.entries(schedulePatches);
@@ -124,7 +114,3 @@
 {/if}
 
 <LiveSchedule query={schedule} {myTeamId} />
-
-{#if hasFinals}
-	<LiveFinalsBoard query={schedule} />
-{/if}
