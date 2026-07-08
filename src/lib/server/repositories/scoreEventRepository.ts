@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
 import type { MatchState, ScoreEventInput, Side } from '$lib/domain/types';
 import type { RequestDb } from './matchStateStore';
@@ -101,24 +101,27 @@ export async function getLastUndoableScoreEvent(
 	dbParam?: RequestDb
 ): Promise<ScoreEvent | null> {
 	const db = await getRequestDbOrThrow(dbParam);
-	const [rows, undoneLinks] = await Promise.all([
-		db
-			.select(undoableColumns)
-			.from(scoreEvents)
-			.where(
-				and(eq(scoreEvents.matchId, matchId), inArray(scoreEvents.eventType, UNDOABLE_EVENT_TYPES))
+	// LEFT JOIN + IS NULL で未キャンセルの最新イベントだけを取得する。
+	const [row] = await db
+		.select(undoableColumns)
+		.from(scoreEvents)
+		.leftJoin(
+			scoreEventUndoLinks,
+			and(
+				eq(scoreEventUndoLinks.matchId, scoreEvents.matchId),
+				eq(scoreEventUndoLinks.targetSeqNo, scoreEvents.seqNo)
 			)
-			.orderBy(desc(scoreEvents.seqNo)),
-		db
-			.select({ targetSeqNo: scoreEventUndoLinks.targetSeqNo })
-			.from(scoreEventUndoLinks)
-			.where(eq(scoreEventUndoLinks.matchId, matchId))
-	]);
-
-	const undoneSeqNos = new Set(undoneLinks.map((r) => r.targetSeqNo));
-
-	const found = rows.find((event) => !undoneSeqNos.has(event.seqNo));
-	return (found ?? null) as ScoreEvent | null;
+		)
+		.where(
+			and(
+				eq(scoreEvents.matchId, matchId),
+				inArray(scoreEvents.eventType, UNDOABLE_EVENT_TYPES),
+				isNull(scoreEventUndoLinks.targetSeqNo)
+			)
+		)
+		.orderBy(desc(scoreEvents.seqNo))
+		.limit(1);
+	return (row ?? null) as unknown as ScoreEvent | null;
 }
 
 export async function hasUndoLink(

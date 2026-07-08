@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { ScoringConfig } from '$lib/domain/types';
 import { TOKYO_LEAGUE_SCORING_RULES } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
@@ -6,12 +6,14 @@ import { appSettings, scoringRules, tournaments } from '$lib/server/db/schema';
 
 async function ensureDefaultScoringRules(now = new Date().toISOString()) {
 	const db = getRequestDb();
-	for (const rule of TOKYO_LEAGUE_SCORING_RULES) {
-		const existing = await db.query.scoringRules.findFirst({
-			where: eq(scoringRules.code, rule.code)
-		});
-		if (existing) continue;
-
+	const codes = TOKYO_LEAGUE_SCORING_RULES.map((r) => r.code);
+	const existing = await db
+		.select({ code: scoringRules.code })
+		.from(scoringRules)
+		.where(inArray(scoringRules.code, codes));
+	const existingCodes = new Set(existing.map((r) => r.code));
+	const missing = TOKYO_LEAGUE_SCORING_RULES.filter((r) => !existingCodes.has(r.code));
+	for (const rule of missing) {
 		await db.insert(scoringRules).values({
 			id: rule.code,
 			code: rule.code,
@@ -66,12 +68,23 @@ export function scoringConfigFromRule(rule: typeof scoringRules.$inferSelect): S
 	};
 }
 
+let tournamentEnsured = false;
+
+/** Reset the module-level cache (for test isolation). */
+export function resetTournamentEnsured() {
+	tournamentEnsured = false;
+}
+
 export async function ensureInternalTournament(now: string) {
+	if (tournamentEnsured) return;
 	const db = getRequestDb();
 	const existing = await db.query.tournaments.findFirst({
 		where: eq(tournaments.id, INTERNAL_TOURNAMENT_ID)
 	});
-	if (existing) return;
+	if (existing) {
+		tournamentEnsured = true;
+		return;
+	}
 	await db.insert(tournaments).values({
 		id: INTERNAL_TOURNAMENT_ID,
 		name: '東大リーグ団体戦',
@@ -79,4 +92,5 @@ export async function ensureInternalTournament(now: string) {
 		createdAt: now,
 		updatedAt: now
 	});
+	tournamentEnsured = true;
 }

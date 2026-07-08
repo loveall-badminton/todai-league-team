@@ -21,6 +21,9 @@ function createDbMock() {
 			appSettings: { findFirst: vi.fn() },
 			tournaments: { findFirst: vi.fn() }
 		},
+		select: vi.fn(() => ({
+			from: vi.fn(() => ({ where: vi.fn(async (): Promise<{ code: string }[]> => []) }))
+		})),
 		insert: vi.fn(() => insertChain)
 	};
 }
@@ -57,8 +60,6 @@ describe('tokyoLeagueSetupService', () => {
 
 	test('ensureDefaultSettings inserts default scoring rules and settings when absent', async () => {
 		const db = createDbMock();
-		db.query.scoringRules.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
-		db.query.scoringRules.findFirst.mockResolvedValueOnce(null);
 		db.query.appSettings.findFirst.mockResolvedValueOnce(null);
 		mockGetRequestDb.mockReturnValue(db);
 
@@ -69,8 +70,8 @@ describe('tokyoLeagueSetupService', () => {
 			eventName: '東大リーグ団体戦',
 			groupStageScoringRuleId: 'GROUP_15'
 		});
+		expect(db.select).toHaveBeenCalled();
 		expect(db.insert).toHaveBeenCalled();
-		expect(db.query.scoringRules.findFirst).toHaveBeenCalled();
 		expect(db.query.appSettings.findFirst).toHaveBeenCalledWith({
 			where: expect.anything()
 		});
@@ -78,7 +79,15 @@ describe('tokyoLeagueSetupService', () => {
 
 	test('ensureDefaultSettings returns existing settings without reinserting', async () => {
 		const db = createDbMock();
-		db.query.scoringRules.findFirst.mockResolvedValue({ id: 'GROUP_15' });
+		const codes = [
+			'GROUP_15',
+			'KNOCKOUT_21',
+			'TIEBREAKER_21_SINGLE_GAME',
+			'TIEBREAKER_15_SINGLE_GAME',
+			'QUALIFIER_15'
+		];
+		const whereFn = vi.fn(async () => codes.map((c) => ({ code: c })));
+		db.select.mockReturnValue({ from: vi.fn(() => ({ where: whereFn })) });
 		db.query.appSettings.findFirst.mockResolvedValue({
 			id: 'default',
 			eventName: 'existing'
