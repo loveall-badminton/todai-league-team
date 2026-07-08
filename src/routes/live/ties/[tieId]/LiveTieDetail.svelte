@@ -172,8 +172,7 @@
 				: ''}"
 			onclick={() => toggleRubber(rubber.id)}
 		>
-			<span class="w-20 shrink-0 truncate font-medium text-muted-foreground"
-				>{rubberLabel(rubber.code)}</span
+			<span class="w-16 shrink-0 font-medium text-muted-foreground">{rubberLabel(rubber.code)}</span
 			>
 			<div class="min-w-0 flex-1">
 				{@render playerNames(rubber.sideAPlayers ?? '', 'A', rubber.winnerSide)}
