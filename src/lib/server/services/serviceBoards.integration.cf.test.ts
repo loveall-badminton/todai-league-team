@@ -33,7 +33,7 @@ import { generateFinalAndThirdPlace, generateSemifinalsAndFifthPlace } from './f
 import { getPublicRubbers } from './liveBoardService';
 import { createRankingTiebreaker, syncRankingTiebreakerResult } from './rankingTiebreakerService';
 import { createTieWithRubbers } from './tieService';
-import { ensureDefaultSettings } from './tokyoLeagueSetupService';
+import { ensureDefaultSettings, resetTournamentEnsured } from './tokyoLeagueSetupService';
 
 let cfTestDb: CfTestDb;
 const now = '2026-06-15T01:00:00.000Z';
@@ -45,6 +45,7 @@ beforeAll(() => {
 beforeEach(async () => {
 	mockState.db = cfTestDb.db;
 	await cfTestDb.reset();
+	resetTournamentEnsured();
 });
 
 async function seedTeams() {
@@ -266,7 +267,7 @@ describe('liveBoardService DB boards', () => {
 			groupCode: 'A',
 			teamAId: 'a1',
 			teamBId: 'b2',
-			status: 'ready',
+			status: 'lineup_submitted',
 			lineupsRevealedAt: now,
 			displayOrder: 1,
 			createdAt: now,

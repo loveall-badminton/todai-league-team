@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { MatchStateSchema } from '$lib/domain/schemas';
+import { TIE_STATUSES } from '$lib/domain/tieProgress';
 
 const liveTopicSchema = v.picklist(['score', 'standings', 'schedule', 'finals'] as const);
 
@@ -17,16 +18,7 @@ const tiePhaseSchema = v.picklist([
 	'ranking_tiebreaker'
 ] as const);
 const scheduleScopeSchema = v.picklist(['tie_header', 'lineups', 'rubbers'] as const);
-const tieStatusSchema = v.picklist([
-	'scheduled',
-	'lineup_pending',
-	'lineup_submitted',
-	'ready',
-	'playing',
-	'finished',
-	'confirmed',
-	'cancelled'
-] as const);
+const tieStatusSchema = v.picklist(TIE_STATUSES);
 
 export const liveScoreEventSchema = v.object({
 	type: v.string(),

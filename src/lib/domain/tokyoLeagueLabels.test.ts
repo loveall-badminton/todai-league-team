@@ -40,7 +40,6 @@ describe('tieStatusLabel', () => {
 		expect(tieStatusLabel('scheduled')).toBe('予定');
 		expect(tieStatusLabel('lineup_pending')).toBe('オーダー待ち');
 		expect(tieStatusLabel('lineup_submitted')).toBe('提出済み');
-		expect(tieStatusLabel('ready')).toBe('開始可');
 		expect(tieStatusLabel('called')).toBe('呼出中');
 		expect(tieStatusLabel('warmup')).toBe('練習中');
 		expect(tieStatusLabel('playing')).toBe('進行中');

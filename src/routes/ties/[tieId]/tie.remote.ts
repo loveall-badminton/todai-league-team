@@ -6,15 +6,14 @@ import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeague
 import { getMatchState } from '$lib/server/repositories/matchRepository';
 import {
 	lockLineup as lockLineupService,
-	revealLineups as revealLineupsService,
-	unlockLineup as unlockLineupService,
-	unrevealLineups as unrevealLineupsService
+	unlockLineup as unlockLineupService
 } from '$lib/server/services/lineupService';
 import { getPublicRubbers } from '$lib/server/services/liveBoardService';
 import {
 	confirmTie as confirmTieService,
 	cutoffTie as cutoffTieService,
-	startTie as startTieService
+	startTie as startTieService,
+	unstartTie as unstartTieService
 } from '$lib/server/services/tieOperationService';
 import { error } from '@sveltejs/kit';
 import { applyMatchActionWithRealtime } from '$lib/server/services/matchRealtimeActionService';
@@ -41,6 +40,17 @@ export const startTie = command(async () => {
 		(resolvedTieId) =>
 			notifyLiveBoard(['score', 'schedule'], {
 				// 対戦開始でオーダーが公開されるため lineups スコープも含める
+				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers', 'lineups'] }
+			})
+	);
+});
+
+export const unstartTie = command(async () => {
+	const tieId = requireAdminTieId();
+	await runAdminMutation(
+		() => unstartTieService(tieId),
+		(resolvedTieId) =>
+			notifyLiveBoard(['score', 'schedule'], {
 				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers', 'lineups'] }
 			})
 	);
@@ -77,16 +87,6 @@ export const lockLineup = command(v.object({ teamId: v.string() }), async ({ tea
 export const unlockLineup = command(v.object({ teamId: v.string() }), async ({ teamId }) => {
 	const tieId = requireAdminTieId();
 	await runAdminMutation(() => unlockLineupService({ tieId, teamId }), notifyTieLineupChange);
-});
-
-export const revealLineups = command(async () => {
-	const tieId = requireAdminTieId();
-	await runAdminMutation(() => revealLineupsService(tieId), notifyTieLineupChange);
-});
-
-export const unrevealLineups = command(async () => {
-	const tieId = requireAdminTieId();
-	await runAdminMutation(() => unrevealLineupsService(tieId), notifyTieLineupChange);
 });
 
 export const deleteTie = command(

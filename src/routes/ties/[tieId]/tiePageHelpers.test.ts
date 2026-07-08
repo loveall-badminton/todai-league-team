@@ -77,8 +77,8 @@ describe('getCurrentWorkflowStep', () => {
 		expect(getCurrentWorkflowStep('lineup_submitted')).toBe(2);
 	});
 
-	test('ready → step 3', () => {
-		expect(getCurrentWorkflowStep('ready')).toBe(3);
+	test('lineup_submitted with both lineups approved → step 3', () => {
+		expect(getCurrentWorkflowStep('lineup_submitted', true)).toBe(3);
 	});
 
 	test('playing → step 4', () => {
@@ -105,7 +105,7 @@ describe('getCurrentWorkflowStep', () => {
 		const steps = [
 			getCurrentWorkflowStep('scheduled'),
 			getCurrentWorkflowStep('lineup_submitted'),
-			getCurrentWorkflowStep('ready'),
+			getCurrentWorkflowStep('lineup_submitted', true),
 			getCurrentWorkflowStep('playing'),
 			getCurrentWorkflowStep('finished')
 		];

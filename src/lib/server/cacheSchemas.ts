@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { TIE_STATUSES } from '$lib/domain/tieProgress';
 
 const NullableString = v.nullable(v.string());
 const NullableNumber = v.nullable(v.number());
@@ -11,16 +12,7 @@ const TiePhaseSchema = v.picklist([
 	'fifth_place',
 	'ranking_tiebreaker'
 ]);
-const TieStatusSchema = v.picklist([
-	'scheduled',
-	'lineup_pending',
-	'lineup_submitted',
-	'ready',
-	'playing',
-	'finished',
-	'confirmed',
-	'cancelled'
-]);
+const TieStatusSchema = v.picklist(TIE_STATUSES);
 const VenueSchema = v.nullable(v.picklist(['first_gym', 'second_gym']));
 const RubberCodeSchema = v.picklist(['WD1', 'XD1', 'MD3', 'MD2', 'MD1']);
 const RubberStatusSchema = v.picklist([

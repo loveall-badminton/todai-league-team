@@ -27,10 +27,9 @@ export function submissionBadgeColor(
 	return status ? (map[status] ?? 'zinc') : 'zinc';
 }
 
-export function getCurrentWorkflowStep(status: string): number {
+export function getCurrentWorkflowStep(status: string, bothLineupsApproved = false): number {
 	if (status === 'scheduled' || status === 'lineup_pending') return 1;
-	if (status === 'lineup_submitted') return 2;
-	if (status === 'ready') return 3;
+	if (status === 'lineup_submitted') return bothLineupsApproved ? 3 : 2;
 	if (status === 'playing') return 4;
 	if (status === 'finished' || status === 'confirmed') return 5;
 	return 0;

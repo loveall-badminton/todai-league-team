@@ -11,6 +11,7 @@ import {
 	index,
 	unique
 } from 'drizzle-orm/sqlite-core';
+import { TIE_STATUSES } from '$lib/domain/tieProgress';
 
 export const scoringRules = sqliteTable('scoring_rules', {
 	id: text('id').primaryKey(),
@@ -197,20 +198,7 @@ export const ties = sqliteTable(
 		teamAId: text('team_a_id').references(() => teams.id, { onDelete: 'set null' }),
 		teamBId: text('team_b_id').references(() => teams.id, { onDelete: 'set null' }),
 
-		status: text('status', {
-			enum: [
-				'scheduled',
-				'lineup_pending',
-				'lineup_submitted',
-				'ready',
-				'playing',
-				'finished',
-				'confirmed',
-				'cancelled'
-			]
-		})
-			.notNull()
-			.default('scheduled'),
+		status: text('status', { enum: TIE_STATUSES }).notNull().default('scheduled'),
 
 		teamScoreA: integer('team_score_a').notNull().default(0),
 		teamScoreB: integer('team_score_b').notNull().default(0),

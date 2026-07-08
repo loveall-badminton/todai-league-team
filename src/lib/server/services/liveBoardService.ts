@@ -248,13 +248,8 @@ function groupBy<T, K>(items: T[], keyFor: (item: T) => K) {
 	return map;
 }
 
-// オーダー公開ボタン後は tie.status が ready になるため、対戦開始前から一般公開する。
-function lineupsRevealedForTie(
-	tie: Pick<typeof ties.$inferSelect, 'status' | 'lineupsRevealedAt'>
-): boolean {
-	return (
-		!!tie.lineupsRevealedAt || ['ready', 'playing', 'finished', 'confirmed'].includes(tie.status)
-	);
+function lineupsRevealedForTie(tie: Pick<typeof ties.$inferSelect, 'lineupsRevealedAt'>): boolean {
+	return !!tie.lineupsRevealedAt;
 }
 
 // tie に紐づくチーム名を解決して各行に付与する

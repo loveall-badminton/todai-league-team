@@ -45,12 +45,7 @@ describe('tieMatchesFilter', () => {
 
 	test('lineup_submitted: matches only when status is lineup_submitted', () => {
 		expect(tieMatchesFilter(tie('group_a', 'lineup_submitted'), 'lineup_submitted')).toBe(true);
-		expect(tieMatchesFilter(tie('group_a', 'ready'), 'lineup_submitted')).toBe(false);
-	});
-
-	test('ready: matches only when status is ready', () => {
-		expect(tieMatchesFilter(tie('group_a', 'ready'), 'ready')).toBe(true);
-		expect(tieMatchesFilter(tie('group_a', 'lineup_submitted'), 'ready')).toBe(false);
+		expect(tieMatchesFilter(tie('group_a', 'playing'), 'lineup_submitted')).toBe(false);
 	});
 
 	test('playing: matches only when status is playing', () => {
@@ -85,8 +80,8 @@ describe('tieMatchesFilter', () => {
 
 	// ─── VALID_TIE_FILTERS completeness ───────────────────────────────────────
 
-	test('VALID_TIE_FILTERS contains all 10 filter values', () => {
-		expect(VALID_TIE_FILTERS).toHaveLength(10);
+	test('VALID_TIE_FILTERS contains all 9 filter values', () => {
+		expect(VALID_TIE_FILTERS).toHaveLength(9);
 		expect(VALID_TIE_FILTERS).toContain('all');
 		expect(VALID_TIE_FILTERS).toContain('schedule_changed');
 	});

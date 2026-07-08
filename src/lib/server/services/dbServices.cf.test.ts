@@ -30,14 +30,13 @@ vi.mock('$lib/server/db/request', () => ({
 }));
 
 import {
+	buildRevealLineupsStatements,
 	getLineupsForTie,
 	getLineupItemsForTeam,
 	lockLineup,
-	revealLineups,
 	saveLineupDraft,
 	submitLineup,
 	unlockLineup,
-	unrevealLineups,
 	validateLineup,
 	validateLineupRules
 } from './lineupService';
@@ -48,14 +47,15 @@ import {
 	cutoffTie,
 	recalculateTieResult,
 	startTie,
-	syncRubberResultFromMatch
+	syncRubberResultFromMatch,
+	unstartTie
 } from './tieOperationService';
 import {
 	createTieWithRubbers,
 	ensureRubbersForTie,
 	generateGroupRoundRobinTies
 } from './tieService';
-import { ensureDefaultSettings } from './tokyoLeagueSetupService';
+import { ensureDefaultSettings, resetTournamentEnsured } from './tokyoLeagueSetupService';
 
 type RubberInsert = typeof rubbers.$inferInsert;
 
@@ -69,6 +69,7 @@ beforeAll(() => {
 beforeEach(async () => {
 	mockState.db = cfTestDb.db;
 	await cfTestDb.reset();
+	resetTournamentEnsured();
 });
 
 async function seedTeams() {
@@ -182,8 +183,18 @@ async function seedApprovedLineups(tieId: string) {
 	await lockLineup({ tieId, teamId: 'team-b', now });
 }
 
+// startTie がオーダー公開を兼ねるため、公開単体の DB 挙動はここで直接検証する。
+async function revealLineups(tieId: string, revealNow: string) {
+	const submissions = await cfTestDb.db
+		.select()
+		.from(lineupSubmissions)
+		.where(eq(lineupSubmissions.tieId, tieId));
+	const statements = buildRevealLineupsStatements(cfTestDb.db, tieId, submissions, revealNow);
+	await cfTestDb.db.batch(statements as unknown as Parameters<typeof cfTestDb.db.batch>[0]);
+}
+
 describe('lineupService DB flows', () => {
-	test('validates, saves, submits, locks, unlocks, reveals and unreveals lineups', async () => {
+	test('validates, saves, submits, locks, unlocks and reveals lineups', async () => {
 		await seedTeams();
 		const tieId = await seedTie();
 
@@ -216,15 +227,11 @@ describe('lineupService DB flows', () => {
 
 		await revealLineups(tieId, now);
 		tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
-		expect(tie).toMatchObject({ status: 'ready', lineupsRevealedAt: now });
+		expect(tie).toMatchObject({ status: 'lineup_submitted', lineupsRevealedAt: now });
 
 		const lineups = await getLineupsForTie(tieId);
 		expect(lineups).toHaveLength(2);
 		expect(lineups[0].items).toHaveLength(5);
-
-		await unrevealLineups(tieId, now);
-		tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
-		expect(tie).toMatchObject({ status: 'lineup_submitted', lineupsRevealedAt: null });
 	});
 
 	test('reports validation errors without due-date warning', async () => {
@@ -391,6 +398,70 @@ describe('tieOperationService DB state transitions', () => {
 		expect(rubberRows).toHaveLength(5);
 		expect(rubberRows.every((rubber) => rubber.status === 'scheduled')).toBe(true);
 		expect(rubberRows.every((rubber) => rubber.matchId)).toBe(true);
+	});
+
+	test('unstartTie reverses startTie back to lineup_submitted before any score is entered', async () => {
+		await seedTeams();
+		const tieId = await createTieWithRubbers({
+			tieCode: 'T-101',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			scoringRuleId: 'GROUP_15',
+			now
+		});
+		await seedApprovedLineups(tieId);
+		await startTie(tieId, { now });
+
+		await unstartTie(tieId, now);
+
+		const tie = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+		const rubberRows = await cfTestDb.db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
+		const submissions = await cfTestDb.db
+			.select()
+			.from(lineupSubmissions)
+			.where(eq(lineupSubmissions.tieId, tieId));
+		expect(tie).toMatchObject({
+			status: 'lineup_submitted',
+			lineupsRevealedAt: null,
+			actualStartAt: null,
+			teamScoreA: 0,
+			teamScoreB: 0,
+			winnerTeamId: null
+		});
+		expect(rubberRows).toHaveLength(5);
+		expect(rubberRows.every((rubber) => rubber.status === 'not_ready' && !rubber.matchId)).toBe(
+			true
+		);
+		expect(submissions.every((submission) => submission.status === 'locked')).toBe(true);
+
+		const matchRows = await cfTestDb.db.select().from(matches);
+		expect(matchRows).toHaveLength(0);
+	});
+
+	test('unstartTie rejects ties that are not playing or already have scores', async () => {
+		await seedTeams();
+		const tieId = await createTieWithRubbers({
+			tieCode: 'T-102',
+			phase: 'group_a',
+			groupCode: 'A',
+			teamAId: 'team-a',
+			teamBId: 'team-b',
+			scoringRuleId: 'GROUP_15',
+			now
+		});
+		await seedApprovedLineups(tieId);
+
+		await expect(unstartTie(tieId, now)).rejects.toThrow('開始済みの対戦のみ取り消せます');
+
+		await startTie(tieId, { now });
+		const [rubber] = await cfTestDb.db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
+		await cfTestDb.db.update(rubbers).set({ status: 'playing' }).where(eq(rubbers.id, rubber.id));
+
+		await expect(unstartTie(tieId, now)).rejects.toThrow(
+			'スコアが入力された種目があるため開始を取り消せません'
+		);
 	});
 
 	test('startTie rejects ties whose lineups are submitted but not approved', async () => {

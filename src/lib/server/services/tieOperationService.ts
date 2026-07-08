@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
 import {
 	buildCreateMatchWithPlayersStatements,
@@ -133,6 +133,62 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 	await db.batch(statements as [DbStatement, ...DbStatement[]]);
 }
 
+// startTie の取り消し。まだ得点が入っていない(全ラバー scheduled のまま)場合に限り、
+// 作成済み match を削除してオーダー承認済み(lineup_submitted)の状態まで巻き戻す。
+export async function unstartTie(tieId: string, now = new Date().toISOString()) {
+	const db = await getRequestDbOrThrow();
+	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+	if (!tie) throw new Error('対戦が見つかりません');
+	if (tie.status !== 'playing') throw new Error('開始済みの対戦のみ取り消せます');
+
+	const [rubberRows, submissions] = await db.batch([
+		db.select().from(rubbers).where(eq(rubbers.tieId, tieId)),
+		db.select().from(lineupSubmissions).where(eq(lineupSubmissions.tieId, tieId))
+	]);
+	if (rubberRows.some((rubber) => rubber.status !== 'scheduled')) {
+		throw new Error('スコアが入力された種目があるため開始を取り消せません');
+	}
+
+	type DbStatement = Parameters<typeof db.batch>[0][number];
+	const statements: DbStatement[] = [];
+
+	for (const rubber of rubberRows) {
+		if (rubber.matchId) statements.push(db.delete(matches).where(eq(matches.id, rubber.matchId)));
+		statements.push(
+			db
+				.update(rubbers)
+				.set({ matchId: null, status: 'not_ready', winnerSide: null, updatedAt: now })
+				.where(eq(rubbers.id, rubber.id))
+		);
+	}
+
+	for (const submission of submissions) {
+		statements.push(
+			db
+				.update(lineupSubmissions)
+				.set({ status: 'locked', revealedAt: null, updatedAt: now })
+				.where(eq(lineupSubmissions.id, submission.id))
+		);
+	}
+
+	statements.push(
+		db
+			.update(ties)
+			.set({
+				status: 'lineup_submitted',
+				lineupsRevealedAt: null,
+				actualStartAt: null,
+				teamScoreA: 0,
+				teamScoreB: 0,
+				winnerTeamId: null,
+				updatedAt: now
+			})
+			.where(eq(ties.id, tieId))
+	);
+
+	await db.batch(statements as [DbStatement, ...DbStatement[]]);
+}
+
 function buildMatchPlayersForRubber(params: {
 	rubberCode: string;
 	side: 'A' | 'B';
@@ -179,22 +235,58 @@ export async function createMatchFromRubber(
 	now = new Date().toISOString()
 ): Promise<string> {
 	const db = await getRequestDbOrThrow();
+
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
 	if (!rubber) throw new Error('種目が見つかりません');
 	if (rubber.matchId) return rubber.matchId;
+	const rubberCode = rubber.code;
 
-	const tie = await db.query.ties.findFirst({ where: eq(ties.id, rubber.tieId) });
+	const [tie, submissions, scoringRule] = await db.batch([
+		db.query.ties.findFirst({ where: eq(ties.id, rubber.tieId) }),
+		db.select().from(lineupSubmissions).where(eq(lineupSubmissions.tieId, rubber.tieId)),
+		db.query.scoringRules.findFirst({ where: eq(scoringRules.id, rubber.scoringRuleId) })
+	]);
+
 	if (!tie) throw new Error('Tie not found');
 	if (!tie.lineupsRevealedAt) throw new Error('オーダー公開後にmatchを作成できます');
-
-	const [sideA, sideB] = await Promise.all([
-		getLineupPlayersForRubber(tie.id, 'A', rubber.code),
-		getLineupPlayersForRubber(tie.id, 'B', rubber.code)
-	]);
-	const scoringRule = await db.query.scoringRules.findFirst({
-		where: eq(scoringRules.id, rubber.scoringRuleId)
-	});
 	if (!scoringRule) throw new Error('Scoring rule not found');
+
+	const submissionIds = submissions.map((s) => s.id);
+	const teamIds = [...new Set(submissions.map((s) => s.teamId))];
+
+	const [lineupRows, teamRows] = await db.batch([
+		submissionIds.length > 0
+			? db.select().from(lineupItems).where(inArray(lineupItems.submissionId, submissionIds))
+			: db.select().from(lineupItems).where(eq(lineupItems.submissionId, '__none__')),
+		db.select().from(teams).where(inArray(teams.id, teamIds))
+	]);
+
+	const playerIds = [...new Set(lineupRows.flatMap((row) => [row.player1Id, row.player2Id]))];
+	const playerRows =
+		playerIds.length > 0
+			? await db.select().from(teamPlayers).where(inArray(teamPlayers.id, playerIds))
+			: [];
+
+	const playerById = new Map(playerRows.map((p) => [p.id, p]));
+	const teamNameById = new Map(teamRows.map((t) => [t.id, t.name]));
+	const submissionBySide = new Map(
+		submissions.filter((s) => s.status === 'revealed').map((s) => [s.side, s])
+	);
+	const lineupBySubmissionIdAndCode = new Map(
+		lineupRows.map((r) => [`${r.submissionId}:${r.rubberCode}`, r])
+	);
+
+	function buildPlayersForSide(side: 'A' | 'B') {
+		if (!submissionBySide.has(side)) throw new Error(`${side}側のオーダーが公開されていません`);
+		return buildMatchPlayersForRubber({
+			rubberCode,
+			side,
+			submissionBySide,
+			lineupBySubmissionIdAndCode,
+			playerById,
+			teamNameById
+		});
+	}
 
 	await ensureInternalTournament(now);
 
@@ -208,20 +300,7 @@ export async function createMatchFromRubber(
 		rubberId: rubber.id,
 		scoringRuleId: rubber.scoringRuleId,
 		scoring: scoringConfigFromRule(scoringRule),
-		players: [
-			...sideA.map((player, index) => ({
-				side: 'A' as const,
-				order: (index + 1) as 1 | 2,
-				name: player.name,
-				teamName: player.teamName
-			})),
-			...sideB.map((player, index) => ({
-				side: 'B' as const,
-				order: (index + 1) as 1 | 2,
-				name: player.name,
-				teamName: player.teamName
-			}))
-		],
+		players: [...buildPlayersForSide('A'), ...buildPlayersForSide('B')],
 		now
 	});
 
@@ -258,13 +337,11 @@ export async function recalculateTieResult(
 	dbParam?: RequestDb
 ) {
 	const db = await getRequestDbOrThrow(dbParam);
-	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
+	const [tie, rubberRows] = await db.batch([
+		db.query.ties.findFirst({ where: eq(ties.id, tieId) }),
+		db.select().from(rubbers).where(eq(rubbers.tieId, tieId)).orderBy(asc(rubbers.displayOrder))
+	] as [Parameters<typeof db.batch>[0][number], Parameters<typeof db.batch>[0][number]]);
 	if (!tie) throw new Error('Tie not found');
-	const rubberRows = await db
-		.select()
-		.from(rubbers)
-		.where(eq(rubbers.tieId, tieId))
-		.orderBy(asc(rubbers.displayOrder));
 	const result = calculateTieResult(tie, rubberRows);
 
 	await db
@@ -325,7 +402,11 @@ export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
 
 export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
 	const db = await getRequestDbOrThrow();
-	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
+
+	const [match, snapshot] = await db.batch([
+		db.query.matches.findFirst({ where: eq(matches.id, matchId) }),
+		db.query.matchSnapshots.findFirst({ where: eq(matchSnapshots.matchId, matchId) })
+	]);
 	if (!match?.rubberId) throw new Error('この試合は種目と紐づいていません');
 
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, match.rubberId) });
@@ -333,10 +414,6 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 	if (isTerminalRubberStatus(rubber.status)) {
 		throw new Error('すでに終了している種目は打ち切りできません');
 	}
-
-	const snapshot = await db.query.matchSnapshots.findFirst({
-		where: eq(matchSnapshots.matchId, matchId)
-	});
 	let nextSeqNo = 0;
 	let stateJson = '{}';
 
@@ -378,38 +455,6 @@ export async function confirmTie(tieId: string, now = new Date().toISOString()) 
 	const db = await getRequestDbOrThrow();
 	await recalculateTieResult(tieId, now);
 	await db.update(ties).set({ status: 'confirmed', updatedAt: now }).where(eq(ties.id, tieId));
-}
-
-async function getLineupPlayersForRubber(tieId: string, side: 'A' | 'B', rubberCode: string) {
-	const db = await getRequestDbOrThrow();
-	const submission = await db.query.lineupSubmissions.findFirst({
-		where: and(eq(lineupSubmissions.tieId, tieId), eq(lineupSubmissions.side, side))
-	});
-	if (!submission || submission.status !== 'revealed') {
-		throw new Error(`${side}側のオーダーが公開されていません`);
-	}
-	const item = await db.query.lineupItems.findFirst({
-		where: and(
-			eq(lineupItems.submissionId, submission.id),
-			eq(lineupItems.rubberCode, rubberCode as never)
-		)
-	});
-	const players = item
-		? await db
-				.select()
-				.from(teamPlayers)
-				.where(inArray(teamPlayers.id, [item.player1Id, item.player2Id]))
-		: [];
-	const playerById = new Map(players.map((player) => [player.id, player]));
-	const [player1, player2] = resolveRubberLineupPlayers({
-		rubberCode,
-		lineup: item,
-		player1: item ? playerById.get(item.player1Id) : undefined,
-		player2: item ? playerById.get(item.player2Id) : undefined
-	});
-	const team = await db.query.teams.findFirst({ where: eq(teams.id, submission.teamId) });
-	const teamName = team?.name ?? null;
-	return [player1, player2].map((player) => ({ ...player, teamName }));
 }
 
 async function getRequestDbOrThrow(dbParam?: RequestDb): Promise<RequestDb> {

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
+import type { TieStatus } from '$lib/domain/tieProgress';
 import { getRequestDb } from '$lib/server/db/request';
 import { ties } from '$lib/server/db/schema';
 import { calculateGroupStandings, isRoundRobinComplete } from './standingService';
@@ -23,15 +24,7 @@ export type FinalTieAssignment = {
 
 export type SemifinalResultSource = {
 	tieCode: string;
-	status:
-		| 'scheduled'
-		| 'lineup_pending'
-		| 'lineup_submitted'
-		| 'ready'
-		| 'playing'
-		| 'finished'
-		| 'confirmed'
-		| 'cancelled';
+	status: TieStatus;
 	teamAId: string | null;
 	teamBId: string | null;
 	winnerTeamId: string | null;

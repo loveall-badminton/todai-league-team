@@ -126,6 +126,11 @@ export class LiveBoard extends Server<Env> {
 	private async invalidateEntriesByTopics(topics: readonly string[]): Promise<void> {
 		if (topics.length === 0) return;
 
+		// epoch を進めるだけで DO storage 上のエントリは物理削除しない。
+		// handleEntryPut が epoch を検証するため、古い epoch で書き込まれた
+		// エントリは DO 層で拒否される。storage.list の prefix scan は
+		// エントリ数に比例してコストが増大するため、スコア更新（高頻度）の
+		// パスでは実行しない。エントリは TTL により自然期限切れする。
 		this.entryEpoch = (await this.getEpoch()) + 1;
 		void this.ctx.storage.put(CACHE_EPOCH_KEY, this.entryEpoch).catch(() => {});
 
@@ -134,16 +139,6 @@ export class LiveBoard extends Server<Env> {
 
 		for (const [key, entry] of this.entryCache) {
 			if (matches(entry)) this.entryCache.delete(key);
-		}
-
-		try {
-			const stored = await this.ctx.storage.list<GenericCacheEntry>({
-				prefix: CACHE_ENTRY_PREFIX
-			});
-			const staleKeys = [...stored].filter(([, entry]) => matches(entry)).map(([key]) => key);
-			if (staleKeys.length > 0) await this.ctx.storage.delete(staleKeys);
-		} catch {
-			// 失効は best-effort(エントリ自体の TTL が上限を保証する)
 		}
 	}
 

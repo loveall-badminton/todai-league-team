@@ -1,25 +1,23 @@
+import type { TieStatus } from '$lib/domain/tieProgress';
+
+// 一覧画面でフィルタとして提供するステータスのサブセット。
+// TieStatus からの逸脱(タイプミスや廃止漏れ)は satisfies で検出する。
+const STATUS_FILTERS = [
+	'lineup_pending',
+	'lineup_submitted',
+	'playing',
+	'finished'
+] as const satisfies readonly TieStatus[];
+
 export type TieFilter =
-	| 'all'
-	| 'group_a'
-	| 'group_b'
-	| 'finals'
-	| 'lineup_pending'
-	| 'lineup_submitted'
-	| 'ready'
-	| 'playing'
-	| 'finished'
-	| 'schedule_changed';
+	'all' | 'group_a' | 'group_b' | 'finals' | (typeof STATUS_FILTERS)[number] | 'schedule_changed';
 
 export const VALID_TIE_FILTERS: TieFilter[] = [
 	'all',
 	'group_a',
 	'group_b',
 	'finals',
-	'lineup_pending',
-	'lineup_submitted',
-	'ready',
-	'playing',
-	'finished',
+	...STATUS_FILTERS,
 	'schedule_changed'
 ];
 
@@ -36,11 +34,7 @@ export function tieMatchesFilter(tie: FilterableTie, filter: TieFilter): boolean
 	if (filter === 'group_a') return tie.phase === 'group_a';
 	if (filter === 'group_b') return tie.phase === 'group_b';
 	if (filter === 'finals') return FINALS_PHASES.includes(tie.phase);
-	if (filter === 'lineup_pending') return tie.status === 'lineup_pending';
-	if (filter === 'lineup_submitted') return tie.status === 'lineup_submitted';
-	if (filter === 'ready') return tie.status === 'ready';
-	if (filter === 'playing') return tie.status === 'playing';
-	if (filter === 'finished') return tie.status === 'finished';
 	if (filter === 'schedule_changed') return tie.scheduleChanged;
+	if ((STATUS_FILTERS as readonly string[]).includes(filter)) return tie.status === filter;
 	return true;
 }

@@ -58,7 +58,6 @@
 		{ id: 'finals', label: '決勝トーナメント' },
 		{ id: 'lineup_pending', label: 'オーダー未提出' },
 		{ id: 'lineup_submitted', label: '承認待ち' },
-		{ id: 'ready', label: '開始可' },
 		{ id: 'playing', label: '進行中' },
 		{ id: 'finished', label: '結果確認待ち' },
 		{ id: 'schedule_changed', label: 'スケジュール変更' }
@@ -71,7 +70,6 @@
 		(
 			[
 				{ id: 'lineup_submitted', label: 'オーダー承認待ち' },
-				{ id: 'ready', label: '開始できる対戦' },
 				{ id: 'finished', label: '結果確認待ち' }
 			] as const
 		)

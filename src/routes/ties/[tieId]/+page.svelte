@@ -33,11 +33,10 @@
 		deleteTie,
 		getTieAdminPage,
 		lockLineup,
-		revealLineups,
 		startTie,
 		unconfirmMatch,
 		unlockLineup,
-		unrevealLineups
+		unstartTie
 	} from './tie.remote';
 	import {
 		rubberStatusTextClass,
@@ -122,8 +121,9 @@
 		['locked', 'revealed'].includes(lineupBySide('A')?.submission.status ?? '') &&
 			['locked', 'revealed'].includes(lineupBySide('B')?.submission.status ?? '')
 	);
-	let canStart = $derived(
-		(tie.status === 'lineup_submitted' || tie.status === 'ready') && bothLineupsApproved
+	let canStart = $derived(tie.status === 'lineup_submitted' && bothLineupsApproved);
+	let canUnstart = $derived(
+		tie.status === 'playing' && rubbers.every((rubber) => rubber.status === 'scheduled')
 	);
 	let canConfirm = $derived(tie.status === 'finished');
 	let canCutoffTie = $derived(tie.status === 'playing' && !!tie.winnerTeamId);
@@ -131,17 +131,8 @@
 		tie.status === 'playing' ? (['score', 'schedule'] as const) : (['schedule'] as const)
 	);
 
-	let bothReadyToReveal = $derived(
-		['submitted', 'locked'].includes(lineupBySide('A')?.submission.status ?? '') &&
-			['submitted', 'locked'].includes(lineupBySide('B')?.submission.status ?? '')
-	);
-	let isRevealed = $derived(
-		lineupBySide('A')?.submission.status === 'revealed' ||
-			lineupBySide('B')?.submission.status === 'revealed'
-	);
-
 	// Workflow steps: 1=lineup_submit, 2=review, 3=start, 4=playing, 5=confirm
-	let currentStep = $derived(getCurrentWorkflowStep(tie.status));
+	let currentStep = $derived(getCurrentWorkflowStep(tie.status, bothLineupsApproved));
 
 	let editing = $state(false);
 
@@ -249,6 +240,18 @@
 <div class="flex flex-wrap items-center gap-2">
 	{#if canStart}
 		<AppButton onclick={() => run(() => startTie())}>対戦を開始</AppButton>
+	{/if}
+
+	{#if canUnstart}
+		<ConfirmDialog
+			onConfirm={() => run(() => unstartTie())}
+			triggerLabel="対戦開始を取り消す"
+			triggerVariant="secondary"
+			title="対戦開始を取り消しますか？"
+			description="オーダー公開と作成済みの試合を取り消し、オーダー承認済みの状態に戻します。この操作はまだ得点が入力されていない対戦にのみ行えます。"
+			confirmLabel="開始を取り消す"
+			confirmVariant="warning"
+		/>
 	{/if}
 
 	{#if canConfirm}
@@ -376,20 +379,6 @@
 
 <!-- Steps 1-2: Lineup panels -->
 {#if currentStep <= 2}
-	<!-- Reveal / unreveal -->
-	{#if isRevealed || bothReadyToReveal}
-		<Card innerClass="flex items-center justify-between gap-2">
-			<p class="text-sm text-muted-foreground">両チームのオーダーが揃っています。</p>
-			{#if isRevealed}
-				<AppButton variant="secondary" onclick={() => run(() => unrevealLineups())}>
-					公開を取り消す
-				</AppButton>
-			{:else}
-				<AppButton onclick={() => run(() => revealLineups())}>オーダー公開</AppButton>
-			{/if}
-		</Card>
-	{/if}
-
 	<!-- Per-team lineup panels -->
 	<div class="grid gap-5 lg:grid-cols-2">
 		{@render lineupPanel('A', teamA, tie.teamAId)}
@@ -398,22 +387,6 @@
 
 	<!-- Steps 3+: Rubber results -->
 {:else}
-	{#if tie.status === 'ready' && isRevealed}
-		<Card innerClass="flex items-center justify-between gap-2">
-			<p class="text-sm text-muted-foreground">オーダーは公開済みです。</p>
-			<ConfirmDialog
-				onConfirm={() => run(() => unrevealLineups())}
-				triggerLabel="公開を取り消す"
-				triggerClass="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
-				title="オーダー公開を取り消しますか？"
-				description="公開を取り消すと、対抗戦は提出済みの状態に戻り、チームは承認解除後にオーダーを再編集できるようになります。"
-				confirmLabel="公開を取り消す"
-				confirmVariant="warning"
-				confirmClass="border border-amber-300"
-			/>
-		</Card>
-	{/if}
-
 	{#snippet rubberExtraHead()}
 		<th class="w-24 px-4 py-3 text-left text-xs font-medium text-muted">状態</th>
 		<th class="w-32 px-4 py-3 text-left text-xs font-medium text-muted">操作</th>
@@ -522,7 +495,7 @@
 						入力ページ
 					</AppButton>
 				{/if}
-				{#if (subStatus === 'locked' || subStatus === 'revealed') && !isRevealed}
+				{#if subStatus === 'locked'}
 					{#if teamId}
 						<ConfirmDialog
 							onConfirm={() => run(() => unlockLineup({ teamId: teamId! }))}

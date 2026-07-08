@@ -2,17 +2,19 @@ import { isResultMatchStatus, isTerminalRubberStatus } from './matchStatus';
 
 /**
  * 対抗戦(tie)の進行判定。5ラバー・3勝先取の集計ルールを純粋関数として持つ。
- * DB スキーマ(ties.status)と値を一致させること。
+ * ties.status が取りうる値の唯一の定義。DB スキーマ・API スキーマはここから import する。
  */
-export type TieStatus =
-	| 'scheduled'
-	| 'lineup_pending'
-	| 'lineup_submitted'
-	| 'ready'
-	| 'playing'
-	| 'finished'
-	| 'confirmed'
-	| 'cancelled';
+export const TIE_STATUSES = [
+	'scheduled',
+	'lineup_pending',
+	'lineup_submitted',
+	'playing',
+	'finished',
+	'confirmed',
+	'cancelled'
+] as const;
+
+export type TieStatus = (typeof TIE_STATUSES)[number];
 
 export const RUBBERS_PER_TIE = 5;
 export const RUBBER_WINS_TO_CLINCH = 3;

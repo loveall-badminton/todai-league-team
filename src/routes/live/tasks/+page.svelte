@@ -28,9 +28,7 @@
 
 	let pendingLineups = $derived(data.myTies.filter((t) => t.status === 'lineup_pending'));
 	let submittedLineups = $derived(
-		data.myTies.filter(
-			(t) => t.status === 'lineup_submitted' || t.status === 'ready' || t.status === 'playing'
-		)
+		data.myTies.filter((t) => t.status === 'lineup_submitted' || t.status === 'playing')
 	);
 	let otherTies = $derived(
 		data.myTies.filter(
@@ -207,12 +205,9 @@
 					{#each data.myOfficiatingTies as tie (tie.id)}
 						{@const rubbers = data.publicRubbersByTieId[tie.id] ?? []}
 						{@const playableRubbers = rubbers.filter((r) => r.matchId)}
-						{@const notStarted = [
-							'scheduled',
-							'lineup_pending',
-							'lineup_submitted',
-							'ready'
-						].includes(tie.status)}
+						{@const notStarted = ['scheduled', 'lineup_pending', 'lineup_submitted'].includes(
+							tie.status
+						)}
 						{@const startMin = notStarted ? remainingMin(tie.scheduledStartAt) : null}
 						<Card class="overflow-hidden" flush>
 							<div class="border-b border-border-subtle bg-zinc-50/60 px-4 py-3">

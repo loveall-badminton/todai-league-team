@@ -223,6 +223,7 @@ export async function unlockLineup(params: { tieId: string; teamId: string; now?
 	await updateTieLineupStatus(params.tieId, now);
 }
 
+// 対戦開始(startTie)がオーダー公開を兼ねるため、公開だけを行う独立した操作・ステータスは持たない。
 export function buildRevealLineupsStatements(
 	db: RequestDb,
 	tieId: string,
@@ -241,39 +242,8 @@ export function buildRevealLineupsStatements(
 				.set({ status: 'revealed', revealedAt: now, updatedAt: now })
 				.where(eq(lineupSubmissions.id, submission.id))
 		),
-		db
-			.update(ties)
-			.set({ lineupsRevealedAt: now, status: 'ready', updatedAt: now })
-			.where(eq(ties.id, tieId))
+		db.update(ties).set({ lineupsRevealedAt: now, updatedAt: now }).where(eq(ties.id, tieId))
 	];
-}
-
-export async function revealLineups(tieId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
-	const submissions = await db
-		.select()
-		.from(lineupSubmissions)
-		.where(eq(lineupSubmissions.tieId, tieId));
-	const statements = buildRevealLineupsStatements(db, tieId, submissions, now);
-	await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
-}
-
-export async function unrevealLineups(tieId: string, now = new Date().toISOString()) {
-	const db = getRequestDb();
-	const submissions = await db
-		.select()
-		.from(lineupSubmissions)
-		.where(eq(lineupSubmissions.tieId, tieId));
-	for (const submission of submissions) {
-		await db
-			.update(lineupSubmissions)
-			.set({ status: 'submitted', revealedAt: null, updatedAt: now })
-			.where(eq(lineupSubmissions.id, submission.id));
-	}
-	await db
-		.update(ties)
-		.set({ lineupsRevealedAt: null, status: 'lineup_submitted', updatedAt: now })
-		.where(eq(ties.id, tieId));
 }
 
 export async function getLineupsForTie(tieId: string) {

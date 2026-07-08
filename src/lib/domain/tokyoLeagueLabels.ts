@@ -26,7 +26,6 @@ export const tieStatusLabel = (status: string) => {
 		scheduled: '予定',
 		lineup_pending: 'オーダー待ち',
 		lineup_submitted: '提出済み',
-		ready: '開始可',
 		called: '呼出中',
 		warmup: '練習中',
 		playing: '進行中',
