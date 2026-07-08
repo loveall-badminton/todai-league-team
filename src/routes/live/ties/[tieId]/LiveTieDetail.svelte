@@ -34,7 +34,7 @@
 	}: Props = $props();
 
 	let byMatchId = $derived(progressionQuery.current?.byMatchId ?? {});
-	let selectedGameByRubberId = $state<Record<string, string>>({});
+	let selectedGameByRubberId: Record<string, string> = $state({});
 
 	// Cache module import so {#await} resolves instantly after first expansion
 	let chartModulePromise: Promise<typeof import('../../ScoreProgressChart.svelte')> | null = null;
@@ -172,7 +172,9 @@
 				: ''}"
 			onclick={() => toggleRubber(rubber.id)}
 		>
-			<span class="w-10 shrink-0 font-medium text-muted">{rubberLabel(rubber.code)}</span>
+			<span class="w-20 shrink-0 truncate font-medium text-muted-foreground"
+				>{rubberLabel(rubber.code)}</span
+			>
 			<div class="min-w-0 flex-1">
 				{@render playerNames(rubber.sideAPlayers ?? '', 'A', rubber.winnerSide)}
 			</div>
