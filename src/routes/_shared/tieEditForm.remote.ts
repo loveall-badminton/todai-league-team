@@ -1,7 +1,6 @@
 import { form } from '$app/server';
-import { error, invalid } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { requireAdmin } from '$lib/server/auth/access';
-import { findTieByCode } from '$lib/server/repositories/tokyoLeagueRepository';
 import { persistUpdateTie } from '$lib/server/services/updateTieForm';
 import { updateTieFormFields } from '$lib/domain/tieFormSchema';
 import { actionErrorMessage } from '$lib/server/errors';
@@ -12,12 +11,8 @@ const updateTieSchema = v.object({
 	...updateTieFormFields
 });
 
-export const updateTie = form(updateTieSchema, async (values, issue) => {
+export const updateTie = form(updateTieSchema, async (values) => {
 	requireAdmin();
-	const existing = await findTieByCode(values.tieCode);
-	if (existing && existing.id !== values.id) {
-		invalid(issue.tieCode('このコードは既に使われています'));
-	}
 	try {
 		await persistUpdateTie({ ...values, now: new Date().toISOString() });
 	} catch (caught) {

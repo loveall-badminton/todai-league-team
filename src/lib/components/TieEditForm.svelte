@@ -9,7 +9,6 @@
 	import { updateTie } from '../../routes/_shared/tieEditForm.remote';
 
 	type TieFields = {
-		tieCode: string;
 		scheduledStartAt?: string | null;
 		lineupDueAt?: string | null;
 		venue?: string | null;
@@ -62,13 +61,6 @@
 	<input type="hidden" name="id" value={id} />
 
 	<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="grid gap-1">
-			<span class="text-xs font-medium text-zinc-500">コード</span>
-			<AppInput {...updateTieInstance.fields.tieCode.as('text', tie.tieCode)} required />
-			{#each updateTieInstance.fields.tieCode.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
-				<p class="text-xs text-red-600">{issue.message}</p>
-			{/each}
-		</div>
 		<div class="grid gap-1">
 			<span class="text-xs font-medium text-zinc-500">予定時刻</span>
 			<AppInput

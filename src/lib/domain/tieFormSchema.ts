@@ -1,7 +1,6 @@
 import * as v from 'valibot';
 
 export const updateTieFormFields = {
-	tieCode: v.pipe(v.string(), v.trim(), v.nonEmpty()),
 	scheduledStartAt: v.optional(v.string()),
 	venue: v.optional(v.string()),
 	courtBlockCode: v.optional(v.string()),

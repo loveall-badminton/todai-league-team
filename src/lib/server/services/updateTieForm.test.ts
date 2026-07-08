@@ -23,7 +23,6 @@ describe('persistUpdateTie', () => {
 	test('normalizes empty inputs and deduplicates officiating team ids before persisting', async () => {
 		await persistUpdateTie({
 			id: 'tie-1',
-			tieCode: 'A-1',
 			scheduledStartAt: ' 2026-07-02T10:00:00.000Z ',
 			venue: 'first_gym',
 			courtBlockCode: '  ',
@@ -37,7 +36,6 @@ describe('persistUpdateTie', () => {
 
 		expect(mockUpdateTieSchedule).toHaveBeenCalledWith({
 			id: 'tie-1',
-			tieCode: 'A-1',
 			scheduledStartAt: '2026-07-02T10:00:00.000Z',
 			venue: 'first_gym',
 			courtBlockCode: null,
@@ -60,7 +58,6 @@ describe('persistUpdateTie', () => {
 	test('maps invalid venue strings to null and scheduleChanged off to false', async () => {
 		await persistUpdateTie({
 			id: 'tie-2',
-			tieCode: 'A-2',
 			venue: 'invalid',
 			scheduleChanged: '',
 			now: '2026-07-02T00:00:00.000Z'
@@ -68,7 +65,6 @@ describe('persistUpdateTie', () => {
 
 		expect(mockUpdateTieSchedule).toHaveBeenCalledWith({
 			id: 'tie-2',
-			tieCode: 'A-2',
 			scheduledStartAt: null,
 			venue: null,
 			courtBlockCode: null,

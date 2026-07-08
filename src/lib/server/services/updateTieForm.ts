@@ -17,7 +17,6 @@ export type UpdateTieFormValues = {
 
 export async function persistUpdateTie(params: {
 	id: string;
-	tieCode: string;
 	scheduledStartAt?: string;
 	venue?: string;
 	courtBlockCode?: string;
@@ -30,7 +29,6 @@ export async function persistUpdateTie(params: {
 }) {
 	await updateTieSchedule({
 		id: params.id,
-		tieCode: params.tieCode,
 		scheduledStartAt: emptyToNull(params.scheduledStartAt),
 		venue: venueOrNull(params.venue),
 		courtBlockCode: emptyToNull(params.courtBlockCode),
