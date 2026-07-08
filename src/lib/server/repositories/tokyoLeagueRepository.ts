@@ -15,7 +15,7 @@ import {
 } from '$lib/server/db/schema';
 import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
 import { resolveUpdatedLineupDueAt } from '$lib/server/services/tieService';
-import { and, asc, count, eq, inArray, isNotNull, or } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNotNull, ne, or } from 'drizzle-orm';
 
 export type Team = typeof teams.$inferSelect;
 export type TeamPlayer = typeof teamPlayers.$inferSelect;
@@ -664,8 +664,22 @@ export async function listTiesForTeam(teamId: string): Promise<Tie[]> {
 	return db
 		.select()
 		.from(ties)
-		.where(or(eq(ties.teamAId, teamId), eq(ties.teamBId, teamId)))
+		.where(
+			and(or(eq(ties.teamAId, teamId), eq(ties.teamBId, teamId)), ne(ties.status, 'cancelled'))
+		)
 		.orderBy(asc(ties.displayOrder), asc(ties.tieCode));
+}
+
+// name だけを引くための軽量版。listTeams() はプレイヤー数を数える追加クエリを
+// 伴うため、名前解決だけが目的の呼び出しではこちらを使う。
+export async function getTeamNamesByIds(teamIds: string[]): Promise<Map<string, string>> {
+	if (teamIds.length === 0) return new Map();
+	const db = getRequestDb();
+	const rows = await db
+		.select({ id: teams.id, name: teams.name })
+		.from(teams)
+		.where(inArray(teams.id, teamIds));
+	return new Map(rows.map((team) => [team.id, team.name]));
 }
 
 export async function listOfficiatingTieIds(teamId: string): Promise<string[]> {

@@ -1,7 +1,7 @@
 import { getBatchedPublicRubbers } from '$lib/server/services/liveBoardService';
 import {
+	getTeamNamesByIds,
 	listOfficiatingTieIds,
-	listTeams,
 	listTiesByIds,
 	listTiesForTeam
 } from '$lib/server/repositories/tokyoLeagueRepository';
@@ -26,14 +26,18 @@ export async function loadLiveTasksPageData(authProfile: AuthProfile | null | un
 	}
 
 	const teamId = authProfile.teamId;
-	const [teamRows, myTieRows, officiatingTieIds] = await Promise.all([
-		listTeams(),
+	const [myTieRows, officiatingTieIds] = await Promise.all([
 		listTiesForTeam(teamId),
 		listOfficiatingTieIds(teamId)
 	]);
 
-	const officiatingTieRows = await listTiesByIds(officiatingTieIds);
-	const teamNameById = new Map(teamRows.map((team) => [team.id, team.name]));
+	const officiatingTieRows = (await listTiesByIds(officiatingTieIds)).filter(
+		(tie) => tie.status !== 'cancelled'
+	);
+	const opponentTeamIds = [
+		...new Set([...myTieRows, ...officiatingTieRows].flatMap((tie) => [tie.teamAId, tie.teamBId]))
+	].filter((id): id is string => !!id);
+	const teamNameById = await getTeamNamesByIds(opponentTeamIds);
 
 	const toSummary = (tie: (typeof myTieRows)[number]) => ({
 		id: tie.id,
@@ -45,10 +49,8 @@ export async function loadLiveTasksPageData(authProfile: AuthProfile | null | un
 		lineupDueAt: tie.lineupDueAt
 	});
 
-	const myTies = myTieRows.filter((tie) => tie.status !== 'cancelled').map(toSummary);
-	const myOfficiatingTies = officiatingTieRows
-		.filter((tie) => tie.status !== 'cancelled')
-		.map(toSummary);
+	const myTies = myTieRows.map(toSummary);
+	const myOfficiatingTies = officiatingTieRows.map(toSummary);
 	const publicTieIds = [...new Set([...myTies, ...myOfficiatingTies].map((tie) => tie.id))];
 	const publicRubbers = await getBatchedPublicRubbers(publicTieIds, { revealed: false });
 

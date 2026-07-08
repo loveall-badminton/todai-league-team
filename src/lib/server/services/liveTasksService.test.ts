@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mockGetBatchedPublicRubbers = vi.hoisted(() => vi.fn());
+const mockGetTeamNamesByIds = vi.hoisted(() => vi.fn());
 const mockListOfficiatingTieIds = vi.hoisted(() => vi.fn());
-const mockListTeams = vi.hoisted(() => vi.fn());
 const mockListTiesByIds = vi.hoisted(() => vi.fn());
 const mockListTiesForTeam = vi.hoisted(() => vi.fn());
 
@@ -11,8 +11,8 @@ vi.mock('$lib/server/services/liveBoardService', () => ({
 }));
 
 vi.mock('$lib/server/repositories/tokyoLeagueRepository', () => ({
+	getTeamNamesByIds: mockGetTeamNamesByIds,
 	listOfficiatingTieIds: mockListOfficiatingTieIds,
-	listTeams: mockListTeams,
 	listTiesByIds: mockListTiesByIds,
 	listTiesForTeam: mockListTiesForTeam
 }));
@@ -38,16 +38,20 @@ describe('loadLiveTasksPageData', () => {
 			myOfficiatingTies: [],
 			publicRubbersByTieId: {}
 		});
-		expect(mockListTeams).not.toHaveBeenCalled();
+		expect(mockGetTeamNamesByIds).not.toHaveBeenCalled();
 		expect(mockGetBatchedPublicRubbers).not.toHaveBeenCalled();
 	});
 
-	test('loads team tasks, filters cancelled ties, and deduplicates public rubbers lookup', async () => {
-		mockListTeams.mockResolvedValue([
-			{ id: 'team-a', name: 'Team A' },
-			{ id: 'team-b', name: 'Team B' },
-			{ id: 'team-c', name: 'Team C' }
-		]);
+	test('loads team tasks, filters cancelled officiating ties, and deduplicates public rubbers lookup', async () => {
+		// listTiesForTeam は取消済みの対戦を DB 側で除外して返すため、
+		// このモックにも取消済みティーは含めない。
+		mockGetTeamNamesByIds.mockResolvedValue(
+			new Map([
+				['team-a', 'Team A'],
+				['team-b', 'Team B'],
+				['team-c', 'Team C']
+			])
+		);
 		mockListTiesForTeam.mockResolvedValue([
 			{
 				id: 'tie-1',
@@ -57,18 +61,9 @@ describe('loadLiveTasksPageData', () => {
 				teamBId: 'team-b',
 				scheduledStartAt: '2026-07-02T10:00:00.000Z',
 				lineupDueAt: null
-			},
-			{
-				id: 'tie-2',
-				tieCode: 'G1-2',
-				status: 'cancelled',
-				teamAId: 'team-a',
-				teamBId: null,
-				scheduledStartAt: null,
-				lineupDueAt: null
 			}
 		]);
-		mockListOfficiatingTieIds.mockResolvedValue(['tie-1', 'tie-3']);
+		mockListOfficiatingTieIds.mockResolvedValue(['tie-1', 'tie-3', 'tie-4']);
 		mockListTiesByIds.mockResolvedValue([
 			{
 				id: 'tie-1',
@@ -87,6 +82,15 @@ describe('loadLiveTasksPageData', () => {
 				teamBId: 'team-c',
 				scheduledStartAt: '2026-07-02T12:00:00.000Z',
 				lineupDueAt: '2026-07-02T11:30:00.000Z'
+			},
+			{
+				id: 'tie-4',
+				tieCode: 'G2-2',
+				status: 'cancelled',
+				teamAId: 'team-a',
+				teamBId: 'team-c',
+				scheduledStartAt: null,
+				lineupDueAt: null
 			}
 		]);
 		mockGetBatchedPublicRubbers.mockResolvedValue([
@@ -96,10 +100,13 @@ describe('loadLiveTasksPageData', () => {
 
 		const result = await loadLiveTasksPageData({ accountType: 'team', teamId: 'team-a' } as never);
 
-		expect(mockListTeams).toHaveBeenCalledTimes(1);
 		expect(mockListTiesForTeam).toHaveBeenCalledWith('team-a');
 		expect(mockListOfficiatingTieIds).toHaveBeenCalledWith('team-a');
-		expect(mockListTiesByIds).toHaveBeenCalledWith(['tie-1', 'tie-3']);
+		expect(mockListTiesByIds).toHaveBeenCalledWith(['tie-1', 'tie-3', 'tie-4']);
+		expect(mockGetTeamNamesByIds).toHaveBeenCalledTimes(1);
+		expect(new Set(mockGetTeamNamesByIds.mock.calls[0][0])).toEqual(
+			new Set(['team-a', 'team-b', 'team-c'])
+		);
 		expect(mockGetBatchedPublicRubbers).toHaveBeenCalledWith(['tie-1', 'tie-3'], {
 			revealed: false
 		});
