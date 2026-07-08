@@ -95,14 +95,14 @@ describe('finalsService db generation', () => {
 					findFirst: vi
 						.fn()
 						.mockResolvedValueOnce({
-							tieCode: 'x-1',
+							tieCode: 'X-1',
 							status: 'finished',
 							teamAId: 'a1',
 							teamBId: 'b2',
 							winnerTeamId: 'a1'
 						})
 						.mockResolvedValueOnce({
-							tieCode: 'x-2',
+							tieCode: 'X-2',
 							status: 'confirmed',
 							teamAId: 'a2',
 							teamBId: 'b1',

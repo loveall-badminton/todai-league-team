@@ -106,7 +106,7 @@ describe('realtime channel contracts', () => {
 						}
 					]
 				},
-				finals: { tieIds: ['x-1'], phases: ['final'] }
+				finals: { tieIds: ['X-1'], phases: ['final'] }
 			})
 		);
 

@@ -56,7 +56,7 @@ export function buildSemifinalsAndFifthPlaceAssignments(
 		roundLabel: definition.roundLabel,
 		teamAId: teamBySource.get(definition.teamASource) ?? null,
 		teamBId: teamBySource.get(definition.teamBSource) ?? null,
-		displayOrder: Number(definition.tieCode.replace('x-', ''))
+		displayOrder: Number(definition.tieCode.replace('X-', ''))
 	}));
 }
 
@@ -76,7 +76,7 @@ export function buildFinalAndThirdPlaceAssignments(
 
 	const assignments: FinalTieAssignment[] = [
 		{
-			tieCode: 'x-4',
+			tieCode: 'X-4',
 			phase: 'third_place',
 			roundLabel: '3位決定戦',
 			teamAId: semi1Loser,
@@ -84,7 +84,7 @@ export function buildFinalAndThirdPlaceAssignments(
 			displayOrder: 4
 		},
 		{
-			tieCode: 'x-5',
+			tieCode: 'X-5',
 			phase: 'final',
 			roundLabel: '決勝',
 			teamAId: semi1.winnerTeamId,
@@ -139,8 +139,8 @@ export async function generateFinalAndThirdPlace(now = new Date().toISOString())
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
-	const semi1 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-1') });
-	const semi2 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-2') });
+	const semi1 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-1') });
+	const semi2 = await db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-2') });
 	if (!semi1 || !semi2) throw new Error('準決勝を先に生成してください');
 	const assignments = buildFinalAndThirdPlaceAssignments(semi1, semi2);
 

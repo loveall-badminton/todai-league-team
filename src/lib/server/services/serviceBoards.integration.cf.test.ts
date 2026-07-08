@@ -152,7 +152,7 @@ describe('finalsService DB generation', () => {
 
 		const changed = await generateSemifinalsAndFifthPlace(now);
 		const finalTies = await cfTestDb.db.select().from(ties).where(eq(ties.phase, 'semifinal'));
-		const fifthPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-3') });
+		const fifthPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-3') });
 		const rubberRows = await cfTestDb.db
 			.select()
 			.from(rubbers)
@@ -160,8 +160,8 @@ describe('finalsService DB generation', () => {
 
 		expect(changed).toBe(3);
 		expect(finalTies.map((tie) => [tie.tieCode, tie.teamAId, tie.teamBId]).sort()).toEqual([
-			['x-1', 'a1', 'b2'],
-			['x-2', 'a2', 'b1']
+			['X-1', 'a1', 'b2'],
+			['X-2', 'a2', 'b1']
 		]);
 		expect(fifthPlace).toMatchObject({ phase: 'fifth_place', teamAId: 'a3', teamBId: 'b3' });
 		expect(rubberRows).toHaveLength(5);
@@ -172,7 +172,7 @@ describe('finalsService DB generation', () => {
 		await cfTestDb.db.insert(ties).values([
 			{
 				id: 'x-1-id',
-				tieCode: 'x-1',
+				tieCode: 'X-1',
 				phase: 'semifinal',
 				roundLabel: '準決勝1',
 				teamAId: 'a1',
@@ -185,7 +185,7 @@ describe('finalsService DB generation', () => {
 			},
 			{
 				id: 'x-2-id',
-				tieCode: 'x-2',
+				tieCode: 'X-2',
 				phase: 'semifinal',
 				roundLabel: '準決勝2',
 				teamAId: 'a2',
@@ -198,7 +198,7 @@ describe('finalsService DB generation', () => {
 			}
 		]);
 		await createTieWithRubbers({
-			tieCode: 'x-5',
+			tieCode: 'X-5',
 			phase: 'final',
 			roundLabel: '古い決勝',
 			teamAId: 'a3',
@@ -209,8 +209,8 @@ describe('finalsService DB generation', () => {
 		});
 
 		const changed = await generateFinalAndThirdPlace(now);
-		const thirdPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-4') });
-		const final = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'x-5') });
+		const thirdPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-4') });
+		const final = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-5') });
 
 		expect(changed).toBe(2);
 		expect(thirdPlace).toMatchObject({

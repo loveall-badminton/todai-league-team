@@ -59,7 +59,7 @@ test.describe.serial('finals operations', () => {
 			await semifinalBtn.click();
 			await page.waitForTimeout(1000);
 			await page.reload();
-			await expect(page.getByText(/x-1|x-2|x-3|x-4|x-5/).first()).toBeVisible();
+			await expect(page.getByText(/X-1|X-2|X-3|X-4|X-5/).first()).toBeVisible();
 		}
 	});
 });

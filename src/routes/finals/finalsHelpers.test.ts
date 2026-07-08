@@ -93,16 +93,16 @@ describe('getSemifinalsHint', () => {
 // ─── canGenerateFinals ────────────────────────────────────────────────────────
 
 describe('canGenerateFinals', () => {
-	const finishedSemi = { tieCode: 'x-1', status: 'finished' };
-	const confirmedSemi = { tieCode: 'x-2', status: 'confirmed' };
-	const playingSemi = { tieCode: 'x-1', status: 'playing' };
+	const finishedSemi = { tieCode: 'X-1', status: 'finished' };
+	const confirmedSemi = { tieCode: 'X-2', status: 'confirmed' };
+	const playingSemi = { tieCode: 'X-1', status: 'playing' };
 
 	test('returns true when both semis are finished', () => {
-		expect(canGenerateFinals(finishedSemi, { tieCode: 'x-2', status: 'finished' })).toBe(true);
+		expect(canGenerateFinals(finishedSemi, { tieCode: 'X-2', status: 'finished' })).toBe(true);
 	});
 
 	test('returns true when both semis are confirmed', () => {
-		expect(canGenerateFinals(confirmedSemi, { tieCode: 'x-1', status: 'confirmed' })).toBe(true);
+		expect(canGenerateFinals(confirmedSemi, { tieCode: 'X-1', status: 'confirmed' })).toBe(true);
 	});
 
 	test('returns true when one semi is finished and the other confirmed', () => {
@@ -133,9 +133,9 @@ describe('canGenerateFinals', () => {
 // ─── getFinalsHint ────────────────────────────────────────────────────────────
 
 describe('getFinalsHint', () => {
-	const finished = { tieCode: 'x-1', status: 'finished' };
-	const confirmed = { tieCode: 'x-2', status: 'confirmed' };
-	const playing = { tieCode: 'x-1', status: 'playing' };
+	const finished = { tieCode: 'X-1', status: 'finished' };
+	const confirmed = { tieCode: 'X-2', status: 'confirmed' };
+	const playing = { tieCode: 'X-1', status: 'playing' };
 
 	test('returns null when both semis are finished', () => {
 		expect(getFinalsHint(finished, confirmed)).toBeNull();
@@ -158,6 +158,6 @@ describe('getFinalsHint', () => {
 	});
 
 	test('returns null when both semis are confirmed', () => {
-		expect(getFinalsHint(confirmed, { tieCode: 'x-2', status: 'confirmed' })).toBeNull();
+		expect(getFinalsHint(confirmed, { tieCode: 'X-2', status: 'confirmed' })).toBeNull();
 	});
 });

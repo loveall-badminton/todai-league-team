@@ -445,7 +445,7 @@ async function findTeamKey(name: string): Promise<string | null> {
 function winningSide(tieCode: string): 'A' | 'B' {
 	if (tieCode.startsWith('A-') || tieCode.startsWith('B-')) return 'A';
 	switch (tieCode) {
-		case 'x-2':
+		case 'X-2':
 			return 'B';
 		default:
 			return 'A';
@@ -780,7 +780,7 @@ test.describe.serial('full tournament simulation', () => {
 		} else {
 			console.log('Finals button not visible — skipping finals generation');
 		}
-		// Play finals (x-4 and x-5)
+		// Play finals (X-4 and X-5)
 		const finalsSection = page.locator('section').filter({ hasText: '決勝 / 3位決定戦' });
 		const finalLinks = finalsSection.locator('a[href^="/ties/"]');
 		await expect(finalLinks).toHaveCount(2, { timeout: 20000 });

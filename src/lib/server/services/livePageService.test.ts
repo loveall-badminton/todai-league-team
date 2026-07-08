@@ -133,7 +133,7 @@ describe('livePageService', () => {
 			},
 			{
 				id: 'tie-final',
-				tieCode: 'x-5',
+				tieCode: 'X-5',
 				teamAId: 'team-a',
 				teamBId: 'team-b',
 				winnerTeamId: null,
@@ -159,7 +159,7 @@ describe('livePageService', () => {
 		expect(result.finalsTies).toEqual([
 			{
 				id: 'tie-final',
-				tieCode: 'x-5',
+				tieCode: 'X-5',
 				phase: 'final',
 				teamAId: 'team-a',
 				teamBId: 'team-b',

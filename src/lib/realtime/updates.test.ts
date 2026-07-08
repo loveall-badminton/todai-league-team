@@ -27,7 +27,7 @@ describe('realtime consumer routing', () => {
 					topics: ['schedule'],
 					data: { schedule: { phases: ['group_a'], tieIds: ['a-1'] } }
 				}),
-				['x-1', 'x-2']
+				['X-1', 'X-2']
 			)
 		).toBe(false);
 	});
@@ -39,7 +39,7 @@ describe('realtime consumer routing', () => {
 					source: 'poll',
 					topics: ['schedule']
 				}),
-				['x-1', 'x-2']
+				['X-1', 'X-2']
 			)
 		).toBe(true);
 		expect(
@@ -47,7 +47,7 @@ describe('realtime consumer routing', () => {
 				liveUpdate({
 					topics: ['finals']
 				}),
-				['x-1', 'x-2']
+				['X-1', 'X-2']
 			)
 		).toBe(true);
 	});
@@ -59,7 +59,7 @@ describe('realtime consumer routing', () => {
 					topics: ['finals'],
 					data: { finals: { phases: ['final'] } }
 				}),
-				['x-1', 'x-2']
+				['X-1', 'X-2']
 			)
 		).toBe(true);
 	});

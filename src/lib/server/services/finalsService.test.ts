@@ -22,21 +22,21 @@ describe('buildSemifinalsAndFifthPlaceAssignments', () => {
 
 		expect(assignments).toEqual([
 			expect.objectContaining({
-				tieCode: 'x-1',
+				tieCode: 'X-1',
 				phase: 'semifinal',
 				roundLabel: '準決勝1',
 				teamAId: 'a1',
 				teamBId: 'b2'
 			}),
 			expect.objectContaining({
-				tieCode: 'x-2',
+				tieCode: 'X-2',
 				phase: 'semifinal',
 				roundLabel: '準決勝2',
 				teamAId: 'a2',
 				teamBId: 'b1'
 			}),
 			expect.objectContaining({
-				tieCode: 'x-3',
+				tieCode: 'X-3',
 				phase: 'fifth_place',
 				roundLabel: '5位決定戦',
 				teamAId: 'a3',
@@ -59,7 +59,7 @@ describe('buildSemifinalsAndFifthPlaceAssignments', () => {
 			]
 		);
 
-		expect(assignments[0]).toMatchObject({ tieCode: 'x-1', teamAId: null, teamBId: 'b2' });
+		expect(assignments[0]).toMatchObject({ tieCode: 'X-1', teamAId: null, teamBId: 'b2' });
 	});
 
 	test('leaves a side empty when a source rank is missing', () => {
@@ -75,7 +75,7 @@ describe('buildSemifinalsAndFifthPlaceAssignments', () => {
 		);
 
 		expect(assignments[2]).toMatchObject({
-			tieCode: 'x-3',
+			tieCode: 'X-3',
 			teamAId: null,
 			teamBId: null
 		});
@@ -86,14 +86,14 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 	test('maps semifinal winners to x-5 and losers to x-4', () => {
 		const assignments = buildFinalAndThirdPlaceAssignments(
 			{
-				tieCode: 'x-1',
+				tieCode: 'X-1',
 				status: 'finished',
 				teamAId: 'a1',
 				teamBId: 'b2',
 				winnerTeamId: 'a1'
 			},
 			{
-				tieCode: 'x-2',
+				tieCode: 'X-2',
 				status: 'confirmed',
 				teamAId: 'a2',
 				teamBId: 'b1',
@@ -103,14 +103,14 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 
 		expect(assignments).toEqual([
 			expect.objectContaining({
-				tieCode: 'x-4',
+				tieCode: 'X-4',
 				phase: 'third_place',
 				roundLabel: '3位決定戦',
 				teamAId: 'b2',
 				teamBId: 'a2'
 			}),
 			expect.objectContaining({
-				tieCode: 'x-5',
+				tieCode: 'X-5',
 				phase: 'final',
 				roundLabel: '決勝',
 				teamAId: 'a1',
@@ -123,14 +123,14 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 		expect(() =>
 			buildFinalAndThirdPlaceAssignments(
 				{
-					tieCode: 'x-1',
+					tieCode: 'X-1',
 					status: 'playing',
 					teamAId: 'a1',
 					teamBId: 'b2',
 					winnerTeamId: null
 				},
 				{
-					tieCode: 'x-2',
+					tieCode: 'X-2',
 					status: 'finished',
 					teamAId: 'a2',
 					teamBId: 'b1',
@@ -144,14 +144,14 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 		expect(() =>
 			buildFinalAndThirdPlaceAssignments(
 				{
-					tieCode: 'x-1',
+					tieCode: 'X-1',
 					status: 'finished',
 					teamAId: 'a1',
 					teamBId: 'b2',
 					winnerTeamId: null
 				},
 				{
-					tieCode: 'x-2',
+					tieCode: 'X-2',
 					status: 'finished',
 					teamAId: 'a2',
 					teamBId: 'b1',
@@ -165,14 +165,14 @@ describe('buildFinalAndThirdPlaceAssignments', () => {
 		expect(() =>
 			buildFinalAndThirdPlaceAssignments(
 				{
-					tieCode: 'x-1',
+					tieCode: 'X-1',
 					status: 'confirmed',
 					teamAId: 'a1',
 					teamBId: null,
 					winnerTeamId: 'a1'
 				},
 				{
-					tieCode: 'x-2',
+					tieCode: 'X-2',
 					status: 'confirmed',
 					teamAId: 'a2',
 					teamBId: 'b1',
@@ -188,7 +188,7 @@ describe('assertFinalAssignmentsReady', () => {
 		expect(() =>
 			assertFinalAssignmentsReady([
 				{
-					tieCode: 'x-1',
+					tieCode: 'X-1',
 					phase: 'semifinal',
 					roundLabel: '準決勝1',
 					teamAId: null,
