@@ -185,9 +185,6 @@ test.describe.serial('lineup full workflow', () => {
 		await page.getByText('承認する').last().click();
 		await page.waitForTimeout(500);
 
-		await page.getByText('オーダー公開').click();
-		await page.waitForTimeout(500);
-
 		await page.getByText('対戦を開始').click();
 		await page.waitForTimeout(1500);
 
