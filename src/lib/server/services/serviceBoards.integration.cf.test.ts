@@ -250,7 +250,7 @@ describe('finalsService DB generation', () => {
 });
 
 describe('liveBoardService DB boards', () => {
-	test('reads public rubbers with revealed lineup names and per-game scores from the snapshot', async () => {
+	test('reads public rubbers with revealed lineup names before match start', async () => {
 		await seedTeams();
 		await cfTestDb.db.insert(tournaments).values({
 			id: 'tokyo-league-default',
@@ -266,7 +266,7 @@ describe('liveBoardService DB boards', () => {
 			groupCode: 'A',
 			teamAId: 'a1',
 			teamBId: 'b2',
-			status: 'playing',
+			status: 'ready',
 			lineupsRevealedAt: now,
 			displayOrder: 1,
 			createdAt: now,

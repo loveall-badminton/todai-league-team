@@ -248,9 +248,13 @@ function groupBy<T, K>(items: T[], keyFor: (item: T) => K) {
 	return map;
 }
 
-// オーダーは対戦開始(playing)以降に一般公開される
-function lineupsRevealedForTieStatus(tieStatus: string): boolean {
-	return ['playing', 'finished', 'confirmed'].includes(tieStatus);
+// オーダー公開ボタン後は tie.status が ready になるため、対戦開始前から一般公開する。
+function lineupsRevealedForTie(
+	tie: Pick<typeof ties.$inferSelect, 'status' | 'lineupsRevealedAt'>
+): boolean {
+	return (
+		!!tie.lineupsRevealedAt || ['ready', 'playing', 'finished', 'confirmed'].includes(tie.status)
+	);
 }
 
 // tie に紐づくチーム名を解決して各行に付与する
@@ -276,7 +280,7 @@ export async function getPublicRubbers(tieId: string): Promise<PublicRubberSumma
 	const db = getRequestDb();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) return [];
-	return getPublicRubbersForTie(tieId, lineupsRevealedForTieStatus(tie.status));
+	return getPublicRubbersForTie(tieId, lineupsRevealedForTie(tie));
 }
 
 export async function getBatchedPublicRubbers(
@@ -368,7 +372,7 @@ export async function getTiePageData(tieId: string) {
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) return null;
 
-	const revealed = lineupsRevealedForTieStatus(tie.status);
+	const revealed = lineupsRevealedForTie(tie);
 
 	const [[tieWithTeamNames], rubberData] = await Promise.all([
 		attachTeamNames([tie]),
