@@ -290,10 +290,21 @@ async function scoreGameViaUI(page: Page, winningSide: 'A' | 'B', maxRallies = 3
 		if (!(await button.isVisible({ timeout: 1000 }).catch(() => false))) {
 			return { stopped: true, reason: 'score button not visible' };
 		}
-		await button.evaluate((el) => {
-			const form = el.closest('form') as HTMLFormElement | null;
-			form?.requestSubmit();
-		});
+		if (!(await button.isEnabled({ timeout: 5000 }).catch(() => false))) {
+			await page.reload({ timeout: 15000 });
+			await page.waitForTimeout(150);
+			const refreshedButton = plusButtons.nth(buttonIndex);
+			if (
+				!(await refreshedButton.isVisible({ timeout: 1000 }).catch(() => false)) ||
+				!(await refreshedButton.isEnabled({ timeout: 1000 }).catch(() => false))
+			) {
+				return { stopped: true, reason: 'score button disabled' };
+			}
+			await refreshedButton.click();
+			await page.waitForTimeout(10);
+			continue;
+		}
+		await button.click();
 		await page.waitForTimeout(10);
 	}
 	return { stopped: false };
@@ -361,7 +372,7 @@ async function scoreFullMatch(
 	// Score game 1
 	const maxRallies = isKnockout ? 35 : 25;
 	const g1Result = await scoreGameViaUI(page, winningSide, maxRallies);
-	if (g1Result?.stopped) {
+	if (g1Result?.stopped && g1Result.reason !== 'score button disabled') {
 		console.log(
 			`    Game 1 stopped: ${g1Result.reason}${g1Result.message ? ': ' + g1Result.message : ''}`
 		);

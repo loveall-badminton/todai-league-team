@@ -2,6 +2,7 @@
 	"name": "todai-league",
 	"private": true,
 	"version": "0.0.1",
+	"license": "MIT",
 	"type": "module",
 	"scripts": {
 		"dev": "LAUNCH_EDITOR=zed vite dev",

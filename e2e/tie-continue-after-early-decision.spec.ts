@@ -214,10 +214,21 @@ test.describe
 		for (let i = 0; i < maxRallies; i++) {
 			const button = plusButtons.nth(buttonIndex);
 			if (!(await button.isVisible({ timeout: 1000 }).catch(() => false))) return { stopped: true };
-			await button.evaluate((el) => {
-				const form = el.closest('form') as HTMLFormElement | null;
-				form?.requestSubmit();
-			});
+			if (!(await button.isEnabled({ timeout: 5000 }).catch(() => false))) {
+				await page.reload({ timeout: 15000 });
+				await page.waitForTimeout(150);
+				const refreshedButton = plusButtons.nth(buttonIndex);
+				if (
+					!(await refreshedButton.isVisible({ timeout: 1000 }).catch(() => false)) ||
+					!(await refreshedButton.isEnabled({ timeout: 1000 }).catch(() => false))
+				) {
+					return { stopped: true };
+				}
+				await refreshedButton.click();
+				await page.waitForTimeout(10);
+				continue;
+			}
+			await button.click();
 			await page.waitForTimeout(10);
 		}
 		return { stopped: false };
@@ -274,8 +285,7 @@ test.describe
 		await page.goto(matchUrl, { timeout: 15000 });
 		await page.waitForTimeout(200);
 		await startMatchViaUI(page);
-		const g1 = await scoreGameViaUI(page, winningSide);
-		if (g1?.stopped) return;
+		await scoreGameViaUI(page, winningSide);
 		await page.reload({ timeout: 15000 });
 		await page.waitForTimeout(150);
 		if (await startNextGameViaUI(page)) {

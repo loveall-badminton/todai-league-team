@@ -289,3 +289,7 @@ Tailwind v4 を `@tailwindcss/vite` で使っています。`tailwind.config.js`
 ### backup Worker が未設定
 
 backup 機能は optional です。main Worker の Deploy button では作成されません。必要な場合だけ `workers/backup` を deploy し、`BACKUP_WORKER_URL` と `BACKUP_DOWNLOAD_TOKEN` を設定してください。Service Binding は不要です。
+
+## License
+
+MIT License. See [LICENSE](./LICENSE).
