@@ -16,7 +16,9 @@
 	import { getTiesData, getTiesPageData, reorder } from './ties.remote';
 	import { tieMatchesFilter, VALID_TIE_FILTERS, type TieFilter } from './tieFilter';
 	import * as v from 'valibot';
+	import { toast } from 'svelte-sonner';
 	import TieCreateDialog from './TieCreateDialog.svelte';
+	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 
 	const tiesQuery = getTiesData();
 	const tiesPageQuery = getTiesPageData();
@@ -30,7 +32,14 @@
 
 	let dialogOpen = $state(false);
 
-	let allTies = $derived(tiesData.ties);
+	// dnd-kit のドラッグ中に onDragOver がこの配列を直接書き換えて見た目の並び替えを行うため、
+	// $derived のオーバーライドではなく独立した $state として保持し、サーバーデータが
+	// 変わったときだけ $effect で同期する。
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let allTies: TieSummary[] = $state(initialTiesData.ties);
+	$effect(() => {
+		allTies = tiesData.ties;
+	});
 	let hasActive = $derived(tiesData.ties.some((t) => t.status === 'playing'));
 
 	let filter = $derived.by<TieFilter>(() => {
@@ -96,7 +105,15 @@
 		(v) => {
 			allTies = v;
 		},
-		(ids) => reorder({ ids })
+		async (ids) => {
+			try {
+				await reorder({ ids });
+			} catch (e) {
+				toast.error(e instanceof Error ? e.message : '並び替えに失敗しました');
+			} finally {
+				await tiesQuery.refresh();
+			}
+		}
 	);
 </script>
 

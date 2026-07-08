@@ -35,14 +35,29 @@
 	let groupStatic = $derived(groupStaticQuery.current ?? initialGroupStatic);
 	let groupPage = $derived(groupPageQuery.current ?? initialGroupPage);
 
-	let allTies = $derived(groupPage.ties);
+	// dnd-kit のドラッグ中に onDragOver がこの配列を直接書き換えて見た目の並び替えを行うため、
+	// $derived のオーバーライドではなく独立した $state として保持し、サーバーデータが
+	// 変わったときだけ $effect で同期する。
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let allTies: TieSummary[] = $state(initialGroupPage.ties);
+	$effect(() => {
+		allTies = groupPage.ties;
+	});
 
 	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
 		() => allTies,
 		(v) => {
 			allTies = v;
 		},
-		(ids) => reorder({ ids })
+		async (ids) => {
+			try {
+				await reorder({ ids });
+			} catch (e) {
+				toast.error(e instanceof Error ? e.message : '並び替えに失敗しました');
+			} finally {
+				await groupPageQuery.refresh();
+			}
+		}
 	);
 
 	const teamName = (teamId: string | null) =>
