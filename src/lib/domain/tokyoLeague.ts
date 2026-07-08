@@ -48,39 +48,39 @@ export const RUBBER_DEFINITIONS = [
 
 export const FINAL_TIE_DEFINITIONS = [
 	{
-		tieCode: 'x-1',
+		tieCode: 'X-1',
 		phase: 'semifinal',
 		roundLabel: '準決勝1',
 		teamASource: 'A1',
 		teamBSource: 'B2'
 	},
 	{
-		tieCode: 'x-2',
+		tieCode: 'X-2',
 		phase: 'semifinal',
 		roundLabel: '準決勝2',
 		teamASource: 'A2',
 		teamBSource: 'B1'
 	},
 	{
-		tieCode: 'x-3',
+		tieCode: 'X-3',
 		phase: 'fifth_place',
 		roundLabel: '5位決定戦',
 		teamASource: 'A3',
 		teamBSource: 'B3'
 	},
 	{
-		tieCode: 'x-4',
+		tieCode: 'X-4',
 		phase: 'third_place',
 		roundLabel: '3位決定戦',
-		teamASource: 'x-1_loser',
-		teamBSource: 'x-2_loser'
+		teamASource: 'X-1_loser',
+		teamBSource: 'X-2_loser'
 	},
 	{
-		tieCode: 'x-5',
+		tieCode: 'X-5',
 		phase: 'final',
 		roundLabel: '決勝',
-		teamASource: 'x-1_winner',
-		teamBSource: 'x-2_winner'
+		teamASource: 'X-1_winner',
+		teamBSource: 'X-2_winner'
 	}
 ] as const;
 
@@ -157,3 +157,6 @@ export const TOKYO_LEAGUE_SCORING_RULES = [
 
 export const groupPhaseFor = (groupCode: GroupCode): TiePhase =>
 	groupCode === 'A' ? 'group_a' : 'group_b';
+
+export const isGroupPhase = (phase: TiePhase): phase is 'group_a' | 'group_b' =>
+	phase === 'group_a' || phase === 'group_b';

@@ -1,4 +1,4 @@
-import type { GroupCode, TiePhase } from '$lib/domain/tokyoLeague';
+import { isGroupPhase, type GroupCode, type TiePhase } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { batchQuery } from '$lib/server/db/utils';
 import {
@@ -305,10 +305,51 @@ export async function deleteTie(tieId: string, options?: { force?: boolean }) {
 
 export async function reorderTies(orderedIds: string[], now: string) {
 	const db = getRequestDb();
+	const existing = await db
+		.select({ id: ties.id, tieCode: ties.tieCode, phase: ties.phase })
+		.from(ties)
+		.where(inArray(ties.id, orderedIds));
+	const idMap = new Map(existing.map((t) => [t.id, t]));
+
+	// 予選リーグ(group_a/group_b)のみ試合番号を並び順に追従させる。決勝トーナメントの試合番号は固定。
+	// フェーズごとに連番を振るため、混在リスト内でのグローバルな index ではなく、
+	// 同フェーズ内での相対順で数える。
+	const groupCounters = new Map<string, number>();
+	const updates = orderedIds.map((id, i) => {
+		const tie = idMap.get(id);
+		let tieCode: string | undefined;
+		if (tie && isGroupPhase(tie.phase) && tie.tieCode) {
+			const nextNo = (groupCounters.get(tie.phase) ?? 0) + 1;
+			groupCounters.set(tie.phase, nextNo);
+			const newCode = tie.tieCode.replace(/-(\d+)$/, `-${nextNo}`);
+			if (newCode !== tie.tieCode) tieCode = newCode;
+		}
+		return { id, displayOrder: i, tieCode };
+	});
+
+	// tieCode にはユニーク制約があるため、並び替えで値を入れ替える際に一時コードを
+	// 挟まないと「他の行がまだ持っている値」に更新しようとして制約違反になる。
+	const codeChanges = updates.filter((u) => u.tieCode);
+	if (codeChanges.length > 0) {
+		await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
+			codeChanges.map((u) =>
+				db
+					.update(ties)
+					.set({ tieCode: `__reorder_tmp__${u.id}` })
+					.where(eq(ties.id, u.id))
+			)
+		);
+	}
+
 	await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
-		orderedIds.map((id, i) =>
-			db.update(ties).set({ displayOrder: i, updatedAt: now }).where(eq(ties.id, id))
-		)
+		updates.map((u) => {
+			const set: Partial<typeof ties.$inferInsert> = {
+				displayOrder: u.displayOrder,
+				updatedAt: now
+			};
+			if (u.tieCode) set.tieCode = u.tieCode;
+			return db.update(ties).set(set).where(eq(ties.id, u.id));
+		})
 	);
 }
 
@@ -480,7 +521,6 @@ function summarizeTieSummaries(
 
 export async function updateTieSchedule(input: {
 	id: string;
-	tieCode: string;
 	scheduledStartAt?: string | null;
 	venue?: 'first_gym' | 'second_gym' | null;
 	courtBlockCode?: string | null;
@@ -508,7 +548,6 @@ export async function updateTieSchedule(input: {
 	await db
 		.update(ties)
 		.set({
-			tieCode: input.tieCode,
 			scheduledStartAt: input.scheduledStartAt ?? null,
 			venue: input.venue ?? null,
 			courtBlockCode: input.courtBlockCode ?? null,
