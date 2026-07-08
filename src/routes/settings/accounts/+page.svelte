@@ -37,7 +37,7 @@
 	}
 
 	let editOpen = $state(false);
-	let editAccountId = $state<string | null>(null);
+	let editAccountId: string | null = $state(null);
 	let editAccount = $derived(data.accounts.find((a) => a.id === editAccountId) ?? null);
 
 	function openEdit(id: string) {

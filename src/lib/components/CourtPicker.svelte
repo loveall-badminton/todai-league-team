@@ -11,7 +11,7 @@
 	}: { initialVenue?: string | null; initialCourts?: string | null } = $props();
 
 	let venue = $state(untrack(() => initialVenue ?? ''));
-	let selected = $state<number[]>(untrack(() => parseCourts(initialCourts)));
+	let selected: number[] = $state(untrack(() => parseCourts(initialCourts)));
 
 	let courtCount = $derived(venueCourtCount(venue));
 	let courts = $derived(Array.from({ length: courtCount }, (_, i) => i + 1));

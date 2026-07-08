@@ -46,7 +46,7 @@
 	let draftItems = $state(initialDraftItems());
 	// この端末に、現在表示中の内容(提出済み内容)と異なる下書きが見つかった場合にセットする。
 	// 見つかった時点では自動適用せず、ユーザーが選ぶまでバナーで待機する。
-	let pendingLocalDraft = $state<DraftItem[] | null>(null);
+	let pendingLocalDraft: DraftItem[] | null = $state(null);
 
 	function draftItemsEqual(a: DraftItem[], b: DraftItem[]): boolean {
 		if (a.length !== b.length) return false;

@@ -13,7 +13,7 @@ export interface PatchCollectionOptions<TItem> {
 }
 
 export class PatchCollection<TItem> {
-	#patches = $state<Record<string, Partial<TItem>>>({});
+	#patches: Record<string, Partial<TItem>> = $state({});
 	#getServerItems: Fn<TItem[]>;
 	#getId: (item: TItem) => string;
 	#transform: (item: TItem, patch: Partial<TItem>) => TItem;

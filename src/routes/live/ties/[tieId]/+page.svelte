@@ -31,8 +31,8 @@
 	});
 	let rubbers = $derived(scorePatches.items);
 
-	let progression = $state<{ current: ProgressionRealtimeState | null }>({ current: null });
-	let expandedRubberId = $state<string | null>(null);
+	let progression: { current: ProgressionRealtimeState | null } = $state({ current: null });
+	let expandedRubberId: string | null = $state(null);
 
 	async function loadProgression() {
 		try {

@@ -23,7 +23,7 @@
 		applyScoreAction: (run: () => Promise<ScoreActionResult>) => Promise<void>;
 	} = $props();
 
-	let letReason = $state<LetCalledInput['reason']>('receiver_not_ready');
+	let letReason: LetCalledInput['reason'] = $state('receiver_not_ready');
 	let letNote = $state('');
 
 	const letReasonItems = [

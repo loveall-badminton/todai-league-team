@@ -27,7 +27,7 @@
 
 	let players = $derived([...data.players]);
 
-	let addTab = $state<'single' | 'bulk'>('single');
+	let addTab: 'single' | 'bulk' = $state('single');
 
 	const { onDragStart, onDragOver, onDragEnd } = createSortableHandlers(
 		() => players,

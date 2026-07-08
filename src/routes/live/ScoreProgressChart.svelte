@@ -50,7 +50,7 @@
 	let yTicks = $derived(yScale.ticks(5));
 
 	// Tooltip
-	let tooltipIndex = $state<number | null>(null);
+	let tooltipIndex: number | null = $state(null);
 	let tooltipX = $derived(tooltipIndex != null ? xScale(tooltipIndex) : null);
 
 	function onMouseMove(e: MouseEvent) {

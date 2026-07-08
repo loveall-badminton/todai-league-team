@@ -18,7 +18,7 @@ export interface LiveChannel {
 }
 
 export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
-	let status = $state<LiveChannelStatus>('closed');
+	let status: LiveChannelStatus = $state('closed');
 	let socket: PartySocket | null = null;
 	let closedByUser = false;
 	let connectTimer: ReturnType<typeof setTimeout> | null = null;
