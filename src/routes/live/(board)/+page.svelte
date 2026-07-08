@@ -8,26 +8,25 @@
 	import Card from '$lib/components/Card.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { ArrowRight } from '@lucide/svelte';
+	import { PatchCollection } from '$lib/optimistic';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 
 	const scheduleQuery = getSchedulePageData();
 	let myTeamId = $derived(page.data.authProfile?.teamId ?? null);
-	type ScheduleTie = NonNullable<typeof scheduleQuery.current>[number];
-	let schedulePatches = $state<Record<string, ScheduleTie>>({});
-	let scheduleRows = $derived(
-		(scheduleQuery.current ?? []).map((tie) => schedulePatches[tie.id] ?? tie)
-	);
+	const schedulePatches = new PatchCollection({
+		getServerItems: () => scheduleQuery.current ?? [],
+		getId: (tie) => tie.id
+	});
+	let scheduleRows = $derived(schedulePatches.items);
 	let schedule = $derived({ current: scheduleQuery.current ? scheduleRows : null });
 
 	let playingTies = $derived(scheduleRows.filter((t) => t.status === 'playing'));
 	let playingCount = $derived(playingTies.length);
 
 	async function refreshSchedule() {
-		const snapshot = Object.entries(schedulePatches);
+		const snapshot = schedulePatches.snapshot();
 		await scheduleQuery.refresh();
-		for (const [tieId, patch] of snapshot) {
-			if (schedulePatches[tieId] === patch) delete schedulePatches[tieId];
-		}
+		schedulePatches.invalidateStale(snapshot);
 	}
 
 	function applyScheduleUpdate(
@@ -38,10 +37,11 @@
 		const ties = update.data?.schedule?.ties;
 		if (!ties?.length) return 'refresh';
 		for (const tie of ties) {
-			const current =
-				schedulePatches[tie.id] ?? scheduleQuery.current?.find((row) => row.id === tie.id);
-			if (current && Date.parse(tie.updatedAt) < Date.parse(current.updatedAt)) continue;
-			schedulePatches[tie.id] = tie as ScheduleTie;
+			const patch = schedulePatches.get(tie.id);
+			const base = scheduleQuery.current?.find((row) => row.id === tie.id);
+			const updatedAt = patch?.updatedAt ?? base?.updatedAt;
+			if (updatedAt && Date.parse(tie.updatedAt) < Date.parse(updatedAt)) continue;
+			schedulePatches.apply(tie.id, tie);
 		}
 		return 'applied';
 	}

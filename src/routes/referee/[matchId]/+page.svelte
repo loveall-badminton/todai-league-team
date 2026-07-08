@@ -7,11 +7,8 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { hasScoreUpdate, matchChannel, type LiveTopicPayloadMap } from '$lib/realtime/channels';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
-	import {
-		applyRefereeScorePayload,
-		type RefereeEventView,
-		type RefereeLiveView
-	} from './refereeRealtime';
+	import { applyRefereeScorePayload, type RefereeLiveView } from './refereeRealtime';
+	import { OptimisticOverlay } from '$lib/optimistic';
 	import { cn } from '$lib/utils/cn';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -35,32 +32,19 @@
 
 	let { data, form: formResult }: PageProps = $props();
 
-	// 毎得点の invalidateAll(load 全再実行)を避けるため、スコアと
-	// イベントログは WS / フォーム結果の payload をローカル差分適用して表示する。
-	// load 再実行(invalidateAll)後は seqNo の新しい方を採用する。
-	let overlay = $state.raw<RefereeLiveView | null>(null);
-	let liveView = $derived(
-		overlay && overlay.state.lastSeqNo > data.state.lastSeqNo
-			? overlay
-			: { state: data.state, events: data.events as RefereeEventView[] }
-	);
-	let matchState = $derived(liveView.state);
-	let matchEvents = $derived(liveView.events);
+	const scoreOverlay = new OptimisticOverlay({
+		getServerData: (): RefereeLiveView => ({ state: data.state, events: data.events }),
+		apply: (payload: LiveTopicPayloadMap['score'], current) =>
+			applyRefereeScorePayload(payload, current),
+		isNewer: (overlay, server) => overlay.state.lastSeqNo > server.state.lastSeqNo
+	});
 
-	function applyScorePayload(
-		payload: LiveTopicPayloadMap['score']
-	): 'applied' | 'refresh' | 'ignore' {
-		const next = applyRefereeScorePayload(payload, liveView);
-		if (next === 'refresh') return 'refresh';
-		if (next === null) return 'ignore';
-		overlay = next;
-		return 'applied';
-	}
+	let matchState = $derived(scoreOverlay.data.state);
+	let matchEvents = $derived(scoreOverlay.data.events);
 
 	function applyRealtimeUpdate(update: RealtimeUpdate<'score'>): 'applied' | 'refresh' | 'ignore' {
-		// フォールバックポーリング・キャッチアップ(data なし)は全取得
 		if (update.source === 'poll' || !hasScoreUpdate(update.data)) return 'refresh';
-		return applyScorePayload(update.data.score);
+		return scoreOverlay.apply(update.data.score);
 	}
 
 	type ScoreActionResult = {
@@ -75,7 +59,7 @@
 				toast.error(result.error);
 				return;
 			}
-			if (result.scorePayload && applyScorePayload(result.scorePayload) === 'refresh') {
+			if (result.scorePayload && scoreOverlay.apply(result.scorePayload) === 'refresh') {
 				await invalidateAll();
 			}
 		} catch (err) {
@@ -83,12 +67,13 @@
 		}
 	}
 
-	// 自分の操作はフォーム結果の payload で即時反映する(WS 断でも遅延しない)
+	function hasScorePayload(v: unknown): v is { scorePayload: LiveTopicPayloadMap['score'] } {
+		return typeof v === 'object' && v !== null && 'scorePayload' in v;
+	}
+
 	$effect(() => {
-		const payload = (formResult as { scorePayload?: LiveTopicPayloadMap['score'] } | undefined)
-			?.scorePayload;
-		if (!payload) return;
-		if (applyScorePayload(payload) === 'refresh') void invalidateAll();
+		if (!hasScorePayload(formResult)) return;
+		if (scoreOverlay.apply(formResult.scorePayload) === 'refresh') void invalidateAll();
 	});
 
 	const courtSideSchema = v.picklist(['left', 'right']);
@@ -106,12 +91,7 @@
 	let lastUndoableEvent = $derived(findLastUndoableEvent(matchEvents, undoableEventTypes));
 
 	function undoLabel(e: (typeof matchEvents)[number]): string {
-		return buildUndoLabel(
-			e as unknown as Parameters<typeof buildUndoLabel>[0],
-			sideAName,
-			sideBName,
-			{ left: leftSide, right: rightSide }
-		);
+		return buildUndoLabel(e, sideAName, sideBName, { left: leftSide, right: rightSide });
 	}
 
 	let sideAPlayers = $derived(data.players.filter((player) => player.side === 'A'));
@@ -190,10 +170,14 @@
 
 	let prevError: string | undefined;
 	let prevSavedRefereeName: string | null = null;
+	function hasFormError(v: unknown): v is { error: string } {
+		return typeof v === 'object' && v !== null && 'error' in v && typeof v.error === 'string';
+	}
+
 	$effect(() => {
-		const failure = formResult as { error?: string } | undefined;
-		const err = failure?.error;
-		if (err && err !== prevError) {
+		if (!hasFormError(formResult)) return;
+		const err = formResult.error;
+		if (err !== prevError) {
 			toast.error(err);
 			prevError = err;
 		}
@@ -267,7 +251,7 @@
 	<!-- Match finished banner -->
 	{#if isConfirmableMatchStatus(matchState.status)}
 		<RefereeMatchFinishedCard
-			status={matchState.status as 'finished' | 'forfeited' | 'retired'}
+			status={matchState.status}
 			refereeName={savedRefereeName}
 			{winnerSideName}
 			{winnerConfirmed}

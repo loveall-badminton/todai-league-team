@@ -44,7 +44,9 @@ export function isActiveMatchStatus(status: string): boolean {
 	return (ACTIVE_MATCH_STATUSES as readonly string[]).includes(status);
 }
 
-export function isConfirmableMatchStatus(status: string): boolean {
+export function isConfirmableMatchStatus(
+	status: string
+): status is 'finished' | 'forfeited' | 'retired' {
 	return (CONFIRMABLE_MATCH_STATUSES as readonly string[]).includes(status);
 }
 

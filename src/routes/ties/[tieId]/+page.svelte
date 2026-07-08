@@ -47,9 +47,10 @@
 	import TieWorkflowStepper from './TieWorkflowStepper.svelte';
 	import TieRubberList from '$lib/components/TieRubberList.svelte';
 	import TieNotifyPanel from '$lib/components/TieNotifyPanel.svelte';
+	import { PatchCollection } from '$lib/optimistic';
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { hasScoreUpdate } from '$lib/realtime/channels';
-	import { buildRubberScorePatch, type RubberScorePatch } from '$lib/realtime/scorePatch';
+	import { buildRubberScorePatch } from '$lib/realtime/scorePatch';
 	import {
 		shouldRefreshTieHeaderData,
 		shouldRefreshTieLiveRubbers,
@@ -88,14 +89,14 @@
 		return [item?.player1Id, item?.player2Id].filter((id): id is string => !!id);
 	};
 
-	// score トピックのブロードキャストに載った MatchState をローカル適用するパッチ。
-	// getLiveRubbers の refetch なしで得点表示を更新する(remote query の値は
-	// $state.raw のため、$state のパッチとしてマージする)。
-	let liveScorePatches = $state<Record<string, RubberScorePatch>>({});
+	const liveScorePatches = new PatchCollection({
+		getServerItems: () => adminData.liveRubbers,
+		getId: (r) => r.matchId ?? r.id
+	});
 
 	function toRubberRow(rubber: (typeof rubbers)[number]): RubberRow {
 		const liveBase = adminData.liveRubbers.find((r) => r.id === rubber.id);
-		const patch = rubber.matchId ? liveScorePatches[rubber.matchId] : undefined;
+		const patch = rubber.matchId ? liveScorePatches.get(rubber.matchId) : undefined;
 		const live = liveBase && patch ? { ...liveBase, ...patch } : liveBase;
 		const status = live?.status ?? rubber.status;
 		const statusSrc = live?.matchStatus ?? status;
@@ -146,15 +147,10 @@
 
 	const rubberStatusBgClass = rubberStatusTextClass;
 
-	// refresh 開始時点のパッチは取り直した結果より古いとみなして破棄する
-	// (切断中に進んだ得点が stale パッチで隠れたままになるのを防ぐ)。
-	// refresh 中に届いた新しいパッチは identity が変わるため残る。
 	async function refreshAdminPage() {
-		const snapshot = Object.entries(liveScorePatches);
+		const snapshot = liveScorePatches.snapshot();
 		await tieAdminQuery.refresh();
-		for (const [matchId, patch] of snapshot) {
-			if (liveScorePatches[matchId] === patch) delete liveScorePatches[matchId];
-		}
+		liveScorePatches.invalidateStale(snapshot);
 	}
 
 	async function run(fn: () => Promise<void>) {
@@ -169,16 +165,15 @@
 	const handleAdminUpdate = createRealtimeQueryFlow({
 		refresh: refreshAdminPage,
 		applyUpdate: (update) => {
-			// score 更新はブロードキャストに載った MatchState をローカル適用し、
-			// 毎得点の refetch を避ける(Workers リクエスト削減)
 			if (update.topics.includes('score') && hasScoreUpdate(update.data)) {
 				const state = update.data.score.state;
 				const rubber = rubbers.find((rubber) => rubber.matchId === state.matchId);
 				if (!rubber) return 'ignore';
 				const liveBase = adminData.liveRubbers.find((r) => r.id === rubber.id);
-				const currentSeqNo = liveScorePatches[state.matchId]?.lastSeqNo ?? liveBase?.lastSeqNo ?? 0;
+				const currentSeqNo =
+					liveScorePatches.get(state.matchId)?.lastSeqNo ?? liveBase?.lastSeqNo ?? 0;
 				if (state.lastSeqNo < currentSeqNo) return 'ignore';
-				liveScorePatches[state.matchId] = buildRubberScorePatch(state);
+				liveScorePatches.apply(state.matchId, buildRubberScorePatch(state));
 				return 'applied';
 			}
 			const matchIds = rubbers.map((rubber) => rubber.matchId).filter((id): id is string => !!id);

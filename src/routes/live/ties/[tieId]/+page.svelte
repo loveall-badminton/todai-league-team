@@ -6,9 +6,9 @@
 	import { hasScoreUpdate } from '$lib/realtime/channels';
 	import { buildRubberScorePatch } from '$lib/realtime/scorePatch';
 	import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
+	import { PatchCollection } from '$lib/optimistic';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
 	import { getTieDetail, getTieProgression } from './tie-detail.remote';
-	import type { TiePageData } from '$lib/server/services/liveBoardService';
 	import {
 		applyRealtimeProgressionEvent,
 		type ProgressionRealtimeState
@@ -20,18 +20,16 @@
 	const tieDetailQuery = getTieDetail(tieId);
 	let tieDetailData = $derived(await tieDetailQuery);
 
-	// remote query の値は $state.raw で保持されており、直接ミューテーションしても
-	// 再描画されない。リアルタイム更新は $state のパッチとして持ち、
-	// query 由来のベースにマージした $derived を表示に使う。
-	type RubberSummary = TiePageData['rubbers'][number];
-	let scorePatches = $state<Record<string, Partial<RubberSummary>>>({});
-	let rubbers = $derived(
-		(tieDetailData?.rubbers ?? []).map((rubber) =>
-			rubber.matchId && scorePatches[rubber.matchId]
-				? { ...rubber, ...scorePatches[rubber.matchId] }
-				: rubber
-		)
-	);
+	const scorePatches = new PatchCollection({
+		getServerItems: () => tieDetailData?.rubbers ?? [],
+		getId: (r) => r.matchId ?? r.id,
+		reconcileDelayMs: 11000,
+		onReconcile: () => {
+			void refreshTieDetail();
+			if (expandedRubberId !== null) void loadProgression();
+		}
+	});
+	let rubbers = $derived(scorePatches.items);
 
 	let progression = $state<{ current: ProgressionRealtimeState | null }>({ current: null });
 	let expandedRubberId = $state<string | null>(null);
@@ -46,7 +44,6 @@
 	}
 
 	function handleExpand() {
-		// 閉じている間のイベントは差分適用されないことがあるため、展開のたびに取り直す
 		void loadProgression();
 	}
 
@@ -63,36 +60,14 @@
 		return 'applied';
 	}
 
-	// refresh で取り直したデータより古いパッチが上書きし続けると、切断中に進んだ
-	// 得点が反映されない(切断中に試合が終わると固まったままになる)。refresh 開始
-	// 時点のパッチは結果より古いとみなして破棄する。refresh 中に届いた新しい
-	// パッチは identity が変わるため残る。
 	async function refreshTieDetail() {
-		const snapshot = Object.entries(scorePatches);
+		const snapshot = scorePatches.snapshot();
 		await tieDetailQuery.refresh();
-		for (const [matchId, patch] of snapshot) {
-			if (scorePatches[matchId] === patch) delete scorePatches[matchId];
-		}
-	}
-
-	// tie-detail のエッジキャッシュ(TTL 10秒)を跨いでから取り直す。
-	// 即時 refresh だと更新前のキャッシュを引いてローカル適用済みの表示を巻き戻すことがある。
-	const RECONCILE_DELAY_MS = 11000;
-	let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
-
-	function scheduleReconcileRefresh() {
-		if (reconcileTimer !== null) return;
-		reconcileTimer = setTimeout(() => {
-			reconcileTimer = null;
-			void refreshTieDetail();
-			if (expandedRubberId !== null) void loadProgression();
-		}, RECONCILE_DELAY_MS);
+		scorePatches.invalidateStale(snapshot);
 	}
 
 	$effect(() => {
-		return () => {
-			if (reconcileTimer !== null) clearTimeout(reconcileTimer);
-		};
+		return () => scorePatches.destroy();
 	});
 
 	function refreshAll() {
@@ -101,8 +76,6 @@
 	}
 
 	function applyUpdate(update: RealtimeUpdate): 'applied' | 'refresh' | 'ignore' {
-		// フォールバックポーリングと再接続時のキャッチアップ(data なし)は
-		// 取りこぼし回収のため常に全体 refresh する
 		if (update.source === 'poll') return 'refresh';
 		if (!update.data || !hasScoreUpdate(update.data)) {
 			if (update.topics.includes('schedule') && update.data?.schedule?.tieIds?.includes(tieId)) {
@@ -113,16 +86,15 @@
 		const state = update.data.score.state;
 		const rubber = rubbers.find((r) => r.matchId === state.matchId);
 		if (!rubber) return 'ignore';
-		const currentSeqNo = scorePatches[state.matchId]?.lastSeqNo ?? rubber.lastSeqNo ?? 0;
+		const currentSeqNo = scorePatches.get(state.matchId)?.lastSeqNo ?? rubber.lastSeqNo ?? 0;
 		if (state.lastSeqNo < currentSeqNo) {
 			return 'ignore';
 		}
-		scorePatches[state.matchId] = buildRubberScorePatch(state);
+		scorePatches.apply(state.matchId, buildRubberScorePatch(state));
 		const progResult = applyProgressionEvent(state.matchId, update.data.score.event);
 		if (progResult === 'refresh') return 'refresh';
 		if (isConfirmableMatchStatus(state.status)) {
-			// スコアはローカル適用済み。ヘッダーの対戦スコア等はキャッシュ失効後に取り直す
-			scheduleReconcileRefresh();
+			scorePatches.scheduleReconcile();
 		}
 		return 'applied';
 	}
