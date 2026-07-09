@@ -29,11 +29,16 @@ vi.mock('$lib/server/db/request', () => ({
 	}
 }));
 
-import { generateFinalAndThirdPlace, generateSemifinalsAndFifthPlace } from './finalsService';
+import {
+	generateFifthPlace,
+	generateFinalAndThirdPlace,
+	generateSemifinals
+} from './finalsService';
 import { getPublicRubbers } from './liveBoardService';
 import { createRankingTiebreaker, syncRankingTiebreakerResult } from './rankingTiebreakerService';
 import { createTieWithRubbers } from './tieService';
 import { ensureDefaultSettings, resetTournamentEnsured } from './tokyoLeagueSetupService';
+import { deleteTie } from '$lib/server/repositories/tokyoLeagueRepository';
 
 let cfTestDb: CfTestDb;
 const now = '2026-06-15T01:00:00.000Z';
@@ -150,7 +155,22 @@ describe('finalsService DB generation', () => {
 			displayOrder: 3
 		});
 
-		const changed = await generateSemifinalsAndFifthPlace(now);
+		const semifinalChanged = await generateSemifinals(
+			{
+				x1TeamAId: 'a1',
+				x1TeamBId: 'b2',
+				x2TeamAId: 'a2',
+				x2TeamBId: 'b1'
+			},
+			now
+		);
+		const fifthPlaceChanged = await generateFifthPlace(
+			{
+				x3TeamAId: 'a3',
+				x3TeamBId: 'b3'
+			},
+			now
+		);
 		const finalTies = await cfTestDb.db.select().from(ties).where(eq(ties.phase, 'semifinal'));
 		const fifthPlace = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-3') });
 		const rubberRows = await cfTestDb.db
@@ -158,13 +178,68 @@ describe('finalsService DB generation', () => {
 			.from(rubbers)
 			.where(eq(rubbers.tieId, finalTies[0].id));
 
-		expect(changed).toBe(3);
+		expect(semifinalChanged).toBe(2);
+		expect(fifthPlaceChanged).toBe(1);
 		expect(finalTies.map((tie) => [tie.tieCode, tie.teamAId, tie.teamBId]).sort()).toEqual([
 			['X-1', 'a1', 'b2'],
 			['X-2', 'a2', 'b1']
 		]);
 		expect(fifthPlace).toMatchObject({ phase: 'fifth_place', teamAId: 'a3', teamBId: 'b3' });
 		expect(rubberRows).toHaveLength(5);
+	});
+
+	test('regenerates semifinals and fifth-place after the ties were deleted', async () => {
+		await seedTeams();
+
+		const firstSemifinalChanged = await generateSemifinals(
+			{
+				x1TeamAId: 'a1',
+				x1TeamBId: 'b2',
+				x2TeamAId: 'a2',
+				x2TeamBId: 'b1'
+			},
+			now
+		);
+		const firstFifthPlaceChanged = await generateFifthPlace(
+			{ x3TeamAId: 'a3', x3TeamBId: 'b3' },
+			now
+		);
+		expect(firstSemifinalChanged).toBe(2);
+		expect(firstFifthPlaceChanged).toBe(1);
+
+		const x1Before = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-1') });
+		const x3Before = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-3') });
+		await deleteTie(x1Before!.id);
+		await deleteTie(x3Before!.id);
+
+		const deletedTies = await cfTestDb.db.query.ties.findMany({
+			where: eq(ties.phase, 'semifinal')
+		});
+		expect(deletedTies.map((tie) => tie.tieCode)).toEqual(['X-2']);
+
+		const secondSemifinalChanged = await generateSemifinals(
+			{
+				x1TeamAId: 'a2',
+				x1TeamBId: 'b1',
+				x2TeamAId: 'a1',
+				x2TeamBId: 'b2'
+			},
+			now
+		);
+		const secondFifthPlaceChanged = await generateFifthPlace(
+			{ x3TeamAId: 'a3', x3TeamBId: 'b3' },
+			now
+		);
+
+		expect(secondSemifinalChanged).toBe(2);
+		expect(secondFifthPlaceChanged).toBe(1);
+
+		const x1After = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-1') });
+		const x3After = await cfTestDb.db.query.ties.findFirst({ where: eq(ties.tieCode, 'X-3') });
+		expect(x1After).toMatchObject({ teamAId: 'a2', teamBId: 'b1' });
+		expect(x1After?.id).not.toBe(x1Before!.id);
+		expect(x3After).toMatchObject({ teamAId: 'a3', teamBId: 'b3' });
+		expect(x3After?.id).not.toBe(x3Before!.id);
 	});
 
 	test('generates final and third-place ties, and updates existing final ties', async () => {
@@ -241,9 +316,17 @@ describe('finalsService DB generation', () => {
 			.set({ knockoutScoringRuleId: null, updatedAt: now })
 			.where(eq(appSettings.id, 'default'));
 
-		await expect(generateSemifinalsAndFifthPlace(now)).rejects.toThrow(
-			'決勝トーナメント得点ルールが未設定です'
-		);
+		await expect(
+			generateSemifinals(
+				{
+					x1TeamAId: 'a1',
+					x1TeamBId: 'b2',
+					x2TeamAId: 'a2',
+					x2TeamBId: 'b1'
+				},
+				now
+			)
+		).rejects.toThrow('決勝トーナメント得点ルールが未設定です');
 		await expect(generateFinalAndThirdPlace(now)).rejects.toThrow(
 			'決勝トーナメント得点ルールが未設定です'
 		);

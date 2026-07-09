@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mockGetRequestDb = vi.hoisted(() => vi.fn());
 const mockEnsureDefaultSettings = vi.hoisted(() => vi.fn());
-const mockCalculateGroupStandings = vi.hoisted(() => vi.fn());
-const mockIsRoundRobinComplete = vi.hoisted(() => vi.fn());
 const mockCreateTieWithRubbers = vi.hoisted(() => vi.fn());
 const mockEnsureRubbersForTie = vi.hoisted(() => vi.fn());
 
@@ -15,17 +13,16 @@ vi.mock('./tokyoLeagueSetupService', () => ({
 	ensureDefaultSettings: mockEnsureDefaultSettings
 }));
 
-vi.mock('./standingService', () => ({
-	calculateGroupStandings: mockCalculateGroupStandings,
-	isRoundRobinComplete: mockIsRoundRobinComplete
-}));
-
 vi.mock('./tieService', () => ({
 	createTieWithRubbers: mockCreateTieWithRubbers,
 	ensureRubbersForTie: mockEnsureRubbersForTie
 }));
 
-import { generateFinalAndThirdPlace, generateSemifinalsAndFifthPlace } from './finalsService';
+import {
+	generateFifthPlace,
+	generateFinalAndThirdPlace,
+	generateSemifinals
+} from './finalsService';
 
 function dbWithGroupTies() {
 	return {
@@ -33,6 +30,9 @@ function dbWithGroupTies() {
 			ties: {
 				findFirst: vi.fn().mockResolvedValue(null),
 				findMany: vi.fn().mockResolvedValue([])
+			},
+			teams: {
+				findFirst: vi.fn().mockResolvedValue({ id: 'team' })
 			}
 		}
 	};
@@ -44,48 +44,55 @@ describe('finalsService db generation', () => {
 		mockEnsureDefaultSettings.mockResolvedValue({ knockoutScoringRuleId: 'KNOCKOUT_21' });
 		mockCreateTieWithRubbers.mockResolvedValue('tie-created');
 		mockEnsureRubbersForTie.mockResolvedValue(undefined);
-		mockIsRoundRobinComplete.mockReturnValue(true);
 	});
 
-	test('generateSemifinalsAndFifthPlace creates three ties when assignments are ready', async () => {
+	test('generateSemifinals creates two ties from manual assignments', async () => {
 		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
-		mockCalculateGroupStandings.mockResolvedValueOnce([
-			{ rank: 1, teamId: 'a1' },
-			{ rank: 2, teamId: 'a2' },
-			{ rank: 3, teamId: 'a3' }
-		]);
-		mockCalculateGroupStandings.mockResolvedValueOnce([
-			{ rank: 1, teamId: 'b1' },
-			{ rank: 2, teamId: 'b2' },
-			{ rank: 3, teamId: 'b3' }
-		]);
 
-		await expect(generateSemifinalsAndFifthPlace('2026-06-20T00:00:00.000Z')).resolves.toBe(3);
-		expect(mockCreateTieWithRubbers).toHaveBeenCalledTimes(3);
+		await expect(
+			generateSemifinals(
+				{
+					x1TeamAId: 'a1',
+					x1TeamBId: 'b2',
+					x2TeamAId: 'a2',
+					x2TeamBId: 'b1'
+				},
+				'2026-06-20T00:00:00.000Z'
+			)
+		).resolves.toBe(2);
+		expect(mockCreateTieWithRubbers).toHaveBeenCalledTimes(2);
 		expect(mockEnsureDefaultSettings).toHaveBeenCalled();
 	});
 
-	test('generateSemifinalsAndFifthPlace throws when the group stage is not finished', async () => {
+	test('generateFifthPlace creates one tie from manual assignments', async () => {
 		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
-		mockIsRoundRobinComplete.mockReturnValueOnce(false);
-		mockIsRoundRobinComplete.mockReturnValueOnce(true);
 
-		await expect(generateSemifinalsAndFifthPlace('2026-06-20T00:00:00.000Z')).rejects.toThrow(
-			'予選(A・B組)の全対戦が終了してから決勝トーナメントを生成してください'
-		);
-		expect(mockCalculateGroupStandings).not.toHaveBeenCalled();
+		await expect(
+			generateFifthPlace(
+				{
+					x3TeamAId: 'a3',
+					x3TeamBId: 'b3'
+				},
+				'2026-06-20T00:00:00.000Z'
+			)
+		).resolves.toBe(1);
+		expect(mockCreateTieWithRubbers).toHaveBeenCalledTimes(1);
 	});
 
-	test('generateSemifinalsAndFifthPlace throws when assignments are incomplete', async () => {
+	test('generateSemifinals throws when assignments are incomplete', async () => {
 		mockGetRequestDb.mockReturnValue(dbWithGroupTies());
-		mockCalculateGroupStandings.mockResolvedValueOnce([
-			{ rank: 1, teamId: 'a1', requiresTiebreaker: true }
-		]);
-		mockCalculateGroupStandings.mockResolvedValueOnce([{ rank: 1, teamId: 'b1' }]);
 
-		await expect(generateSemifinalsAndFifthPlace('2026-06-20T00:00:00.000Z')).rejects.toThrow(
-			'予選順位を確定してから生成してください'
-		);
+		await expect(
+			generateSemifinals(
+				{
+					x1TeamAId: 'a1',
+					x1TeamBId: '',
+					x2TeamAId: 'a2',
+					x2TeamBId: 'b1'
+				},
+				'2026-06-20T00:00:00.000Z'
+			)
+		).rejects.toThrow('出場チームをすべて選択してください');
 	});
 
 	test('generateFinalAndThirdPlace creates or updates finals from semifinal results', async () => {

@@ -2,8 +2,7 @@ import { eq } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
 import type { TieStatus } from '$lib/domain/tieProgress';
 import { getRequestDb } from '$lib/server/db/request';
-import { ties } from '$lib/server/db/schema';
-import { calculateGroupStandings, isRoundRobinComplete } from './standingService';
+import { teams, ties } from '$lib/server/db/schema';
 import { createTieWithRubbers, ensureRubbersForTie } from './tieService';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
 
@@ -30,10 +29,22 @@ export type SemifinalResultSource = {
 	winnerTeamId: string | null;
 };
 
+export type ManualSemifinalAssignments = {
+	x1TeamAId: string;
+	x1TeamBId: string;
+	x2TeamAId: string;
+	x2TeamBId: string;
+};
+
+export type ManualFifthPlaceAssignment = {
+	x3TeamAId: string;
+	x3TeamBId: string;
+};
+
 export function assertFinalAssignmentsReady(assignments: FinalTieAssignment[]) {
 	const missing = assignments.find((assignment) => !assignment.teamAId || !assignment.teamBId);
 	if (missing) {
-		throw new Error('予選順位を確定してから生成してください');
+		throw new Error('出場チームをすべて選択してください');
 	}
 }
 
@@ -58,6 +69,66 @@ export function buildSemifinalsAndFifthPlaceAssignments(
 		teamBId: teamBySource.get(definition.teamBSource) ?? null,
 		displayOrder: Number(definition.tieCode.replace('X-', ''))
 	}));
+}
+
+export function buildSemifinalsAndFifthPlaceSuggestions(
+	standingA: FinalsStandingSeed[],
+	standingB: FinalsStandingSeed[]
+): FinalTieAssignment[] {
+	const teamBySource = new Map([
+		['A1', standingA[0]?.teamId ?? null],
+		['A2', standingA[1]?.teamId ?? null],
+		['A3', standingA[2]?.teamId ?? null],
+		['B1', standingB[0]?.teamId ?? null],
+		['B2', standingB[1]?.teamId ?? null],
+		['B3', standingB[2]?.teamId ?? null]
+	]);
+
+	return FINAL_TIE_DEFINITIONS.slice(0, 3).map((definition) => ({
+		tieCode: definition.tieCode,
+		phase: definition.phase,
+		roundLabel: definition.roundLabel,
+		teamAId: teamBySource.get(definition.teamASource) ?? null,
+		teamBId: teamBySource.get(definition.teamBSource) ?? null,
+		displayOrder: Number(definition.tieCode.replace('X-', ''))
+	}));
+}
+
+export function buildManualSemifinalAssignments(
+	input: ManualSemifinalAssignments
+): FinalTieAssignment[] {
+	const teamsByTieCode = new Map([
+		['X-1', { teamAId: input.x1TeamAId, teamBId: input.x1TeamBId }],
+		['X-2', { teamAId: input.x2TeamAId, teamBId: input.x2TeamBId }]
+	]);
+
+	return FINAL_TIE_DEFINITIONS.slice(0, 2).map((definition) => {
+		const teamsForTie = teamsByTieCode.get(definition.tieCode);
+		return {
+			tieCode: definition.tieCode,
+			phase: definition.phase,
+			roundLabel: definition.roundLabel,
+			teamAId: teamsForTie?.teamAId ?? null,
+			teamBId: teamsForTie?.teamBId ?? null,
+			displayOrder: Number(definition.tieCode.replace('X-', ''))
+		};
+	});
+}
+
+export function buildManualFifthPlaceAssignment(
+	input: ManualFifthPlaceAssignment
+): FinalTieAssignment[] {
+	const definition = FINAL_TIE_DEFINITIONS[2];
+	return [
+		{
+			tieCode: definition.tieCode,
+			phase: definition.phase,
+			roundLabel: definition.roundLabel,
+			teamAId: input.x3TeamAId,
+			teamBId: input.x3TeamBId,
+			displayOrder: Number(definition.tieCode.replace('X-', ''))
+		}
+	];
 }
 
 export function buildFinalAndThirdPlaceAssignments(
@@ -96,26 +167,16 @@ export function buildFinalAndThirdPlaceAssignments(
 	return assignments;
 }
 
-export async function generateSemifinalsAndFifthPlace(now = new Date().toISOString()) {
+export async function generateSemifinals(
+	input: ManualSemifinalAssignments,
+	now = new Date().toISOString()
+) {
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
-	const db = getRequestDb();
-	const [groupATies, groupBTies] = await Promise.all([
-		db.query.ties.findMany({ where: eq(ties.phase, 'group_a') }),
-		db.query.ties.findMany({ where: eq(ties.phase, 'group_b') })
-	]);
-	if (!isRoundRobinComplete(groupATies) || !isRoundRobinComplete(groupBTies)) {
-		throw new Error('予選(A・B組)の全対戦が終了してから決勝トーナメントを生成してください');
-	}
-
-	const [standingA, standingB] = await Promise.all([
-		calculateGroupStandings('A'),
-		calculateGroupStandings('B')
-	]);
-
-	const assignments = buildSemifinalsAndFifthPlaceAssignments(standingA, standingB);
+	const assignments = buildManualSemifinalAssignments(input);
 	assertFinalAssignmentsReady(assignments);
+	await assertSelectedTeamsAreValid(assignments);
 
 	let changed = 0;
 	for (const assignment of assignments) {
@@ -132,6 +193,64 @@ export async function generateSemifinalsAndFifthPlace(now = new Date().toISOStri
 		changed += 1;
 	}
 	return changed;
+}
+
+export async function generateFifthPlace(
+	input: ManualFifthPlaceAssignment,
+	now = new Date().toISOString()
+) {
+	const settings = await ensureDefaultSettings(now);
+	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
+
+	const assignments = buildManualFifthPlaceAssignment(input);
+	assertFinalAssignmentsReady(assignments);
+	await assertSelectedTeamsAreValid(assignments);
+
+	let changed = 0;
+	for (const assignment of assignments) {
+		await upsertFinalTie({
+			tieCode: assignment.tieCode,
+			phase: assignment.phase,
+			roundLabel: assignment.roundLabel,
+			teamAId: assignment.teamAId,
+			teamBId: assignment.teamBId,
+			scoringRuleId: settings.knockoutScoringRuleId,
+			displayOrder: assignment.displayOrder,
+			now
+		});
+		changed += 1;
+	}
+	return changed;
+}
+
+async function assertSelectedTeamsAreValid(assignments: FinalTieAssignment[]) {
+	const db = getRequestDb();
+	const existingAssignments = await Promise.all(
+		FINAL_TIE_DEFINITIONS.slice(0, 3).map(async (definition) => {
+			if (assignments.some((assignment) => assignment.tieCode === definition.tieCode)) return null;
+			return db.query.ties.findFirst({ where: eq(ties.tieCode, definition.tieCode) });
+		})
+	);
+	const allAssignments = [
+		...assignments,
+		...existingAssignments.filter(
+			(assignment): assignment is NonNullable<typeof assignment> => !!assignment
+		)
+	];
+
+	const selectedTeamIds = allAssignments.flatMap((assignment) => [
+		assignment.teamAId,
+		assignment.teamBId
+	]);
+	const normalizedTeamIds = selectedTeamIds.filter((teamId): teamId is string => !!teamId);
+	if (new Set(normalizedTeamIds).size !== normalizedTeamIds.length) {
+		throw new Error('同じチームを複数の枠に選択することはできません');
+	}
+
+	for (const teamId of normalizedTeamIds) {
+		const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
+		if (!team) throw new Error('選択されたチームが見つかりません');
+	}
 }
 
 export async function generateFinalAndThirdPlace(now = new Date().toISOString()) {

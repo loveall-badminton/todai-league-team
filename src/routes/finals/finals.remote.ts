@@ -1,54 +1,81 @@
 import { command, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
 import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
-import { listTies } from '$lib/server/repositories/tokyoLeagueRepository';
+import { listTeams, listTies } from '$lib/server/repositories/tokyoLeagueRepository';
 import {
+	buildSemifinalsAndFifthPlaceSuggestions,
+	generateFifthPlace as generateFifthPlaceService,
 	generateFinalAndThirdPlace,
-	generateSemifinalsAndFifthPlace
+	generateSemifinals as generateSemifinalsService
 } from '$lib/server/services/finalsService';
-import {
-	calculateGroupStandings,
-	isRoundRobinComplete
-} from '$lib/server/services/standingService';
+import { calculateGroupStandings } from '$lib/server/services/standingService';
 import { error } from '@sveltejs/kit';
+import * as v from 'valibot';
 
 const finalPhases = ['semifinal', 'fifth_place', 'third_place', 'final'] as const;
 
+const semifinalSelectionSchema = v.object({
+	x1TeamAId: v.string(),
+	x1TeamBId: v.string(),
+	x2TeamAId: v.string(),
+	x2TeamBId: v.string()
+});
+
+const fifthPlaceSelectionSchema = v.object({
+	x3TeamAId: v.string(),
+	x3TeamBId: v.string()
+});
+
 export const getFinalsData = query(async () => {
 	requireAdmin();
-	const [allTies, standingA, standingB] = await Promise.all([
+	const [allTies, allTeams, standingA, standingB] = await Promise.all([
 		listTies(),
+		listTeams(),
 		calculateGroupStandings('A'),
 		calculateGroupStandings('B')
 	]);
 
-	const groupATies = allTies.filter((t) => t.phase === 'group_a');
-	const groupBTies = allTies.filter((t) => t.phase === 'group_b');
-
-	const groupAAllDone = isRoundRobinComplete(groupATies);
-	const groupBAllDone = isRoundRobinComplete(groupBTies);
-	const noTiebreakerA = standingA.every((s) => !s.requiresTiebreaker);
-	const noTiebreakerB = standingB.every((s) => !s.requiresTiebreaker);
-
 	return {
 		ties: allTies.filter((t) => (finalPhases as readonly string[]).includes(t.phase)),
-		groupStandingsReady: groupAAllDone && groupBAllDone && noTiebreakerA && noTiebreakerB,
-		groupAAllDone,
-		groupBAllDone,
-		noTiebreakerA,
-		noTiebreakerB
+		teams: allTeams
+			.filter(
+				(team) => team.status === 'active' && (team.groupCode === 'A' || team.groupCode === 'B')
+			)
+			.map((team) => ({
+				id: team.id,
+				name: team.name,
+				shortName: team.shortName,
+				groupCode: team.groupCode
+			})),
+		standingA,
+		standingB,
+		semifinalSuggestions: buildSemifinalsAndFifthPlaceSuggestions(standingA, standingB)
 	};
 });
 
-export const generateSemifinals = command(async () => {
+export const generateSemifinals = command(semifinalSelectionSchema, async (selection) => {
 	requireAdmin();
 	try {
-		const changed = await generateSemifinalsAndFifthPlace(new Date().toISOString());
+		const changed = await generateSemifinalsService(selection, new Date().toISOString());
 		notifyLiveBoard(['finals', 'schedule'], {
 			finals: { phases: [...finalPhases] },
 			schedule: { phases: [...finalPhases] }
 		});
-		return { message: `${changed}件の決勝トーナメント対戦を生成しました。` };
+		return { message: `${changed}件の準決勝を生成しました。` };
+	} catch (err) {
+		error(400, err instanceof Error ? err.message : '生成に失敗しました');
+	}
+});
+
+export const generateFifthPlace = command(fifthPlaceSelectionSchema, async (selection) => {
+	requireAdmin();
+	try {
+		const changed = await generateFifthPlaceService(selection, new Date().toISOString());
+		notifyLiveBoard(['finals', 'schedule'], {
+			finals: { phases: [...finalPhases] },
+			schedule: { phases: [...finalPhases] }
+		});
+		return { message: `${changed}件の5位決定戦を生成しました。` };
 	} catch (err) {
 		error(400, err instanceof Error ? err.message : '生成に失敗しました');
 	}

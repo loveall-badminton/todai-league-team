@@ -1,50 +1,33 @@
 import { describe, expect, test } from 'vitest';
 import {
+	canGenerateFifthPlace,
 	canGenerateSemifinals,
+	getFifthPlaceHint,
 	getSemifinalsHint,
 	canGenerateFinals,
 	getFinalsHint
 } from './finalsHelpers';
 
 const allReady = {
-	groupAAllDone: true,
-	groupBAllDone: true,
-	noTiebreakerA: true,
-	noTiebreakerB: true
+	x1TeamAId: 'a1',
+	x1TeamBId: 'b2',
+	x2TeamAId: 'a2',
+	x2TeamBId: 'b1'
 };
 
 // ─── canGenerateSemifinals ────────────────────────────────────────────────────
 
 describe('canGenerateSemifinals', () => {
-	test('returns true when all preconditions are met', () => {
+	test('returns true when all semifinal teams are selected', () => {
 		expect(canGenerateSemifinals(allReady)).toBe(true);
 	});
 
-	test('returns false when group A is not fully done', () => {
-		expect(canGenerateSemifinals({ ...allReady, groupAAllDone: false })).toBe(false);
+	test('returns false when a semifinal slot is empty', () => {
+		expect(canGenerateSemifinals({ ...allReady, x1TeamAId: '' })).toBe(false);
 	});
 
-	test('returns false when group B is not fully done', () => {
-		expect(canGenerateSemifinals({ ...allReady, groupBAllDone: false })).toBe(false);
-	});
-
-	test('returns false when group A still has a tiebreaker', () => {
-		expect(canGenerateSemifinals({ ...allReady, noTiebreakerA: false })).toBe(false);
-	});
-
-	test('returns false when group B still has a tiebreaker', () => {
-		expect(canGenerateSemifinals({ ...allReady, noTiebreakerB: false })).toBe(false);
-	});
-
-	test('returns false when all preconditions are unmet', () => {
-		expect(
-			canGenerateSemifinals({
-				groupAAllDone: false,
-				groupBAllDone: false,
-				noTiebreakerA: false,
-				noTiebreakerB: false
-			})
-		).toBe(false);
+	test('returns false when a team is duplicated', () => {
+		expect(canGenerateSemifinals({ ...allReady, x2TeamAId: 'a1' })).toBe(false);
 	});
 });
 
@@ -55,38 +38,34 @@ describe('getSemifinalsHint', () => {
 		expect(getSemifinalsHint(allReady)).toBeNull();
 	});
 
-	test('mentions only group A when group A is incomplete', () => {
-		const hint = getSemifinalsHint({ ...allReady, groupAAllDone: false });
-		expect(hint).toContain('Aリーグ');
-		expect(hint).not.toContain('Bリーグ');
+	test('mentions missing semifinal selections', () => {
+		const hint = getSemifinalsHint({ ...allReady, x1TeamBId: '' });
+		expect(hint).toContain('準決勝の全チーム');
 	});
 
-	test('mentions only group B when group B is incomplete', () => {
-		const hint = getSemifinalsHint({ ...allReady, groupBAllDone: false });
-		expect(hint).toContain('Bリーグ');
-		expect(hint).not.toContain('Aリーグ');
+	test('mentions duplicated selections', () => {
+		const hint = getSemifinalsHint({ ...allReady, x2TeamBId: 'a1' });
+		expect(hint).toContain('同じチーム');
+	});
+});
+
+describe('canGenerateFifthPlace', () => {
+	test('returns true when both teams are selected', () => {
+		expect(canGenerateFifthPlace({ x3TeamAId: 'a3', x3TeamBId: 'b3' })).toBe(true);
 	});
 
-	test('mentions both groups when both are incomplete', () => {
-		const hint = getSemifinalsHint({ ...allReady, groupAAllDone: false, groupBAllDone: false });
-		expect(hint).toContain('Aリーグ');
-		expect(hint).toContain('Bリーグ');
+	test('returns false when a slot is empty', () => {
+		expect(canGenerateFifthPlace({ x3TeamAId: 'a3', x3TeamBId: '' })).toBe(false);
+	});
+});
+
+describe('getFifthPlaceHint', () => {
+	test('returns null when generation is possible', () => {
+		expect(getFifthPlaceHint({ x3TeamAId: 'a3', x3TeamBId: 'b3' })).toBeNull();
 	});
 
-	test('mentions tiebreaker when matches are done but tiebreaker is pending', () => {
-		const hint = getSemifinalsHint({ ...allReady, noTiebreakerA: false });
-		expect(hint).toContain('同点チーム');
-	});
-
-	test('match-incomplete hint takes priority over tiebreaker hint', () => {
-		const hint = getSemifinalsHint({
-			groupAAllDone: false,
-			groupBAllDone: true,
-			noTiebreakerA: false,
-			noTiebreakerB: true
-		});
-		expect(hint).toContain('完了してから');
-		expect(hint).not.toContain('同点チーム');
+	test('mentions missing fifth-place selections', () => {
+		expect(getFifthPlaceHint({ x3TeamAId: '', x3TeamBId: 'b3' })).toContain('5位決定戦');
 	});
 });
 

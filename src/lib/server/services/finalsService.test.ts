@@ -196,6 +196,6 @@ describe('assertFinalAssignmentsReady', () => {
 					displayOrder: 1
 				}
 			])
-		).toThrow('予選順位を確定してから生成してください');
+		).toThrow('出場チームをすべて選択してください');
 	});
 });

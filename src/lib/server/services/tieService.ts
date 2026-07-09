@@ -49,7 +49,7 @@ export async function createTieWithRubbers(params: {
 	now?: string;
 }): Promise<string> {
 	const db = getRequestDb();
-	const tieCode = params.tieCode.trim();
+	const tieCode = params.tieCode.trim().toUpperCase();
 	if (!tieCode) throw new Error('tieCode is required');
 	if (!/^[A-Za-z]+-\d+$/.test(tieCode)) {
 		throw new Error(
