@@ -2,6 +2,8 @@
 	import GitHub from '$lib/icons/github.svelte';
 	import { cn } from '$lib/utils/cn';
 
+	const year = new Date().getFullYear();
+
 	let { class: className }: { class?: string } = $props();
 </script>
 
@@ -16,8 +18,7 @@
 	>
 		<p class="flex flex-col @sm:flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
 			<span>
-				Developed by
-				<strong class="font-bold text-foreground">LOVE ALL</strong>
+				&copy; {year} LOVE ALL
 			</span>
 
 			<span class="hidden text-muted-foreground/75 select-none @sm:inline" aria-hidden="true"
@@ -42,7 +43,7 @@
 			target="_blank"
 			rel="noreferrer"
 			aria-label="GitHub リポジトリ"
-			class="inline-flex items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+			class="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
 		>
 			<GitHub class="size-4" aria-hidden="true" />
 		</a>
