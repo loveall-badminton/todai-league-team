@@ -17,7 +17,8 @@ const match = {
 	currentScoreB: 12,
 	currentGameNo: 2,
 	status: 'playing' as const,
-	lastSeqNo: 3
+	lastSeqNo: 3,
+	refereeName: null
 };
 
 const gameScores = [{ matchId: 'match-1', gameNo: 1, scoreA: 21, scoreB: 15 }];
@@ -156,7 +157,8 @@ describe('createPublicRubberSummaries', () => {
 			currentScoreB: 0,
 			currentGameNo: 1,
 			status: 'scheduled' as const,
-			lastSeqNo: 0
+			lastSeqNo: 0,
+			refereeName: null
 		};
 		const summaries = createPublicRubberSummaries({
 			rubbers: [{ ...rubber, matchId: 'match-s' }],

@@ -7,7 +7,8 @@
 		CheckCircle2,
 		Clock,
 		Shield,
-		ClipboardList
+		ClipboardList,
+		UserRound
 	} from '@lucide/svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppTabs from '$lib/components/AppTabs.svelte';
@@ -16,6 +17,9 @@
 	import IconMeta from '$lib/components/IconMeta.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
+	import Badge from '$lib/components/Badge.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { statusBadgeColor } from '$lib/utils/statusStyles';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { PageProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
@@ -138,11 +142,7 @@
 									<div class="min-w-0 flex-1">
 										<div class="flex flex-wrap items-center gap-1.5">
 											<span class="text-base font-bold text-zinc-900">{tie.tieCode}</span>
-											<span
-												class="inline-flex items-center rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"
-											>
-												未提出
-											</span>
+											<StatusBadge status={tie.status} label="未提出" />
 										</div>
 										<p class="mt-0.5 truncate text-sm text-zinc-600">
 											{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
@@ -204,12 +204,10 @@
 								<div class="min-w-0 flex-1">
 									<div class="flex flex-wrap items-center gap-1.5">
 										<span class="text-sm font-semibold text-zinc-800">{tie.tieCode}</span>
-										<span
-											class="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700"
-										>
+										<Badge color={statusBadgeColor(tie.status)} class="gap-0.5">
 											<CheckCircle2 class="size-3" />
 											{tieStatusLabel(tie.status)}
-										</span>
+										</Badge>
 									</div>
 									<p class="mt-0.5 truncate text-sm text-zinc-500">
 										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
@@ -244,9 +242,7 @@
 									{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 								</p>
 							</div>
-							<span class="shrink-0 text-xs font-medium text-zinc-500"
-								>{tieStatusLabel(tie.status)}</span
-							>
+							<StatusBadge status={tie.status} class="shrink-0" />
 						</a>
 					{/each}
 				</div>
@@ -293,11 +289,7 @@
 								<div class="flex flex-wrap items-center gap-1.5">
 									<p class="text-base font-bold text-zinc-900">{tie.tieCode}</p>
 									{#if hasPlayingRubber}
-										<span
-											class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700"
-										>
-											進行中
-										</span>
+										<Badge color="emerald">進行中</Badge>
 									{/if}
 								</div>
 								<div class="mt-0.5 flex flex-wrap items-center gap-3">
@@ -338,22 +330,33 @@
 												{isPlaying ? 'bg-emerald-50/40' : isDone ? 'bg-zinc-50' : ''}"
 										>
 											<span
-												class="w-24 shrink-0 text-sm font-semibold
+												class="shrink-0 text-sm font-semibold
 													{isPlaying ? 'text-emerald-700' : isDone ? 'text-zinc-500' : 'text-zinc-600'}"
 											>
 												{rubberLabel(rubber.code)}
 											</span>
-											<span
-												class="flex-1 text-sm
-													{isPlaying ? 'font-medium text-emerald-600' : isDone ? 'text-zinc-600' : 'text-zinc-500'}"
-											>
-												{rubberStatusLabel(rubber.status)}
-											</span>
-											{#if !isDone}
-												<ArrowRight
-													class="size-3.5 shrink-0 {isPlaying ? 'text-emerald-500' : 'text-muted'}"
+											{#if isDone && rubber.refereeName}
+												<IconMeta
+													Icon={UserRound}
+													label="審判"
+													value={rubber.refereeName}
+													class="min-w-0 flex-1 justify-end text-xs text-zinc-500"
+													iconClass="size-3 shrink-0"
 												/>
 											{/if}
+											<span class="flex shrink-0 items-center gap-3">
+												<StatusBadge
+													status={rubber.status}
+													label={rubberStatusLabel(rubber.status)}
+												/>
+												{#if !isDone}
+													<ArrowRight
+														class="size-3.5 shrink-0 {isPlaying
+															? 'text-emerald-500'
+															: 'text-muted'}"
+													/>
+												{/if}
+											</span>
 										</a>
 									{/each}
 								{/if}

@@ -3,9 +3,13 @@
 	import { tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { statusBadgeColor } from '$lib/utils/statusStyles';
 
-	let { status }: { status: string } = $props();
+	let {
+		status,
+		label,
+		class: className = ''
+	}: { status: string; label?: string; class?: string } = $props();
 </script>
 
-<Badge color={statusBadgeColor(status)}>
-	{tieStatusLabel(status)}
+<Badge color={statusBadgeColor(status)} class={className}>
+	{label ?? tieStatusLabel(status)}
 </Badge>
