@@ -4,7 +4,7 @@
 	import { AlarmClock } from '@lucide/svelte';
 	import type { LayoutProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
-	import { formatDurationMin } from '$lib/utils/timeOfDay';
+	import { formatDurationMin, toTimestamp, tournamentDateBaseMs } from '$lib/utils/timeOfDay';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -22,7 +22,7 @@
 		return pathname.startsWith(path);
 	}
 
-	const { remainingMin } = useLineupClock();
+	const { remainingMin } = useLineupClock(() => data.tournamentDate);
 
 	let bannerDismissed = $state(false);
 	let pendingLineups = $derived(data.pendingLineups ?? []);
@@ -30,12 +30,18 @@
 		!bannerDismissed && pendingLineups.length > 0 && !page.url.pathname.startsWith(tasksPath)
 	);
 
-	let urgentTie = $derived(
-		[...pendingLineups]
-			.filter((t) => t.lineupDueAt)
-			.sort((a, b) => new Date(a.lineupDueAt!).getTime() - new Date(b.lineupDueAt!).getTime())[0] ??
-			pendingLineups[0]
-	);
+	let urgentTie = $derived.by(() => {
+		const baseMs = tournamentDateBaseMs(data.tournamentDate);
+		return (
+			[...pendingLineups]
+				.filter((t) => t.lineupDueAt)
+				.sort(
+					(a, b) =>
+						(toTimestamp(a.lineupDueAt!, baseMs) ?? Infinity) -
+						(toTimestamp(b.lineupDueAt!, baseMs) ?? Infinity)
+				)[0] ?? pendingLineups[0]
+		);
+	});
 	let urgentRemainingMin = $derived(remainingMin(urgentTie?.lineupDueAt));
 </script>
 

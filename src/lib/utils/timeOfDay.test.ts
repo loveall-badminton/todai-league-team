@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { formatDurationMin, parseHhMm, subtractMinutesFromHhMm, toTimestamp } from './timeOfDay';
+import {
+	formatDurationMin,
+	parseHhMm,
+	subtractMinutesFromHhMm,
+	toTimestamp,
+	tournamentDateBaseMs
+} from './timeOfDay';
 
 describe('parseHhMm', () => {
 	test('parses valid HH:mm strings', () => {
@@ -31,6 +37,33 @@ describe('toTimestamp', () => {
 
 	test('returns null for unparseable values', () => {
 		expect(toTimestamp('not-a-date')).toBeNull();
+	});
+});
+
+describe('tournamentDateBaseMs', () => {
+	test('returns midnight of the given YYYY-MM-DD date', () => {
+		expect(tournamentDateBaseMs('2026-07-04')).toBe(new Date(2026, 6, 4, 0, 0, 0).getTime());
+	});
+
+	test('falls back to now when unset', () => {
+		const before = Date.now();
+		const result = tournamentDateBaseMs(null);
+		const after = Date.now();
+		expect(result).toBeGreaterThanOrEqual(before);
+		expect(result).toBeLessThanOrEqual(after);
+		expect(tournamentDateBaseMs(undefined)).toBeGreaterThanOrEqual(before);
+	});
+
+	test('falls back to now for an unparseable date', () => {
+		const before = Date.now();
+		const result = tournamentDateBaseMs('not-a-date');
+		expect(result).toBeGreaterThanOrEqual(before);
+	});
+
+	test('combined with toTimestamp, interprets HH:mm as occurring on the tournament date', () => {
+		const base = tournamentDateBaseMs('2026-08-15');
+		const result = toTimestamp('08:30', base);
+		expect(result).toBe(new Date(2026, 7, 15, 8, 30).getTime());
 	});
 });
 

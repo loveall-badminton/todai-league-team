@@ -107,7 +107,7 @@
 		pendingLocalDraft = localDraft;
 	});
 
-	const { remainingMin: calcRemainingMin } = useLineupClock();
+	const { remainingMin: calcRemainingMin } = useLineupClock(() => data.tournamentDate);
 	let remainingMin = $derived(
 		data.tie.lineupDueAt && !isLocked ? calcRemainingMin(data.tie.lineupDueAt) : null
 	);

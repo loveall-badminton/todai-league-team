@@ -28,6 +28,17 @@ export function toTimestamp(value: string, baseMs: number = Date.now()): number 
 }
 
 /**
+ * 大会実施日 (YYYY-MM-DD) の午前0時をエポックミリ秒で返す。
+ * 未設定・不正な値の場合は現在時刻を返す(=当日として扱う、これまでの挙動と互換)。
+ * toTimestamp() の基準時刻として渡すことで、HH:mm を「大会当日のその時刻」として解釈できる。
+ */
+export function tournamentDateBaseMs(tournamentDate?: string | null): number {
+	if (!tournamentDate) return Date.now();
+	const parsed = new Date(`${tournamentDate}T00:00:00`).getTime();
+	return Number.isNaN(parsed) ? Date.now() : parsed;
+}
+
+/**
  * 残り分数を「n分」「n時間」「n時間n分」の形式にする。
  * 60 分未満はそのまま分表記。0 以下の扱いは呼び出し側の責務。
  */

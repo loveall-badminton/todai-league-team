@@ -16,7 +16,8 @@ export const updateSettings = form(
 		knockoutScoringRuleId,
 		tiebreakerScoringRuleId,
 		lineupRevealPolicy,
-		defaultLineupDueMinutesBefore
+		defaultLineupDueMinutesBefore,
+		tournamentDate
 	}) => {
 		requireAdmin();
 		try {
@@ -27,6 +28,7 @@ export const updateSettings = form(
 				tiebreakerScoringRuleId: emptyToNull(tiebreakerScoringRuleId),
 				lineupRevealPolicy,
 				defaultLineupDueMinutesBefore,
+				tournamentDate: emptyToNull(tournamentDate),
 				now: new Date().toISOString()
 			});
 			return { message: '設定を保存しました。' };

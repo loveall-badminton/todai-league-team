@@ -51,6 +51,10 @@ export const appSettings = sqliteTable('app_settings', {
 
 	defaultLineupDueMinutesBefore: integer('default_lineup_due_minutes_before').notNull().default(10),
 
+	// 大会実施日 (YYYY-MM-DD)。対戦の開始時刻・オーダー期限は HH:mm 文字列で保存されており、
+	// この日付と組み合わせて実際の日時として解釈する。未設定の場合は当日として扱う。
+	tournamentDate: text('tournament_date'),
+
 	createdAt: text('created_at')
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),

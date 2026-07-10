@@ -13,7 +13,11 @@ import {
 	teams,
 	ties
 } from '$lib/server/db/schema';
-import { ensureDefaultSettings } from '$lib/server/services/tokyoLeagueSetupService';
+import {
+	ensureDefaultSettings,
+	getCachedAppSettings,
+	invalidateAppSettingsCache
+} from '$lib/server/services/tokyoLeagueSetupService';
 import { resolveUpdatedLineupDueAt } from '$lib/server/services/tieService';
 import { and, asc, count, eq, inArray, isNotNull, ne, or } from 'drizzle-orm';
 
@@ -39,7 +43,7 @@ export interface TieSummary extends Tie {
 }
 
 export async function getLeagueSettings() {
-	return ensureDefaultSettings();
+	return getCachedAppSettings();
 }
 
 export async function listScoringRules(): Promise<ScoringRule[]> {
@@ -55,6 +59,7 @@ export async function updateLeagueSettings(input: {
 	tiebreakerScoringRuleId: string | null;
 	lineupRevealPolicy: 'on_tie_start' | 'manual';
 	defaultLineupDueMinutesBefore: number;
+	tournamentDate: string | null;
 	now: string;
 }) {
 	const db = getRequestDb();
@@ -68,9 +73,11 @@ export async function updateLeagueSettings(input: {
 			tiebreakerScoringRuleId: input.tiebreakerScoringRuleId,
 			lineupRevealPolicy: input.lineupRevealPolicy,
 			defaultLineupDueMinutesBefore: input.defaultLineupDueMinutesBefore,
+			tournamentDate: input.tournamentDate,
 			updatedAt: input.now
 		})
 		.where(eq(appSettings.id, 'default'));
+	invalidateAppSettingsCache();
 }
 
 export async function updateScoringRule(input: {

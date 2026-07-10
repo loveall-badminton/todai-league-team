@@ -47,12 +47,37 @@ export async function ensureDefaultSettings(now = new Date().toISOString()) {
 		tiebreakerScoringRuleId: 'TIEBREAKER_21_SINGLE_GAME',
 		lineupRevealPolicy: 'on_tie_start' as const,
 		defaultLineupDueMinutesBefore: 10,
+		tournamentDate: null,
 		createdAt: now,
 		updatedAt: now
 	};
 
 	await db.insert(appSettings).values(values);
 	return values;
+}
+
+type AppSettings = Awaited<ReturnType<typeof ensureDefaultSettings>>;
+
+// 設定ページの値は運営が随時変更するものではないため、isolate 単位でメモリキャッシュする。
+// 更新時は invalidateAppSettingsCache() で即時に破棄され、同一 isolate では次回アクセスで
+// 再取得される(他 isolate へは TTL 経過で伝播)。ページロードのたびに D1 へ読みに行かないための最適化であり、
+// 生成・変更系の内部処理では ensureDefaultSettings() をそのまま使い、常に最新値を読む。
+const APP_SETTINGS_CACHE_TTL_MS = 60_000;
+let cachedAppSettings: { value: AppSettings; expiresAt: number } | null = null;
+
+/** ページロード用のキャッシュ付き設定取得。書き込み系の処理では使わないこと。 */
+export async function getCachedAppSettings(now = new Date().toISOString()): Promise<AppSettings> {
+	if (cachedAppSettings && cachedAppSettings.expiresAt > Date.now()) {
+		return cachedAppSettings.value;
+	}
+	const settings = await ensureDefaultSettings(now);
+	cachedAppSettings = { value: settings, expiresAt: Date.now() + APP_SETTINGS_CACHE_TTL_MS };
+	return settings;
+}
+
+/** 設定保存後に呼び、このisolateのキャッシュを即時破棄する。 */
+export function invalidateAppSettingsCache() {
+	cachedAppSettings = null;
 }
 
 export const INTERNAL_TOURNAMENT_ID = 'tokyo-league-default';

@@ -18,6 +18,7 @@
 			tiebreakerScoringRuleId: string | null;
 			lineupRevealPolicy: string;
 			defaultLineupDueMinutesBefore: number;
+			tournamentDate: string | null;
 		};
 		scoringRuleItems: SelectItem[];
 		lineupRevealItems: SelectItem[];
@@ -30,6 +31,21 @@
 		<span class="text-sm font-medium text-zinc-700">大会名</span>
 		<AppInput {...updateSettings.fields.eventName.as('text', settings.eventName ?? '')} required />
 		{#each updateSettings.fields.eventName.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
+			<span class="text-xs text-red-600">{issue.message}</span>
+		{/each}
+	</div>
+
+	<div class="grid gap-1">
+		<span class="text-sm font-medium text-zinc-700">大会実施日</span>
+		<AppInput
+			{...updateSettings.fields.tournamentDate.as('date', settings.tournamentDate ?? '')}
+			class="max-w-xs"
+		/>
+		<p class="text-xs text-muted-foreground">
+			開始時刻・オーダー提出期限 (HH:mm)
+			をこの日の時刻として扱います。未設定の場合は当日として扱われます。
+		</p>
+		{#each updateSettings.fields.tournamentDate.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 			<span class="text-xs text-red-600">{issue.message}</span>
 		{/each}
 	</div>

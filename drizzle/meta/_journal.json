@@ -71,6 +71,13 @@
       "when": 1782697865264,
       "tag": "0009_familiar_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1783618923342,
+      "tag": "0010_sticky_imperial_guard",
+      "breakpoints": true
     }
   ]
 }

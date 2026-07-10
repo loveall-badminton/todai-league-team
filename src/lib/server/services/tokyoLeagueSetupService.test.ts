@@ -10,6 +10,8 @@ import { tournaments } from '$lib/server/db/schema';
 import {
 	ensureDefaultSettings,
 	ensureInternalTournament,
+	getCachedAppSettings,
+	invalidateAppSettingsCache,
 	scoringConfigFromRule
 } from './tokyoLeagueSetupService';
 
@@ -31,6 +33,7 @@ function createDbMock() {
 describe('tokyoLeagueSetupService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		invalidateAppSettingsCache();
 	});
 
 	test('scoringConfigFromRule maps rule fields without extra properties', () => {
@@ -98,6 +101,33 @@ describe('tokyoLeagueSetupService', () => {
 
 		expect(result).toMatchObject({ id: 'default', eventName: 'existing' });
 		expect(db.insert).not.toHaveBeenCalled();
+	});
+
+	test('getCachedAppSettings reuses the result across calls without re-querying the DB', async () => {
+		const db = createDbMock();
+		db.query.appSettings.findFirst.mockResolvedValue({ id: 'default', eventName: 'cached-me' });
+		mockGetRequestDb.mockReturnValue(db);
+
+		const first = await getCachedAppSettings('2026-06-20T00:00:00.000Z');
+		const second = await getCachedAppSettings('2026-06-20T00:00:00.000Z');
+
+		expect(first).toMatchObject({ eventName: 'cached-me' });
+		expect(second).toBe(first);
+		expect(db.query.appSettings.findFirst).toHaveBeenCalledTimes(1);
+	});
+
+	test('invalidateAppSettingsCache forces the next call to re-query the DB', async () => {
+		const db = createDbMock();
+		db.query.appSettings.findFirst.mockResolvedValue({ id: 'default', eventName: 'v1' });
+		mockGetRequestDb.mockReturnValue(db);
+
+		await getCachedAppSettings('2026-06-20T00:00:00.000Z');
+		invalidateAppSettingsCache();
+		db.query.appSettings.findFirst.mockResolvedValue({ id: 'default', eventName: 'v2' });
+		const result = await getCachedAppSettings('2026-06-20T00:00:00.000Z');
+
+		expect(result).toMatchObject({ eventName: 'v2' });
+		expect(db.query.appSettings.findFirst).toHaveBeenCalledTimes(2);
 	});
 
 	test('ensureInternalTournament inserts only when absent', async () => {

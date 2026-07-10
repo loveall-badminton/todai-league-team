@@ -1,4 +1,5 @@
 import { displayAccountId, type AuthUserWithAccountId } from '$lib/server/auth/accountIds';
+import { getCachedAppSettings } from '$lib/server/services/tokyoLeagueSetupService';
 import type { LayoutServerLoad } from './$types';
 
 const userRole = (user: App.Locals['user']) => {
@@ -6,7 +7,7 @@ const userRole = (user: App.Locals['user']) => {
 	return 'participant';
 };
 
-export const load: LayoutServerLoad = ({ locals }) => ({
+export const load: LayoutServerLoad = async ({ locals }) => ({
 	user: locals.user
 		? {
 				id: locals.user.id,
@@ -15,5 +16,6 @@ export const load: LayoutServerLoad = ({ locals }) => ({
 				role: userRole(locals.user)
 			}
 		: null,
-	authProfile: locals.authProfile ?? null
+	authProfile: locals.authProfile ?? null,
+	tournamentDate: (await getCachedAppSettings()).tournamentDate
 });

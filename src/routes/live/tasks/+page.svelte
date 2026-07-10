@@ -26,7 +26,7 @@
 	let myTeamId = $derived(data.authProfile?.teamId ?? null);
 	let isTeamAccount = $derived(data.authProfile?.accountType === 'team' && !!myTeamId);
 
-	const { remainingMin } = useLineupClock();
+	const { remainingMin } = useLineupClock(() => data.tournamentDate);
 
 	// null (未定) を最後に回す昇順比較。
 	function byTimeAsc<T>(getTime: (item: T) => string | null) {
