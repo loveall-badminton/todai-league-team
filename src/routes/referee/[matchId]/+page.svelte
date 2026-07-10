@@ -192,14 +192,6 @@
 	});
 </script>
 
-<RealtimeSync
-	topics={['score']}
-	channel={matchChannel(matchState.matchId)}
-	refresh={() => invalidateAll()}
-	applyUpdate={applyRealtimeUpdate}
-	debounceMs={0}
-/>
-
 {#snippet scoreCard(
 	side: 'A' | 'B',
 	name: string,
@@ -243,9 +235,21 @@
 
 <div class="grid gap-4">
 	<!-- Header -->
-	<div class="text-center text-xs text-muted">
-		第{matchState.currentGameNo}ゲーム · ゲームカウント {matchState.gamesWon[leftSide]}–{matchState
-			.gamesWon[rightSide]}
+	<div class="flex items-center justify-between text-xs text-muted">
+		<span class="text-center">
+			第{matchState.currentGameNo}ゲーム · ゲームカウント {matchState.gamesWon[
+				leftSide
+			]}–{matchState.gamesWon[rightSide]}
+		</span>
+		<span class="flex flex-1 justify-end">
+			<RealtimeSync
+				topics={['score']}
+				channel={matchChannel(matchState.matchId)}
+				refresh={() => invalidateAll()}
+				applyUpdate={applyRealtimeUpdate}
+				debounceMs={0}
+			/>
+		</span>
 	</div>
 
 	<!-- Match finished banner -->

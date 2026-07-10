@@ -117,6 +117,16 @@
 	<title>{data.team.name} オーダー入力 | 東大リーグ団体戦</title>
 </svelte:head>
 
+{#snippet headerActions()}
+	<!-- 運営のロック/公開/期限変更を即時反映する。下書き(draftItems)はローカル $state なので refresh では消えない -->
+	<RealtimeSync
+		topics={['schedule']}
+		refresh={() => invalidateAll()}
+		shouldRefresh={(update) => shouldRefreshTieLineups(update, data.tie.id)}
+		pollInterval={15000}
+	/>
+{/snippet}
+
 <!-- Header -->
 <header>
 	<a
@@ -135,18 +145,12 @@
 	<PageHeader
 		title={data.team.name}
 		description={data.opponentTeam ? `vs ${data.opponentTeam.name}` : 'オーダー入力'}
+		actions={headerActions}
 	/>
 	<div class="mt-2 flex items-center gap-3">
 		<span class="inline-flex rounded-full px-3 py-1 text-sm font-medium {statusBadgeClass(status)}">
 			{submissionStatusLabel(status)}
 		</span>
-		<!-- 運営のロック/公開/期限変更を即時反映する。下書き(draftItems)はローカル $state なので refresh では消えない -->
-		<RealtimeSync
-			topics={['schedule']}
-			refresh={() => invalidateAll()}
-			shouldRefresh={(update) => shouldRefreshTieLineups(update, data.tie.id)}
-			pollInterval={15000}
-		/>
 		{#if remainingMin !== null}
 			<span
 				class="text-xs {remainingMin <= 0

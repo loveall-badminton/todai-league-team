@@ -1,7 +1,8 @@
 <script lang="ts" generics="TTopic extends LiveTopic">
 	import { dev } from '$app/environment';
 	import { onMount } from 'svelte';
-	import AppSwitch from './AppSwitch.svelte';
+	import { LoaderCircle, RefreshCw } from '@lucide/svelte';
+	import { cn } from '$lib/utils/cn';
 	import {
 		LIVE_BOARD_CHANNEL,
 		filterSubscribedTopics,
@@ -60,9 +61,25 @@
 	// 接続断(または手動 OFF)の間に流れたイベントは受信できないため、
 	// 再接続時に一度だけ全体 refresh してキャッチアップする
 	let needsCatchUp = $state(false);
-	let statusLabel = $derived(
-		enabled ? (connected ? '接続中' : fallbackActive ? '自動更新中' : '接続中…') : '自動更新'
+
+	type StatusTone = 'off' | 'connecting' | 'live' | 'polling';
+	let statusTone: StatusTone = $derived(
+		!enabled ? 'off' : connected ? 'live' : fallbackActive ? 'polling' : 'connecting'
 	);
+	const statusLabels: Record<StatusTone, string> = {
+		off: '自動更新オフ',
+		connecting: '接続中',
+		live: 'ライブ更新',
+		polling: '定期更新中'
+	};
+	let statusLabel = $derived(statusLabels[statusTone]);
+
+	const statusToneClasses: Record<StatusTone, string> = {
+		off: 'border-border bg-white text-muted hover:bg-zinc-50',
+		connecting: 'border-border bg-white text-muted-emphasis',
+		live: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+		polling: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+	};
 
 	function setAutoUpdateEnabled(next: boolean) {
 		enabled = next;
@@ -174,4 +191,28 @@
 	});
 </script>
 
-<AppSwitch checked={enabled} onCheckedChange={setAutoUpdateEnabled} label={statusLabel} />
+<button
+	type="button"
+	role="switch"
+	aria-checked={enabled}
+	onclick={() => setAutoUpdateEnabled(!enabled)}
+	class={cn(
+		'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+		statusToneClasses[statusTone]
+	)}
+>
+	{#if statusTone === 'connecting'}
+		<LoaderCircle class="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
+	{:else if statusTone === 'polling'}
+		<RefreshCw class="size-3.5 shrink-0" aria-hidden="true" />
+	{:else}
+		<span
+			class={cn(
+				'size-2 shrink-0 rounded-full',
+				statusTone === 'live' ? 'bg-emerald-500' : 'bg-zinc-300'
+			)}
+			aria-hidden="true"
+		></span>
+	{/if}
+	{statusLabel}
+</button>
