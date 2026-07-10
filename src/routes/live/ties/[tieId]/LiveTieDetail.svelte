@@ -136,29 +136,31 @@
 {/snippet}
 
 <!-- Tie header -->
-<Card class="mb-4" flush>
-	<div class="px-5 pt-4 pb-3">
-		<p class="text-xs font-medium text-muted">
-			{phaseLabel(tie.phase)} · {tie.tieCode}
-		</p>
-		<IconMeta
-			Icon={MapPin}
-			label="コート"
-			value={courtDisplayLabel(tie.venue, tie.courtBlockCode)}
-			class="mt-0.5 text-[11px] text-muted"
-			iconClass="size-3 shrink-0"
-		/>
-		<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-			<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
-			<div class="text-center">
-				<p class="text-3xl leading-none font-bold text-emerald-700 tabular-nums">
-					{tie.teamScoreA}<span class="mx-1 text-emerald-300">–</span>{tie.teamScoreB}
-				</p>
+<div style="view-transition-name: tie-card-{tie.id}">
+	<Card class="mb-4" flush>
+		<div class="px-5 pt-4 pb-3">
+			<p class="text-xs font-medium text-muted">
+				{phaseLabel(tie.phase)} · {tie.tieCode}
+			</p>
+			<IconMeta
+				Icon={MapPin}
+				label="コート"
+				value={courtDisplayLabel(tie.venue, tie.courtBlockCode)}
+				class="mt-0.5 text-[11px] text-muted"
+				iconClass="size-3 shrink-0"
+			/>
+			<div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+				<p class="min-w-0 truncate font-semibold">{tie.teamAName ?? '未定'}</p>
+				<div class="text-center">
+					<p class="text-3xl leading-none font-bold text-emerald-700 tabular-nums">
+						{tie.teamScoreA}<span class="mx-1 text-emerald-300">–</span>{tie.teamScoreB}
+					</p>
+				</div>
+				<p class="min-w-0 truncate text-right font-semibold">{tie.teamBName ?? '未定'}</p>
 			</div>
-			<p class="min-w-0 truncate text-right font-semibold">{tie.teamBName ?? '未定'}</p>
 		</div>
-	</div>
-</Card>
+	</Card>
+</div>
 
 <!-- Rubber list -->
 <Card class="overflow-hidden" flush>

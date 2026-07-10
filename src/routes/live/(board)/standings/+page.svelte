@@ -23,4 +23,6 @@
 
 <PageHeader title="ライブ表示" actions={headerActions} />
 
-<LiveStandings query={standings} />
+<div style="view-transition-name: live-tab-content">
+	<LiveStandings query={standings} />
+</div>

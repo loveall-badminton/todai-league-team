@@ -72,6 +72,7 @@
 								data-sveltekit-preload-data="tap"
 								class="relative flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100
 									{myTie ? 'bg-blue-50/60' : ''}"
+								style="view-transition-name: tie-card-{tie.id}"
 							>
 								{#if myTie}
 									<span class="absolute inset-y-0 left-0 w-0.5 rounded-full bg-blue-400"></span>

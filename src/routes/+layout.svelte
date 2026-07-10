@@ -2,6 +2,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page, updated } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { Component } from 'svelte';
 	import type { LayoutProps } from './$types';
@@ -86,6 +87,16 @@
 
 	$effect(() => {
 		if (updated.current) location.reload();
+	});
+
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
 	});
 </script>
 

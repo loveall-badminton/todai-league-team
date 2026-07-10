@@ -91,63 +91,65 @@
 		</div>
 	</section>
 {:else if groups.length > 0}
-	{#if finalsTies.length > 0}
-		<section class="space-y-3">
-			<SectionLabel>総合順位</SectionLabel>
-			<Card flush class="overflow-hidden">
-				<div class="divide-y divide-zinc-50">
-					{#each finalRanks as entry (entry.rank)}
-						{@const matchLabel =
-							entry.rank <= 2 ? '決勝' : entry.rank <= 4 ? '3位決定戦' : '5位決定戦'}
-						<a
-							href={resolve('/live/ties/[tieId]', { tieId: entry.tieId })}
-							data-sveltekit-preload-data="tap"
-							class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
-						>
-							<span
-								class="w-8 shrink-0 text-center text-sm font-bold tabular-nums {entry.confirmed
-									? 'text-zinc-800'
-									: 'text-zinc-300'}">{entry.rank}位</span
+	<div style="view-transition-name: live-tab-content">
+		{#if finalsTies.length > 0}
+			<section class="space-y-3">
+				<SectionLabel>総合順位</SectionLabel>
+				<Card flush class="overflow-hidden">
+					<div class="divide-y divide-zinc-50">
+						{#each finalRanks as entry (entry.rank)}
+							{@const matchLabel =
+								entry.rank <= 2 ? '決勝' : entry.rank <= 4 ? '3位決定戦' : '5位決定戦'}
+							<a
+								href={resolve('/live/ties/[tieId]', { tieId: entry.tieId })}
+								data-sveltekit-preload-data="tap"
+								class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
 							>
-							<span
-								class="min-w-0 flex-1 text-sm {entry.confirmed
-									? 'font-semibold text-zinc-900'
-									: 'text-zinc-400'}"
-							>
-								{entry.name ?? `${matchLabel}待ち`}
-							</span>
-							{#if entry.confirmed}
-								<span class="shrink-0 text-[11px] text-zinc-400">{matchLabel}</span>
-							{:else}
-								{@const tie = finalsTies.find((t) => t.id === entry.tieId)}
-								<span class="shrink-0 text-[11px] text-zinc-400">
-									{tie ? tieStatusLabel(tie.status) : ''}
+								<span
+									class="w-8 shrink-0 text-center text-sm font-bold tabular-nums {entry.confirmed
+										? 'text-zinc-800'
+										: 'text-zinc-300'}">{entry.rank}位</span
+								>
+								<span
+									class="min-w-0 flex-1 text-sm {entry.confirmed
+										? 'font-semibold text-zinc-900'
+										: 'text-zinc-400'}"
+								>
+									{entry.name ?? `${matchLabel}待ち`}
 								</span>
-							{/if}
-						</a>
-					{/each}
-				</div>
-			</Card>
-		</section>
-	{/if}
-
-	<section class="space-y-3">
-		<SectionLabel>予選順位表</SectionLabel>
-		<div class="grid gap-4 xl:grid-cols-2">
-			{#each groups as group (group.label)}
-				{@const teams = groupTeams(group.rows, query.current!.teams)}
-				<Card class="overflow-hidden" flush>
-					{#snippet header()}
-						<h3 class="text-sm font-semibold text-default">{group.label}</h3>
-					{/snippet}
-					<GroupStandingsTable
-						standings={group.rows}
-						ties={group.ties}
-						{teams}
-						tieHref={(id) => resolve('/live/ties/[tieId]', { tieId: id })}
-					/>
+								{#if entry.confirmed}
+									<span class="shrink-0 text-[11px] text-zinc-400">{matchLabel}</span>
+								{:else}
+									{@const tie = finalsTies.find((t) => t.id === entry.tieId)}
+									<span class="shrink-0 text-[11px] text-zinc-400">
+										{tie ? tieStatusLabel(tie.status) : ''}
+									</span>
+								{/if}
+							</a>
+						{/each}
+					</div>
 				</Card>
-			{/each}
-		</div>
-	</section>
+			</section>
+		{/if}
+
+		<section class="space-y-3">
+			<SectionLabel>予選順位表</SectionLabel>
+			<div class="grid gap-4 xl:grid-cols-2">
+				{#each groups as group (group.label)}
+					{@const teams = groupTeams(group.rows, query.current!.teams)}
+					<Card class="overflow-hidden" flush>
+						{#snippet header()}
+							<h3 class="text-sm font-semibold text-default">{group.label}</h3>
+						{/snippet}
+						<GroupStandingsTable
+							standings={group.rows}
+							ties={group.ties}
+							{teams}
+							tieHref={(id) => resolve('/live/ties/[tieId]', { tieId: id })}
+						/>
+					</Card>
+				{/each}
+			</div>
+		</section>
+	</div>
 {/if}
