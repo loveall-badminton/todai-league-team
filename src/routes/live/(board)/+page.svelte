@@ -79,7 +79,7 @@
 
 <PageHeader title="ライブ表示" actions={headerActions} />
 
-<div style="view-transition-name: live-tab-content">
+<div class="space-y-3" style="view-transition-name: live-tab-content">
 	{#if playingTies.length > 0}
 		<section class="space-y-3">
 			<SectionLabel>進行中</SectionLabel>

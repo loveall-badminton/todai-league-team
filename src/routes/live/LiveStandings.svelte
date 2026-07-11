@@ -91,7 +91,7 @@
 		</div>
 	</section>
 {:else if groups.length > 0}
-	<div style="view-transition-name: live-tab-content">
+	<div class="space-y-3" style="view-transition-name: live-tab-content">
 		{#if finalsTies.length > 0}
 			<section class="space-y-3">
 				<SectionLabel>総合順位</SectionLabel>
@@ -139,7 +139,9 @@
 					{@const teams = groupTeams(group.rows, query.current!.teams)}
 					<Card class="overflow-hidden" flush>
 						{#snippet header()}
-							<h3 class="text-sm font-semibold text-default">{group.label}</h3>
+							<h3 class="text-xs font-semibold tracking-wide text-muted-foreground">
+								{group.label}
+							</h3>
 						{/snippet}
 						<GroupStandingsTable
 							standings={group.rows}
