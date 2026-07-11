@@ -7,15 +7,21 @@ const userRole = (user: App.Locals['user']) => {
 	return 'participant';
 };
 
-export const load: LayoutServerLoad = async ({ locals }) => ({
-	user: locals.user
-		? {
-				id: locals.user.id,
-				name: locals.user.name,
-				accountId: displayAccountId(locals.user as AuthUserWithAccountId),
-				role: userRole(locals.user)
-			}
-		: null,
-	authProfile: locals.authProfile ?? null,
-	tournamentDate: (await getCachedAppSettings()).tournamentDate
-});
+export const load: LayoutServerLoad = async ({ locals, setHeaders }) => {
+	setHeaders({
+		'cache-control': 'private, no-cache'
+	});
+
+	return {
+		user: locals.user
+			? {
+					id: locals.user.id,
+					name: locals.user.name,
+					accountId: displayAccountId(locals.user as AuthUserWithAccountId),
+					role: userRole(locals.user)
+				}
+			: null,
+		authProfile: locals.authProfile ?? null,
+		tournamentDate: (await getCachedAppSettings()).tournamentDate
+	};
+};

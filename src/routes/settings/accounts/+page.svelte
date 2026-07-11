@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import AccountTypeBadge from '$lib/components/AccountTypeBadge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
-	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -12,12 +12,7 @@
 	import { toast } from 'svelte-sonner';
 	import type { PageProps } from './$types';
 	import { deleteAccount } from './accounts.remote';
-	import {
-		accountTypeValue,
-		accountTypeBadgeColor,
-		accountTypeIcon,
-		accountTypeLabel
-	} from './accounts.helpers';
+	import { accountTypeValue, accountTypeIcon } from './accounts.helpers';
 	import AccountCreateForm from './AccountCreateForm.svelte';
 	import AccountEditDialog from './AccountEditDialog.svelte';
 
@@ -107,9 +102,7 @@
 								</div>
 							</td>
 							<td class="hidden px-4 py-3 sm:table-cell">
-								<Badge color={accountTypeBadgeColor(accountType)}>
-									{accountTypeLabel(accountType)}
-								</Badge>
+								<AccountTypeBadge {accountType} />
 							</td>
 							<td class="hidden px-4 py-3 md:table-cell">
 								<span class="text-xs text-muted-emphasis"

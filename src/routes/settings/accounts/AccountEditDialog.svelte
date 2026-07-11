@@ -1,20 +1,15 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
+	import AccountTypeBadge from '$lib/components/AccountTypeBadge.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import AppInput from '$lib/components/AppInput.svelte';
 	import AppSelect from '$lib/components/AppSelect.svelte';
-	import Badge from '$lib/components/Badge.svelte';
 	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
 	import FormToast from '$lib/components/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
 	import { updateAccount, resetPassword } from './accounts.remote';
-	import {
-		accountTypeValue,
-		accountTypeBadgeColor,
-		accountTypeLabel,
-		accountTypeIcon
-	} from './accounts.helpers';
+	import { accountTypeValue, accountTypeIcon } from './accounts.helpers';
 
 	let {
 		open = $bindable(false),
@@ -52,9 +47,7 @@
 									<span class="font-mono text-sm font-semibold text-default">
 										{editAccount.accountId}
 									</span>
-									<Badge color={accountTypeBadgeColor(acctType)}>
-										{accountTypeLabel(acctType)}
-									</Badge>
+									<AccountTypeBadge accountType={acctType} />
 								</div>
 								<p class="text-xs text-muted-foreground">{editAccount.name}</p>
 							</div>

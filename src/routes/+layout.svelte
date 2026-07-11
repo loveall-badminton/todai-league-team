@@ -20,6 +20,7 @@
 		BookOpen
 	} from '@lucide/svelte';
 	import type { AccountType } from '$lib/server/auth/accountManagement';
+	import AccountTypeBadge from '$lib/components/AccountTypeBadge.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Logout from './logout.svelte';
 	import { Toaster } from 'svelte-sonner';
@@ -148,6 +149,17 @@
 				<X class="h-4 w-4" />
 			</button>
 		</div>
+		{#if data.user}
+			<div class="border-b border-border px-4 py-3">
+				<div class="flex min-w-0 flex-col gap-1">
+					<span class="truncate text-sm font-semibold text-default">{data.user.name}</span>
+					<div class="flex items-center gap-2">
+						<span class="truncate text-xs text-muted-foreground">{data.user.accountId}</span>
+						<AccountTypeBadge accountType={data.user.role} />
+					</div>
+				</div>
+			</div>
+		{/if}
 		<nav class="flex flex-col gap-0.5 p-3">
 			{#each visibleNavItems as item (item.path)}
 				{@const Icon = item.icon}
@@ -177,6 +189,17 @@
 			<div class="border-b border-border px-4 py-5">
 				<span class="block text-sm leading-tight font-bold text-default">メニュー</span>
 			</div>
+			{#if data.user}
+				<div class="border-b border-border px-4 py-3">
+					<div class="flex min-w-0 flex-col gap-1">
+						<span class="truncate text-sm font-semibold text-default">{data.user.name}</span>
+						<div class="flex items-center gap-2">
+							<span class="truncate text-xs text-muted-foreground">{data.user.accountId}</span>
+							<AccountTypeBadge accountType={data.user.role} />
+						</div>
+					</div>
+				</div>
+			{/if}
 			<nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
 				{#each visibleNavItems as item (item.path)}
 					{@const Icon = item.icon}
