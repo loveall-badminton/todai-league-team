@@ -51,8 +51,8 @@
 				/>
 			</div>
 			<div class="self-end">
-				<AppButton type="submit" disabled={isScoringLocked || saveRefereeName.pending > 0}>
-					{saveRefereeName.pending > 0 ? '保存中…' : '保存'}
+				<AppButton type="submit" loading={saveRefereeName.pending > 0} disabled={isScoringLocked}>
+					保存
 				</AppButton>
 			</div>
 		</form>

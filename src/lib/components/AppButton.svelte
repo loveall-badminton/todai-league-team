@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from 'bits-ui';
+	import { LoaderCircle } from '@lucide/svelte';
 	import type { ComponentProps } from 'svelte';
 	import { tv, type VariantProps } from 'tailwind-variants';
 	import { cn } from '$lib/utils/cn';
@@ -7,12 +8,16 @@
 	let {
 		variant = 'primary',
 		size = 'md',
+		loading = false,
+		disabled = false,
 		class: className = '',
 		children,
 		...restProps
 	}: ComponentProps<typeof Button.Root> & {
 		variant?: VariantProps<typeof buttonStyles>['variant'];
 		size?: VariantProps<typeof buttonStyles>['size'];
+		loading?: boolean;
+		disabled?: boolean;
 	} = $props();
 
 	const buttonStyles = tv({
@@ -38,6 +43,14 @@
 	});
 </script>
 
-<Button.Root class={cn(buttonStyles({ variant, size }), className)} {...restProps}>
+<Button.Root
+	class={cn(buttonStyles({ variant, size }), className)}
+	disabled={loading || disabled}
+	aria-busy={loading || undefined}
+	{...restProps}
+>
+	{#if loading}
+		<LoaderCircle class="h-4 w-4 animate-spin" />
+	{/if}
 	{@render children?.()}
 </Button.Root>

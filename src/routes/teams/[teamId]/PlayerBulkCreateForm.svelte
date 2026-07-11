@@ -33,7 +33,5 @@
 		/>
 	</label>
 	<input {...bulkCreatePlayers.fields.gender.as('hidden', 'unknown')} />
-	<AppButton type="submit" disabled={bulkCreatePlayers.pending > 0}>
-		{bulkCreatePlayers.pending > 0 ? '登録中…' : '一括登録'}
-	</AppButton>
+	<AppButton type="submit" loading={bulkCreatePlayers.pending > 0}>一括登録</AppButton>
 </form>
