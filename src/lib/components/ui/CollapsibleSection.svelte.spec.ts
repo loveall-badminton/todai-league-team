@@ -39,7 +39,7 @@ describe('CollapsibleSection.svelte', () => {
 	});
 
 	it('toggles data-state on content element', async () => {
-		const result = render(CollapsibleSection, {
+		const result = await render(CollapsibleSection, {
 			props: { title: '詳細' }
 		});
 		const contentEl = result.container.querySelector('[data-collapsible-content]');

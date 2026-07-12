@@ -68,7 +68,7 @@ describe('ConfirmDialog.svelte', () => {
 	});
 
 	it('hidden form is rendered when onConfirm is not set', async () => {
-		const result = render(ConfirmDialog, {
+		const result = await render(ConfirmDialog, {
 			props: {
 				triggerLabel: '削除',
 				title: '確認',
@@ -83,7 +83,7 @@ describe('ConfirmDialog.svelte', () => {
 	});
 
 	it('hidden form has hidden field inputs', async () => {
-		const result = render(ConfirmDialog, {
+		const result = await render(ConfirmDialog, {
 			props: {
 				triggerLabel: '削除',
 				title: '確認',
@@ -104,7 +104,7 @@ describe('ConfirmDialog.svelte', () => {
 	});
 
 	it('no hidden form when onConfirm is provided', async () => {
-		const result = render(ConfirmDialog, {
+		const result = await render(ConfirmDialog, {
 			props: { triggerLabel: '削除', title: '確認', onConfirm: () => {} }
 		});
 		const form = result.container.querySelector('form');

@@ -9,7 +9,7 @@ const items = [
 	{ value: 'second_gym', label: '第二体育館' }
 ];
 
-function getTrigger(result: ReturnType<typeof render>) {
+function getTrigger(result: Awaited<ReturnType<typeof render>>) {
 	const trigger = result.container.querySelector<HTMLButtonElement>('[data-select-trigger]');
 	if (!trigger) throw new Error('[data-select-trigger] が見つかりません');
 	return page.elementLocator(trigger);
@@ -36,7 +36,7 @@ describe('AppSelect.svelte', () => {
 
 	it('opens options and calls onValueChange when an item is selected', async () => {
 		const onValueChange = vi.fn();
-		const result = render(AppSelect, {
+		const result = await render(AppSelect, {
 			name: 'venue',
 			value: '',
 			placeholder: '体育館を選択',
@@ -68,13 +68,13 @@ describe('AppSelect.svelte', () => {
 	});
 
 	it('marks the trigger as disabled when disabled=true', async () => {
-		const result = render(AppSelect, { name: 'venue', value: '', items, disabled: true });
+		const result = await render(AppSelect, { name: 'venue', value: '', items, disabled: true });
 
 		await expect.element(getTrigger(result)).toBeDisabled();
 	});
 
 	it('applies custom classes to the trigger', async () => {
-		const result = render(AppSelect, { name: 'venue', value: '', items, class: 'max-w-xs' });
+		const result = await render(AppSelect, { name: 'venue', value: '', items, class: 'max-w-xs' });
 
 		await expect.element(getTrigger(result)).toHaveClass('max-w-xs');
 	});

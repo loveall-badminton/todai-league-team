@@ -11,7 +11,7 @@ describe('AppCheckbox.svelte', () => {
 	});
 
 	it('reflects the checked state through aria-checked and active styling', async () => {
-		const result = render(AppCheckbox, { label: '選択済み', checked: true });
+		const result = await render(AppCheckbox, { label: '選択済み', checked: true });
 
 		const checkbox = page.getByRole('checkbox', { name: '選択済み' });
 		const box = result.container.querySelector<HTMLDivElement>('[role="checkbox"] > div');
@@ -33,7 +33,7 @@ describe('AppCheckbox.svelte', () => {
 	});
 
 	it('applies danger variant styles', async () => {
-		const result = render(AppCheckbox, { label: '危険', checked: true, variant: 'danger' });
+		const result = await render(AppCheckbox, { label: '危険', checked: true, variant: 'danger' });
 
 		const box = result.container.querySelector<HTMLDivElement>('[role="checkbox"] > div');
 		const label = result.container.querySelector<HTMLSpanElement>('span');
@@ -56,7 +56,7 @@ describe('AppCheckbox.svelte', () => {
 	});
 
 	it('passes name and value to the checkbox root', async () => {
-		const result = render(AppCheckbox, {
+		const result = await render(AppCheckbox, {
 			label: '提出',
 			name: 'submitted',
 			value: 'yes',
