@@ -29,6 +29,6 @@
 	</div>
 
 	{#if actions}
-		<div class="shrink-0">{@render actions()}</div>
+		<div class="w-full shrink-0 sm:w-auto">{@render actions()}</div>
 	{/if}
 </header>

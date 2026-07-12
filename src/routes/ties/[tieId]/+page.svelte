@@ -182,14 +182,21 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<div class="flex flex-wrap items-center gap-3">
-		<div class="flex items-center gap-2">
-			<StatusBadge status={tie.status} />
-			{#if tie.scheduleChanged}
-				<Badge color="amber">変更あり</Badge>
-			{/if}
+	<div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+		<div class="flex items-center justify-between gap-2 sm:contents">
+			<div class="flex flex-wrap items-center gap-2">
+				<StatusBadge status={tie.status} />
+				{#if tie.scheduleChanged}
+					<Badge color="amber">変更あり</Badge>
+				{/if}
+			</div>
+			<RealtimeSync
+				topics={realtimeTopics}
+				onUpdate={(u) => void handleAdminUpdate(u)}
+				pollInterval={10000}
+			/>
 		</div>
-		<Card class="flex items-center gap-3">
+		<Card class="flex items-center justify-center gap-3 sm:justify-start">
 			<div class="text-center">
 				<div class="flex items-center gap-2">
 					<span class="text-4xl font-bold tabular-nums">{tie.teamScoreA}</span>
@@ -207,11 +214,6 @@
 				{/if}
 			</div>
 		</Card>
-		<RealtimeSync
-			topics={realtimeTopics}
-			onUpdate={(u) => void handleAdminUpdate(u)}
-			pollInterval={10000}
-		/>
 	</div>
 {/snippet}
 
