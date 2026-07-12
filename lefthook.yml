@@ -1,34 +1,23 @@
-# EXAMPLE USAGE:
-#
-#   Refer for explanation to following link:
-#   https://lefthook.dev/configuration/
-#
+# https://lefthook.dev/configuration/
 pre-push:
   jobs:
-    - run: pnpm test:e2e
-#
+    - name: e2e
+      run: pnpm test:e2e
+
 pre-commit:
   parallel: true
   jobs:
-    - run: pnpm format --check {staged_files}
-    - run: pnpm lint {staged_files}
-    - run: pnpm check
-    - run: pnpm test
-#
-#     - name: rubocop
-#       glob: "*.rb"
-#       exclude:
-#         - config/application.rb
-#         - config/routes.rb
-#       run: bundle exec rubocop --force-exclusion -- {all_files}
-#
-#     - name: govet
-#       files: git ls-files -m
-#       glob: "*.go"
-#       run: go vet -- {files}
-#
-#     - script: "hello.js"
-#       runner: node
-#
-#     - script: "hello.go"
-#       runner: go run
+    # フォーマット/リントはステージされたファイルだけを対象にする(全体スキャンは CI が担う)
+    - name: prettier
+      run: pnpm exec prettier --check --ignore-unknown {staged_files}
+    - name: eslint
+      glob: '*.{js,mjs,cjs,ts,svelte}'
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    # 型チェックとテストはプロジェクト全体が対象。コードに触れない
+    # コミット(ドキュメント等)では glob 不一致でスキップされる
+    - name: svelte-check
+      glob: '*.{js,mjs,cjs,ts,svelte,json,jsonc}'
+      run: pnpm check
+    - name: unit-tests
+      glob: '*.{js,mjs,cjs,ts,svelte,json,jsonc}'
+      run: pnpm test

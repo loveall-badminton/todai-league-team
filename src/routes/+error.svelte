@@ -4,8 +4,11 @@
 	import AppButton from '$lib/components/AppButton.svelte';
 
 	const statusCodeToMessage: Record<number, string> = {
+		401: 'ログインが必要です',
 		403: 'アクセス権限がありません',
-		404: 'ページが見つかりません'
+		404: 'ページが見つかりません',
+		429: 'アクセスが集中しています。しばらく待ってからお試しください',
+		500: 'サーバーでエラーが発生しました。時間をおいて再度お試しください'
 	};
 </script>
 
