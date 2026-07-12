@@ -1,5 +1,5 @@
 <script lang="ts">
-	import AppInput from '$lib/components/AppInput.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
 	import { setManualRank } from './group.remote';
 
 	let {

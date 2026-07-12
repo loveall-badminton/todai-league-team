@@ -2,12 +2,12 @@
 	import { resolve } from '$app/paths';
 	import type { EntityOption } from '$lib/types/entities';
 	import { ArrowLeft } from '@lucide/svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Callout from '$lib/components/Callout.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
 	import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 	import { rubberLabel, submissionStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import type { PageProps } from './$types';
 	import {
 		lineupStatusBadgeClass,

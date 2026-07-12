@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Badge from './Badge.svelte';
+	import Badge from './ui/Badge.svelte';
 	import { groupBadgeColor } from '$lib/utils/statusStyles';
 
 	let { groupCode }: { groupCode: string | null } = $props();

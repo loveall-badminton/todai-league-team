@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { phaseLabel } from '$lib/domain/tokyoLeagueLabels';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import Badge from '$lib/components/Badge.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { ArrowRight, Settings } from '@lucide/svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';

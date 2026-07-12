@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
-	import Card from '$lib/components/Card.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import type { ScheduleData } from '$lib/server/services/livePageService';
-	import type { QueryValue } from '$lib/utils/types';
-	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import type { QueryValue } from '$lib/types/ui';
+	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import { cn } from '$lib/utils/cn';
 
 	const FINALS_PHASES = new Set([

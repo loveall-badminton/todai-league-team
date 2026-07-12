@@ -1,7 +1,7 @@
 <script lang="ts">
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import { updateScoringRule } from './settings.remote';
 
 	type Rule = {

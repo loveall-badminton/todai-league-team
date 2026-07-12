@@ -1,9 +1,9 @@
 <script lang="ts">
-	import Card from '$lib/components/Card.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
 	import type { StandingsData } from '$lib/server/services/livePageService';
-	import type { QueryValue } from '$lib/utils/types';
-	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import type { QueryValue } from '$lib/types/ui';
+	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import { resolve } from '$app/paths';
 	import { tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 

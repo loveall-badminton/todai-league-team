@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import { type RubberCode } from '$lib/domain/tokyoLeague';
 	import { lineup } from './lineup.remote';

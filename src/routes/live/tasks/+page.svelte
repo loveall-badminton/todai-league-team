@@ -10,14 +10,14 @@
 		ClipboardList,
 		UserRound
 	} from '@lucide/svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppTabs from '$lib/components/AppTabs.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import IconMeta from '$lib/components/IconMeta.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppTabs from '$lib/components/ui/AppTabs.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import IconMeta from '$lib/components/ui/IconMeta.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
-	import Badge from '$lib/components/Badge.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { statusBadgeColor } from '$lib/utils/statusStyles';
 	import { rubberLabel, rubberStatusLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';

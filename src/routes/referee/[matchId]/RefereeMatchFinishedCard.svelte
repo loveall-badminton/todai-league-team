@@ -1,8 +1,8 @@
 <script lang="ts">
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import Callout from '$lib/components/Callout.svelte';
-	import Card from '$lib/components/Card.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { confirmWinner, saveRefereeName, unconfirmWinner } from './referee.remote';
 
 	interface Props {

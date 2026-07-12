@@ -1,79 +1,48 @@
+# AGENTS.md
+
+Canonical guidance for AI coding agents working in this repository. `CLAUDE.md` imports this file — edit here, not there.
+
 ## Commands
 
 ```bash
 pnpm dev              # Vite dev server (no D1/DO — UI only, no auth redirect)
-pnpm preview          # wrangler dev with D1 + DO (port 4173, full auth)
-pnpm build            # gen:check + vite build
+pnpm preview          # wrangler dev with D1 + Durable Objects (port 4173, full auth)
+pnpm build            # gen:check + vite build (production)
 pnpm deploy           # build + wrangler deploy
 
-pnpm check            # svelte-check (requires wrangler types — run gen first)
+pnpm check            # svelte-check (runs gen first)
 pnpm lint             # prettier --check + eslint (run format first to fix)
 pnpm format           # prettier --write
 pnpm test             # vitest run (unit + component)
 pnpm test:unit        # vitest watch
 pnpm test:coverage    # vitest coverage (90% line / 80% branch thresholds)
+pnpm test:e2e         # playwright (chromium project; auto-starts server via webServer)
+pnpm test:e2e:full    # playwright full-simulation project (excluded from normal runs)
 
 pnpm gen              # wrangler types → worker-configuration.d.ts (needed before check/build)
-pnpm db:push          # push schema to remote D1 (via drizzle-kit)
-pnpm db:generate      # drizzle-kit generate (migration creation)
+pnpm db:push          # push schema to D1
 pnpm db:studio        # drizzle-kit studio
+pnpm db:migrate:staging  # apply pending migrations to staging D1 (remote)
+pnpm db:migrate:prod     # apply pending migrations to production D1 (remote)
+
+pnpm backup:dev       # BCP backup worker locally (port 4174)
+pnpm backup:check     # typecheck backup worker
+pnpm backup:deploy    # deploy backup worker
 ```
 
 **`pnpm dev` vs `pnpm preview`**: `dev` runs Vite only — no D1, no DOs, no auth redirect. Use for rapid UI iteration. `preview` runs full wrangler with all bindings and auth. If D1/DO/real data is needed, use `preview`.
 
-**Pre-commit** (lefthook) runs format, lint, check, and tests in parallel.
+`pnpm check` must be run with wrangler types already generated. `pnpm gen` handles that automatically; CI uses `pnpm gen:check` (no side effects).
+
+**Pre-commit** (lefthook) runs prettier/eslint on staged files plus svelte-check and unit tests in parallel. **Pre-push** runs the chromium e2e suite. **CI** (`.github/workflows/ci.yml`) runs lint, check:ci, unit tests, build, and the backup worker typecheck.
 
 ## Architecture
 
-**Stack**: SvelteKit (Svelte 5 runes) + Cloudflare Workers + D1 (Drizzle ORM) + Durable Objects (PartyServer)
+**Stack**: SvelteKit (Svelte 5 runes) + Cloudflare Workers + D1 (SQLite via Drizzle) + Durable Objects (partyserver)
 
-**Auth**: `better-auth` with three roles — `admin`, `participant`, `team`. `src/hooks.server.ts` injects `locals.auth`, `locals.session`, `locals.user`, `locals.authProfile` into every request. Unauthenticated users are redirected to `/auth/login` (except `/auth/login`, `/auth/bootstrap`, `/api/live`).
+**Auth**: `better-auth` with three roles — `admin`, `team`, `participant`. `src/hooks.server.ts` injects `locals.auth`, `locals.session`, `locals.user`, `locals.authProfile` and redirects unauthenticated requests to `/auth/login`. Guard functions live in `src/lib/server/auth/access.ts`: `requireAdmin()`, `requireUser()`, `requireTeamLineupAccess(teamId)`, `requireRefereeMatchAccess(matchId)`.
 
-**DB access**: Call `getRequestDb()` from `$lib/server/db/request`. It pulls the D1 binding from the request's platform context. Use only in server-side code (`+page.server.ts`, `*.remote.ts`, services, repos). Schema: `src/lib/server/db/schema.ts`.
-
-## Dual wrangler config — DO NOT MERGE
-
-| File                     | Purpose                                                                                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------- |
-| `wrangler.jsonc`         | Production. `main: "src/worker.ts"` exports the SvelteKit handler and the DO classes.           |
-| `wrangler.adapter.jsonc` | Build only. Points `main` at `.svelte-kit/cloudflare/_worker.js`. The adapter uses this config. |
-
-`src/worker.ts` imports the adapter output via the `sveltekit-worker` alias (in `wrangler.jsonc`) and re-exports `LiveBoard` and `MatchActionCoordinator`.
-
-## Route conventions
-
-- **`+page.server.ts`** — load functions and form actions
-- **`*.remote.ts`** — server-only utilities using `$app/server` primitives (`command`, `form`, `query`). Imported by both `+page.server.ts` and `+page.svelte`. Contains the actual logic, not just wrappers.
-- **Validation**: Valibot schemas passed to `form(schema, handler)` or `command(schema, handler)` in `.remote.ts` files.
-
-## Server-side tools (`$app/server`)
-
-Use `command` for mutations that don't need form redirect, `form` for mutations that should redirect or return page data:
-
-```ts
-import { command, form } from '$app/server';
-import * as v from 'valibot';
-
-// For actions called from Svelte components (fire-and-forget-ish)
-export const rallyWon = command(v.object({ side: v.picklist(['A', 'B']) }), async ({ side }) => {
-	// ... DB work, broadcast
-});
-
-// For form submissions that redirect
-export const create = form(v.object({ name: v.string() }), async ({ name }) => {
-	// ... DB work
-	redirect(303, `/page/${id}`);
-});
-```
-
-## Domain terminology
-
-| Code term | Meaning                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------- |
-| `tie`     | 対抗戦 — one team vs another team fixture (5 rubbers)                                          |
-| `rubber`  | 個人種目 — a discipline slot: WD1, XD1, MD3, MD2, MD1                                          |
-| `match`   | A single badminton game played on court, linked 1:1 to a rubber                                |
-| `phase`   | `group_a`, `group_b`, `semifinal`, `final`, `third_place`, `fifth_place`, `ranking_tiebreaker` |
+**Database access**: `getRequestDb()` from `$lib/server/db/request` returns a Drizzle client bound to the D1 `DB` binding from the current request's platform context. Call it from server-side code (load functions, form actions, `.remote.ts`). Schema is in `src/lib/server/db/schema.ts`.
 
 ## Key directories
 
@@ -84,21 +53,31 @@ src/lib/server/repositories/  # DB queries (matchRepo, scoreEventRepo, tournamen
 src/lib/server/services/      # Orchestration (matchActionCore, tieOperationService, lineupService, etc.)
 src/lib/server/realtime/      # WebSocket broadcast helpers (notifyLiveBoard, notifyMatch)
 src/lib/realtime/       # Shared (client+server) channel types, WebSocket client wrapper
-src/lib/components/     # Shared UI components (AppButton, Card, etc.)
+src/lib/components/     # Domain-specific shared components (TieEditForm, RealtimeSync, etc.)
+src/lib/components/ui/  # Generic UI primitives (AppButton, Card, Badge, PageHeader, etc.)
+src/lib/types/          # Shared TypeScript types (entities, forms, ui)
+src/lib/optimistic/     # Client-side optimistic update helpers
 src/parties/            # Durable Objects (LiveBoard.ts, MatchActionCoordinator.ts)
+workers/backup/         # Independent BCP backup worker (Hono)
 ```
+
+## Route conventions
+
+- `+page.server.ts` — SvelteKit page server load / form actions
+- `*.remote.ts` — server-only utilities using `$app/server` primitives (`form`, `command`, `query`); imported by both `+page.server.ts` and `+page.svelte`. Contains the actual logic, not just wrappers.
+- Validation in `.remote.ts` uses **Valibot** schemas passed to `form(schema, handler)` or `command(schema, handler)`.
+- Use `command` for mutations called from components; use `form` for submissions that redirect or return page data.
 
 ## Domain layer (`src/lib/domain/`)
 
-Pure TypeScript. Key exports:
+Pure TypeScript with no server or DB dependencies. The domain layer MUST NOT import from `$lib/server` or any SvelteKit module. Key modules:
 
-- `types.ts` — `Side`, `MatchState`, `ServiceState`, `ScoreEventInput`, all event types
-- `scoring.ts` — `applyScoreEvent()`, `isGameWon()`, `isMatchWon()`, `createInitialMatchState()`
-- `service.ts` — `createInitialDoublesServiceState()`, `applyDoublesServiceAfterRally()`, helpers
-- `matchStatus.ts` — status predicates (`isTerminalMatchStatus()`, `isResultMatchStatus()`, etc.)
-- `tieProgress.ts` — `calculateTieResult()`, 3-win clinch / finished-state rules for ties
-
-The domain layer MUST NOT import from `$lib/server` or any SvelteKit module.
+- `types.ts` — `MatchState`, `ServiceState`, `ScoreEventInput` and all match event types
+- `scoring.ts` — rally/game scoring logic (`applyScoreEvent()`, `isGameWon()`, `isMatchWon()`)
+- `service.ts` — doubles service-rotation state helpers
+- `matchStatus.ts` — match/rubber status predicates (terminal, result, confirmable)
+- `tieProgress.ts` — tie result aggregation (`calculateTieResult`, 3-win clinch rules)
+- `tokyoLeague.ts` — rubber definitions, tie phases, finals bracket structure
 
 ## Score event architecture
 
@@ -115,32 +94,52 @@ All score changes go through `applyMatchActionWithRealtime()` (`matchRealtimeAct
 
 **Never** directly update `matches.currentScoreA` without going through this path.
 
-## Realtime (WebSocket)
+## Realtime (WebSocket live scores)
 
-- `src/parties/LiveBoard.ts` — PartyServer DO. One per channel. Broadcasts to connected clients.
-- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)` / `notifyScoreChange(matchId, topics)`. Calls DO via `platform.env.LiveBoard.getByName(channel).fetch(broadcastUrl)`.
-- `src/lib/realtime/liveChannel.svelte.ts` — Client-side WebSocket wrapper with auto-reconnect.
-- `src/lib/components/RealtimeSync.svelte` — Toggle component; polls when WebSocket unavailable.
+- `src/parties/LiveBoard.ts` — Cloudflare Durable Object (partyserver `Server` class). One instance per named channel. Accepts POST `/broadcast` to fan-out messages to all connected WebSocket clients; also hosts the L2 entry cache used by `layeredCache.ts`.
+- `src/parties/MatchActionCoordinator.ts` — Durable Object that serializes score-event writes per match (one instance per matchId).
+- `src/lib/server/realtime/broadcast.ts` — `notifyLiveBoard(topics)` / `notifyMatch(matchId)` / `notifyScoreChange(matchId, topics)` called from server actions after mutations; reaches the DO via `platform.env.LiveBoard.getByName(channel).fetch(...)`.
+- `src/lib/realtime/channels.ts` — shared message schemas (Valibot), topic types, channel name helpers. Imported on both client and server.
+- `src/lib/realtime/liveChannel.svelte.ts` — client-side WebSocket wrapper (PartySocket). Reconnects on visibility change; validates incoming messages.
+- `src/lib/components/RealtimeSync.svelte` — UI toggle component; falls back to polling when WebSocket is unavailable.
+- WebSocket routing: `src/routes/parties/live-board/[room]/+server.ts` → `routePartykitRequest` (dynamic import to avoid Vite SSR bundling `cloudflare:workers`).
+
+## Dual wrangler config — do not merge
+
+Two wrangler config files serve distinct purposes and **must remain separate**:
+
+| File                     | Purpose                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `wrangler.jsonc`         | Production deploy. `main: "src/worker.ts"` re-exports the SvelteKit handler and the `LiveBoard` / `MatchActionCoordinator` DO classes.                       |
+| `wrangler.adapter.jsonc` | Used only by `@sveltejs/adapter-cloudflare` at build time. Points `main` at `.svelte-kit/cloudflare/_worker.js` to avoid overwriting the custom entry point. |
+
+`src/worker.ts` bridges the two: it imports the SvelteKit adapter output via the `sveltekit-worker` alias (defined in `wrangler.jsonc`) and re-exports `LiveBoard` and `MatchActionCoordinator` so wrangler can find the DO classes.
+
+## Emergency backup (BCP)
+
+`workers/backup/` is an independent Hono worker (`todai-league-backup`) that generates the emergency paper-ops packet (emergency.html/pdf/md, state.json, scores.csv, event-log.ndjson) from D1 into the `todai-league-backups` R2 bucket on a cron, and serves it via token-protected download URLs. See `workers/backup/README.md` and `BCP.md`. Admin UI: `/settings/backup` (needs `BACKUP_WORKER_URL` / `BACKUP_SECRET` / `BACKUP_DOWNLOAD_TOKEN` env vars on the main app). The global event number (`lastEventId`) is `MAX(score_events.rowid)` scoped to the tournament.
+
+## Domain terminology
+
+| Code term | Domain meaning                                                         |
+| --------- | ---------------------------------------------------------------------- |
+| `tie`     | 対抗戦 — one team vs another team fixture (contains multiple rubbers)  |
+| `rubber`  | 個人種目 — a discipline slot within a tie (WD1, XD1, MD3, MD2, MD1)    |
+| `match`   | 実際の試合 — the physical game played on court, linked 1:1 to a rubber |
+
+Tie phases: `group_a`, `group_b`, `semifinal`, `final`, `third_place`, `fifth_place`, `ranking_tiebreaker`.
 
 ## Validation
 
-Use **Valibot** (`import * as v from 'valibot'`). Form input helpers (`emptyToNull`, `uniqueNonEmpty`, `venueOrNull`) in `src/lib/utils/validation.ts`.
-
-## Auth guards
-
-In `src/lib/server/auth/access.ts`:
-
-- `requireAdmin()` — throws 403 if not admin
-- `requireUser()` — redirects to login if unauthenticated
-- `requireTeamLineupAccess(teamId)` — team or admin
-- `requireRefereeMatchAccess(matchId)` — checks officiating assignment
+Use **Valibot** (`import * as v from 'valibot'`) for all schema validation. Message schemas shared between client and server live in `src/lib/realtime/channels.ts`. Form input helpers (`emptyToNull`, `uniqueNonEmpty`, `venueOrNull`) are in `src/lib/utils/validation.ts`.
 
 ## Testing
 
-Two vitest projects (client/server) defined in `vite.config.ts`:
+Vitest projects defined in `vite.config.ts`:
 
 - **client** — browser tests (Chromium headless via Playwright). `*.svelte.{test,spec}.{js,ts}`
-- **server** — node environment. All other `*.{test,spec}.{js,ts}`
+- **server** — node environment. All other `*.{test,spec}.{js,ts}` (excluding `*.cf.*`)
+- **cloudflare** — workerd environment via `@cloudflare/vitest-pool-workers`. `*.cf.{test,spec}.{js,ts}`
 
 Run a single test file: `pnpm test:unit -- path/to/file.test.ts`
 
@@ -148,16 +147,7 @@ Coverage thresholds: 90% statements, 80% branches, 90% functions, 90% lines. Sch
 
 ## Environment
 
-Required env vars (in `.env`):
-
-```bash
-CLOUDFLARE_ACCOUNT_ID
-CLOUDFLARE_DATABASE_ID
-CLOUDFLARE_D1_TOKEN
-BETTER_AUTH_SECRET
-```
-
-These are needed for `drizzle-kit` operations (push, generate, migrate, studio) and for auth.
+`.env` (see `.env.example`) provides `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_DATABASE_ID` / `CLOUDFLARE_D1_TOKEN` for `drizzle-kit` operations (push, generate, migrate, studio). `BETTER_AUTH_SECRET` is generated automatically on first deploy; for local development put it in `.dev.vars`.
 
 ## Tailwind v4
 

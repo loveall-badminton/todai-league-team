@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveTieDetail from './LiveTieDetail.svelte';
 	import { hasScoreUpdate } from '$lib/realtime/channels';

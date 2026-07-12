@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { LetCalledInput } from '$lib/domain/types';
 	import type { LiveTopicPayloadMap } from '$lib/realtime/channels';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CollapsibleSection from '$lib/components/ui/CollapsibleSection.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import { cutoffCommand, letCalledCommand, forfeitCommand, retireCommand } from './referee.remote';
 
 	type ScoreActionResult = {

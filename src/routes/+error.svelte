@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import AppButton from '$lib/components/AppButton.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
 
 	const statusCodeToMessage: Record<number, string> = {
 		401: 'ログインが必要です',

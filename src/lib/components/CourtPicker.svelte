@@ -2,8 +2,8 @@
 	import { untrack } from 'svelte';
 	import { VENUES } from '$lib/domain/tokyoLeague';
 	import { venueCourtCount, parseCourts } from '$lib/domain/tokyoLeagueLabels';
-	import AppSelect from './AppSelect.svelte';
-	import AppCheckbox from './AppCheckbox.svelte';
+	import AppSelect from './ui/AppSelect.svelte';
+	import AppCheckbox from './ui/AppCheckbox.svelte';
 
 	let {
 		initialVenue = '',

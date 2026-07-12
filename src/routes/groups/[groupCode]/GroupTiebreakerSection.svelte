@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
-	import Card from '$lib/components/Card.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import IconMeta from '$lib/components/IconMeta.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import IconMeta from '$lib/components/ui/IconMeta.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import { tiebreakerStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { Award } from '@lucide/svelte';

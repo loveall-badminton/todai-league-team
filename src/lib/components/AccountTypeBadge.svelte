@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ComponentProps } from 'svelte';
-	import Badge from './Badge.svelte';
+	import Badge from './ui/Badge.svelte';
 
 	let { accountType }: { accountType: string } = $props();
 

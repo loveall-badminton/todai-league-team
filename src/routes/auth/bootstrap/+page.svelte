@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import InlineMessage from '$lib/components/InlineMessage.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import InlineMessage from '$lib/components/ui/InlineMessage.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
 	import Footer from '$lib/components/Footer.svelte';
 	import type { PageProps } from './$types';

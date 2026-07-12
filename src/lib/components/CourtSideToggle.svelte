@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ArrowLeft, ArrowLeftRight, ArrowRight } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
-	import AppButton from './AppButton.svelte';
+	import AppButton from './ui/AppButton.svelte';
 
 	let {
 		leftTeamName,

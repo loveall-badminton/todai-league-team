@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppCheckbox from '$lib/components/AppCheckbox.svelte';
-	import AppMultipleSelect from '$lib/components/AppMultipleSelect.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import AppCheckbox from '$lib/components/ui/AppCheckbox.svelte';
+	import AppMultipleSelect from '$lib/components/ui/AppMultipleSelect.svelte';
 	import CourtPicker from '$lib/components/CourtPicker.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import type { EntityOption } from '$lib/types/entities';
 	import { updateTie } from '../../routes/_shared/tieEditForm.remote';
 

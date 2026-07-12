@@ -1,7 +1,7 @@
 <script lang="ts">
-	import AppTextarea from '$lib/components/AppTextarea.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import CopyButton from '$lib/components/CopyButton.svelte';
+	import AppTextarea from '$lib/components/ui/AppTextarea.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CopyButton from '$lib/components/ui/CopyButton.svelte';
 	import { courtDisplayLabel, rubberLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { MessageSquareDashed } from '@lucide/svelte';
 

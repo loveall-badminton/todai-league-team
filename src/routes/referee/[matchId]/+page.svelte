@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { isConfirmableMatchStatus } from '$lib/domain/matchStatus';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import Card from '$lib/components/Card.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import CourtSideToggle from '$lib/components/CourtSideToggle.svelte';
-	import LongPressButton from '$lib/components/LongPressButton.svelte';
+	import LongPressButton from '$lib/components/ui/LongPressButton.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { hasScoreUpdate, matchChannel, type LiveTopicPayloadMap } from '$lib/realtime/channels';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
@@ -27,7 +27,7 @@
 		playerOptions
 	} from './refereeUtils';
 	import * as v from 'valibot';
-	import AppSelect from '$lib/components/AppSelect.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
 	import { Undo2 } from '@lucide/svelte';
 
 	let { data, form: formResult }: PageProps = $props();

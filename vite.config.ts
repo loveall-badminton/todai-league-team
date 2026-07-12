@@ -13,12 +13,7 @@ export default defineConfig({
 	test: {
 		expect: { requireAssertions: true },
 		coverage: {
-			exclude: [
-				'.svelte-kit/**',
-				'src/lib/vitest-examples/**',
-				'src/lib/server/db/schema.ts',
-				'src/lib/server/db/*.schema.ts'
-			],
+			exclude: ['.svelte-kit/**', 'src/lib/server/db/schema.ts', 'src/lib/server/db/*.schema.ts'],
 			thresholds: {
 				statements: 90,
 				branches: 80,

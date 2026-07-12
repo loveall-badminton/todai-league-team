@@ -1,8 +1,8 @@
 <script lang="ts">
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import { createPlayer } from './team.remote';
 	import type { SelectItem } from '$lib/types/ui';
 

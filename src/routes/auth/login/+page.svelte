@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { toast } from 'svelte-sonner';
 	import Footer from '$lib/components/Footer.svelte';
 	import type { PageProps } from './$types';

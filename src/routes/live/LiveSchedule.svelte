@@ -1,10 +1,10 @@
 <script lang="ts">
-	import Card from '$lib/components/Card.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { phaseLabel, tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import type { ScheduleData } from '$lib/server/services/livePageService';
-	import type { QueryValue } from '$lib/utils/types';
+	import type { QueryValue } from '$lib/types/ui';
 	import { groupTiesByPhase, statusDot, statusText } from './scheduleHelpers';
-	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import { resolve } from '$app/paths';
 	import { Clock, ArrowRight, CircleCheck, CircleAlert } from '@lucide/svelte';
 	import { goto } from '$app/navigation';

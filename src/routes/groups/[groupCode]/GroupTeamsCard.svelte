@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import Card from '$lib/components/Card.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 
 	let { teams }: { teams: { id: string; name: string; playerCount: number }[] } = $props();
 </script>

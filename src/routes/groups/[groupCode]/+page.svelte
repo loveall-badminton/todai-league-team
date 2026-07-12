@@ -3,12 +3,12 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
-	import Card from '$lib/components/Card.svelte';
-	import Badge from '$lib/components/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import GroupStandingsTable from '$lib/components/GroupStandingsTable.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { GripVertical } from '@lucide/svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import { shouldRefreshGroupPage } from '$lib/realtime/updates';

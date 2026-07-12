@@ -6,10 +6,10 @@
 	import { DragDropProvider, DragOverlay } from '@dnd-kit/svelte';
 	import { createSortableHandlers } from '$lib/utils/dndEvents';
 	import { GripVertical, Plus } from '@lucide/svelte';
-	import AppTabs from '$lib/components/AppTabs.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppTabs from '$lib/components/ui/AppTabs.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import { shouldRefreshTiesPage } from '$lib/realtime/updates';
 	import { parseSearchParams, updateUrlSearchParams } from '$lib/utils/searchParams';

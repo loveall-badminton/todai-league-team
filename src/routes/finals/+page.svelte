@@ -1,11 +1,11 @@
 <script lang="ts">
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import AppTabs from '$lib/components/AppTabs.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
+	import AppTabs from '$lib/components/ui/AppTabs.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import SortableTieItem from '$lib/components/SortableTieItem.svelte';
 	import { DragDropProvider } from '@dnd-kit/svelte';
 	import { TriangleAlert, Trophy } from '@lucide/svelte';

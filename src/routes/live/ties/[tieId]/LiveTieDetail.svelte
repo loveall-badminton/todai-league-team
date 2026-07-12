@@ -8,9 +8,9 @@
 		rubberLabel,
 		rubberStatusLabel
 	} from '$lib/domain/tokyoLeagueLabels';
-	import AppTabs from '$lib/components/AppTabs.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import IconMeta from '$lib/components/IconMeta.svelte';
+	import AppTabs from '$lib/components/ui/AppTabs.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import IconMeta from '$lib/components/ui/IconMeta.svelte';
 	import { ChevronDown, MapPin } from '@lucide/svelte';
 	import { cn } from '$lib/utils/cn';
 	import { filterScorePointsByGame, getScoreProgressionGameNos } from '$lib/utils/scoreProgression';

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import type { PageProps } from './$types';
 	import LeagueSettingsForm from './LeagueSettingsForm.svelte';
 	import ScoringRuleForm from './ScoringRuleForm.svelte';

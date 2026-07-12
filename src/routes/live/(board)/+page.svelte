@@ -1,12 +1,12 @@
 <script lang="ts">
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import LiveSchedule from '../LiveSchedule.svelte';
 	import { getSchedulePageData } from './live.remote';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import Card from '$lib/components/Card.svelte';
-	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import { ArrowRight } from '@lucide/svelte';
 	import { PatchCollection } from '$lib/optimistic';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppTextarea from '$lib/components/AppTextarea.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppTextarea from '$lib/components/ui/AppTextarea.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import { toast } from 'svelte-sonner';
 	import { bulkCreatePlayers } from './team.remote';
 

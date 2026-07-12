@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Badge from './Badge.svelte';
+	import Badge from './ui/Badge.svelte';
 	import { tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
 	import { statusBadgeColor } from '$lib/utils/statusStyles';
 

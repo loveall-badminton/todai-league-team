@@ -3,8 +3,8 @@
 	import { ArrowRight, Award, ChevronDown, GripVertical } from '@lucide/svelte';
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import { courtDisplayLabel, phaseLabel } from '$lib/domain/tokyoLeagueLabels';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import IconMeta from '$lib/components/IconMeta.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import IconMeta from '$lib/components/ui/IconMeta.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';

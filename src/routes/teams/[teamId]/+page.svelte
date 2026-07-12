@@ -2,12 +2,12 @@
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { DragDropProvider } from '@dnd-kit/svelte';
-	import AppTabs from '$lib/components/AppTabs.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import AppTabs from '$lib/components/ui/AppTabs.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import CopyButton from '$lib/components/CopyButton.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import CopyButton from '$lib/components/ui/CopyButton.svelte';
 	import SortablePlayerItem from './SortablePlayerItem.svelte';
 	import TeamEditForm from './TeamEditForm.svelte';
 	import PlayerCreateForm from './PlayerCreateForm.svelte';

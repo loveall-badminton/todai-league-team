@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ServiceState, MatchPlayer } from '$lib/domain/types';
-	import Card from '$lib/components/Card.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { cn } from '$lib/utils/cn';
 
 	let {

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
 	import AccountTypeBadge from '$lib/components/AccountTypeBadge.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
-	import AppSelect from '$lib/components/AppSelect.svelte';
-	import DialogCloseButton from '$lib/components/DialogCloseButton.svelte';
-	import FormToast from '$lib/components/FormToast.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import AppSelect from '$lib/components/ui/AppSelect.svelte';
+	import DialogCloseButton from '$lib/components/ui/DialogCloseButton.svelte';
+	import FormToast from '$lib/components/ui/FormToast.svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
 	import { updateAccount, resetPassword } from './accounts.remote';

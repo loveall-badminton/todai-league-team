@@ -2,11 +2,11 @@
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import AccountTypeBadge from '$lib/components/AccountTypeBadge.svelte';
-	import AppButton from '$lib/components/AppButton.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { Pencil } from '@lucide/svelte';
 	import type { SelectItem } from '$lib/types/ui';
 	import { toast } from 'svelte-sonner';

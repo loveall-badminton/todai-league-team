@@ -1,6 +1,6 @@
 <script lang="ts">
-	import AppButton from '$lib/components/AppButton.svelte';
-	import AppInput from '$lib/components/AppInput.svelte';
+	import AppButton from '$lib/components/ui/AppButton.svelte';
+	import AppInput from '$lib/components/ui/AppInput.svelte';
 	import { createAdmin } from './bootstrap.remote';
 </script>
 
