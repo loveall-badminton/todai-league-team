@@ -38,6 +38,10 @@ jobs:
       - name: Typecheck (svelte-check)
         run: pnpm check:ci
 
+      # vitest の client プロジェクト (ブラウザコンポーネントテスト) が Chromium を使う
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Unit tests
         run: pnpm test
 
