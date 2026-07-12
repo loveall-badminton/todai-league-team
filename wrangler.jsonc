@@ -10,7 +10,7 @@
 	"main": "src/worker.ts",
 	"alias": {
 		"sveltekit-worker": "./.svelte-kit/cloudflare/_worker.js",
-		"$app/server": "./src/__mocks__/app-server-dummy.ts"
+		"$app/server": "./.svelte-kit/output/server/chunks/server.js"
 	},
 	"assets": {
 		"binding": "ASSETS",
