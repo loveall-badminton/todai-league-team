@@ -57,6 +57,10 @@ describe('canGenerateFifthPlace', () => {
 	test('returns false when a slot is empty', () => {
 		expect(canGenerateFifthPlace({ x3TeamAId: 'a3', x3TeamBId: '' })).toBe(false);
 	});
+
+	test('returns false when the same team is selected twice', () => {
+		expect(canGenerateFifthPlace({ x3TeamAId: 'a3', x3TeamBId: 'a3' })).toBe(false);
+	});
 });
 
 describe('getFifthPlaceHint', () => {
@@ -66,6 +70,10 @@ describe('getFifthPlaceHint', () => {
 
 	test('mentions missing fifth-place selections', () => {
 		expect(getFifthPlaceHint({ x3TeamAId: '', x3TeamBId: 'b3' })).toContain('5位決定戦');
+	});
+
+	test('mentions duplicated fifth-place selections', () => {
+		expect(getFifthPlaceHint({ x3TeamAId: 'a3', x3TeamBId: 'a3' })).toContain('同じチーム');
 	});
 });
 

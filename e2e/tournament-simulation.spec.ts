@@ -252,12 +252,13 @@ test.describe.serial('tournament simulation', () => {
 		await page.goto('/finals');
 		await page.waitForTimeout(1000);
 
-		const genBtn = page.getByRole('button', { name: '準決勝' });
+		const genBtn = page.getByRole('button', { name: '準決勝生成' });
 		await expect(genBtn).toBeVisible({ timeout: 3000 });
-		// Button is disabled until group ties are complete (no scores in this test)
-		await expect(genBtn).toBeDisabled();
-		// Hint should explain why
-		await expect(page.getByText(/リーグ.*試合.*完了/)).toBeVisible({ timeout: 3000 });
+		await expect(genBtn).toBeEnabled();
+		await genBtn.click();
+		await page.waitForTimeout(1000);
+		await page.reload();
+		await expect(page.getByText(/X-1|X-2/).first()).toBeVisible({ timeout: 3000 });
 	});
 
 	test.skip('submit lineups for semifinal tie', async ({ page }) => {

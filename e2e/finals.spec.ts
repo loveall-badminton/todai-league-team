@@ -49,17 +49,18 @@ test.describe.serial('finals operations', () => {
 		await expect(page.getByText('決勝トーナメント')).toBeVisible();
 	});
 
-	test('generates semifinals and fifth-place ties', async ({ page }) => {
+	test('generates semifinals', async ({ page }) => {
 		await page.goto('/finals');
 		await expect(page.getByText('決勝トーナメント')).toBeVisible();
 
-		const semifinalBtn = page.getByRole('button', { name: '準決勝・5位決定戦生成' });
-		const isDisabled = await semifinalBtn.isDisabled();
-		if (!isDisabled) {
-			await semifinalBtn.click();
-			await page.waitForTimeout(1000);
-			await page.reload();
-			await expect(page.getByText(/X-1|X-2|X-3|X-4|X-5/).first()).toBeVisible();
-		}
+		const semifinalBtn = page.getByRole('button', { name: '準決勝生成' });
+		await expect(semifinalBtn).toBeEnabled();
+		await semifinalBtn.click();
+		await page.waitForTimeout(1000);
+		await page.reload();
+		await expect(page.getByText(/X-1|X-2/).first()).toBeVisible();
+
+		await page.getByRole('tab', { name: '5位決定戦' }).click();
+		await expect(page.getByRole('button', { name: '5位決定戦生成' })).toBeDisabled();
 	});
 });

@@ -191,7 +191,7 @@ test.describe.serial('team status and group changes', () => {
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();
-		await expect(page.getByText('A').first()).toBeVisible();
+		await expect(page.getByText('Aリーグ').first()).toBeVisible();
 	});
 
 	test('assigns team to group B', async ({ page }) => {
@@ -206,7 +206,7 @@ test.describe.serial('team status and group changes', () => {
 			.evaluate((f) => f.requestSubmit());
 		await page.waitForTimeout(800);
 		await page.reload();
-		await expect(page.getByText('B').first()).toBeVisible();
+		await expect(page.getByText('Bリーグ').first()).toBeVisible();
 	});
 });
 

@@ -91,7 +91,7 @@
 		</div>
 	</section>
 {:else if groups.length > 0}
-	<div class="space-y-3" style="view-transition-name: live-tab-content">
+	<div class="space-y-3">
 		{#if finalsTies.length > 0}
 			<section class="space-y-3">
 				<SectionLabel>総合順位</SectionLabel>
