@@ -29,14 +29,17 @@ jobs:
       - name: Lint (prettier + eslint)
         run: pnpm lint
 
+      # Build first: the content-collections vite plugin generates
+      # .content-collections/generated, which svelte-check needs to resolve
+      # the 'content-collections' module.
+      - name: Build
+        run: pnpm build
+
       - name: Typecheck (svelte-check)
         run: pnpm check:ci
 
       - name: Unit tests
         run: pnpm test
-
-      - name: Build
-        run: pnpm build
 
       - name: Typecheck backup worker
         run: pnpm backup:check
