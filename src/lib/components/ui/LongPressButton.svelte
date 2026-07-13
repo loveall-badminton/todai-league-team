@@ -46,9 +46,13 @@
 		rafId = requestAnimationFrame(tickProgress);
 	}
 
+	// The long-press guard exists to stop accidental screen contact (a brushed
+	// finger/pencil) from scoring — that risk is specific to touch/pen. A mouse
+	// click (real pointer or trackpad) and keyboard activation are deliberate
+	// single actions, so they go through `onclick` immediately, same as any
+	// other button.
 	function onPointerDown(e: PointerEvent) {
-		if (disabled) return;
-		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		if (disabled || e.pointerType === 'mouse') return;
 		e.preventDefault();
 		const form = (e.currentTarget as HTMLButtonElement).closest('form');
 		pressing = true;
@@ -63,22 +67,16 @@
 	}
 
 	function onPointerUp(e: PointerEvent) {
+		if (e.pointerType === 'mouse') return;
 		e.preventDefault();
 		const wasPressing = pressing;
 		cancelPress();
 		if (wasPressing) onShortPress?.();
 	}
 
-	function onPointerCancel() {
+	function onPointerCancel(e: PointerEvent) {
+		if (e.pointerType === 'mouse') return;
 		cancelPress();
-	}
-
-	// Pointer events cover the long-press gesture for touch, pen, and mouse.
-	// A `click` only reaches here from keyboard activation (Enter/Space), which
-	// the browser reports with detail === 0 — real pointer clicks are handled above.
-	function onClick(e: MouseEvent) {
-		if (e.detail !== 0) return;
-		onclick?.(e);
 	}
 
 	const r = 18;
@@ -89,7 +87,7 @@
 	class={cn('relative touch-none select-none', className)}
 	{disabled}
 	{type}
-	onclick={onClick}
+	{onclick}
 	onpointerdown={onPointerDown}
 	onpointerup={onPointerUp}
 	onpointercancel={onPointerCancel}
