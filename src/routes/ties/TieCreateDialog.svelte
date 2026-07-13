@@ -42,13 +42,13 @@
 
 			<form {...create} class="space-y-4">
 				<div class="grid gap-3 sm:grid-cols-2">
-					<div class="space-y-1">
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis"
 							>コード <span class="text-red-500">*</span></span
 						>
 						<AppInput {...create.fields.tieCode.as('text', '')} placeholder="A-1" required />
-					</div>
-					<div class="space-y-1">
+					</label>
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis"
 							>得点ルール <span class="text-red-500">*</span></span
 						>
@@ -60,30 +60,30 @@
 								label: r.name ?? r.code
 							}))}
 						/>
-					</div>
+					</label>
 				</div>
 
 				<div class="grid gap-3 sm:grid-cols-3">
-					<div class="space-y-1">
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">リーグ</span>
 						<AppSelect
 							{...create.fields.groupCode.as('select', '')}
 							items={groupCodeItems}
 							placeholder="決勝トーナメント"
 						/>
-					</div>
-					<div class="space-y-1">
+					</label>
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">フェーズ</span>
 						<AppSelect {...create.fields.phase.as('select', 'semifinal')} items={phaseItems} />
-					</div>
-					<div class="space-y-1">
+					</label>
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">予定時刻</span>
 						<AppInput {...create.fields.scheduledStartAt.as('time', '')} />
-					</div>
+					</label>
 				</div>
 
 				<div class="grid gap-3 sm:grid-cols-2">
-					<div class="space-y-1">
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">A側チーム</span>
 						<AppSelect
 							{...create.fields.teamAId.as('select', '')}
@@ -96,8 +96,8 @@
 							]}
 							placeholder="未定"
 						/>
-					</div>
-					<div class="space-y-1">
+					</label>
+					<label class="space-y-1">
 						<span class="text-xs font-medium text-muted-emphasis">B側チーム</span>
 						<AppSelect
 							{...create.fields.teamBId.as('select', '')}
@@ -110,13 +110,13 @@
 							]}
 							placeholder="未定"
 						/>
-					</div>
+					</label>
 				</div>
 
-				<div class="space-y-1">
+				<label class="space-y-1">
 					<span class="text-xs font-medium text-muted-emphasis">体育館・コート</span>
 					<CourtPicker />
-				</div>
+				</label>
 
 				<div class="flex justify-end gap-2 pt-1">
 					<Dialog.Close

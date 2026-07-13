@@ -107,7 +107,7 @@
 	{/snippet}
 	<div class="space-y-5">
 		<form {...createTiebreaker} class="grid gap-3 lg:grid-cols-6">
-			<div class="grid gap-1 lg:col-span-6">
+			<label class="grid gap-1 lg:col-span-6">
 				<span class="text-xs font-medium text-muted-foreground">種目</span>
 				<AppSelect
 					{...createTiebreaker.fields.discipline.as('select')}
@@ -117,8 +117,8 @@
 						discipline = value;
 					}}
 				/>
-			</div>
-			<div class="grid gap-1">
+			</label>
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">A側チーム</span>
 				<AppSelect
 					{...createTiebreaker.fields.teamAId.as('select')}
@@ -128,8 +128,8 @@
 						teamAId = value;
 					}}
 				/>
-			</div>
-			<div class="grid gap-1">
+			</label>
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">A側選手1</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerA1Id.as('select')}
@@ -137,8 +137,8 @@
 					required
 					disabled={playerADisabled}
 				/>
-			</div>
-			<div class="grid gap-1">
+			</label>
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">A側選手2</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerA2Id.as('select')}
@@ -146,8 +146,8 @@
 					required
 					disabled={playerADisabled}
 				/>
-			</div>
-			<div class="grid gap-1">
+			</label>
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">B側チーム</span>
 				<AppSelect
 					{...createTiebreaker.fields.teamBId.as('select')}
@@ -157,9 +157,9 @@
 						teamBId = value;
 					}}
 				/>
-			</div>
+			</label>
 
-			<div class="grid gap-1">
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">B側選手1</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerB1Id.as('select')}
@@ -167,8 +167,8 @@
 					required
 					disabled={playerBDisabled}
 				/>
-			</div>
-			<div class="grid gap-1">
+			</label>
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-muted-foreground">B側選手2</span>
 				<AppSelect
 					{...createTiebreaker.fields.playerB2Id.as('select')}
@@ -176,15 +176,15 @@
 					required
 					disabled={playerBDisabled}
 				/>
-			</div>
-			<div class="grid gap-1 lg:col-span-6">
+			</label>
+			<label class="grid gap-1 lg:col-span-6">
 				<span class="text-xs font-medium text-muted-foreground">理由</span>
 				<AppInput
 					{...createTiebreaker.fields.reason.as('text')}
 					placeholder="順位未確定のため"
 					required
 				/>
-			</div>
+			</label>
 			<div class="lg:col-span-6">
 				<AppButton type="submit">再試合作成</AppButton>
 			</div>

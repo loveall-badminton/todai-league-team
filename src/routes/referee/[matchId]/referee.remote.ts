@@ -116,7 +116,7 @@ export const startGame = form(
 	}
 );
 
-export const rallyWon = form(v.object({ side: sideSchema }), async ({ side }) => {
+async function rallyWonHandler({ side }: { side: v.InferOutput<typeof sideSchema> }) {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	const result = await applyAction(matchId, (state) => ({
@@ -126,81 +126,53 @@ export const rallyWon = form(v.object({ side: sideSchema }), async ({ side }) =>
 		side
 	}));
 	return result ?? {};
-});
+}
 
-export const rallyWonCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
+export const rallyWon = form(v.object({ side: sideSchema }), rallyWonHandler);
+export const rallyWonCommand = command(v.object({ side: sideSchema }), rallyWonHandler);
+
+async function undoHandler() {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	const result = await applyAction(matchId, (state) => ({
-		type: 'rally_won',
+		type: 'undo',
+		idempotencyKey: crypto.randomUUID(),
+		observedSeqNo: state.lastSeqNo
+	}));
+	return result ?? {};
+}
+
+export const undo = form(undoHandler);
+export const undoCommand = command(undoHandler);
+
+const letCalledSchema = v.object({
+	reason: LetReasonSchema,
+	note: v.optional(v.string())
+});
+
+async function letCalledHandler({
+	reason,
+	note
+}: {
+	reason: v.InferOutput<typeof LetReasonSchema>;
+	note?: string;
+}) {
+	const event = getRequestEvent();
+	const matchId = event.params.matchId!;
+	const result = await applyAction(matchId, (state) => ({
+		type: 'let_called',
 		idempotencyKey: crypto.randomUUID(),
 		observedSeqNo: state.lastSeqNo,
-		side
+		reason,
+		note: note || undefined
 	}));
 	return result ?? {};
-});
+}
 
-export const undo = form(async () => {
-	const event = getRequestEvent();
-	const matchId = event.params.matchId!;
-	const result = await applyAction(matchId, (state) => ({
-		type: 'undo',
-		idempotencyKey: crypto.randomUUID(),
-		observedSeqNo: state.lastSeqNo
-	}));
-	return result ?? {};
-});
+export const letCalled = form(letCalledSchema, letCalledHandler);
+export const letCalledCommand = command(letCalledSchema, letCalledHandler);
 
-export const undoCommand = command(async () => {
-	const event = getRequestEvent();
-	const matchId = event.params.matchId!;
-	const result = await applyAction(matchId, (state) => ({
-		type: 'undo',
-		idempotencyKey: crypto.randomUUID(),
-		observedSeqNo: state.lastSeqNo
-	}));
-	return result ?? {};
-});
-
-export const letCalled = form(
-	v.object({
-		reason: LetReasonSchema,
-		note: v.optional(v.string())
-	}),
-	async ({ reason, note }) => {
-		const event = getRequestEvent();
-		const matchId = event.params.matchId!;
-		const result = await applyAction(matchId, (state) => ({
-			type: 'let_called',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: state.lastSeqNo,
-			reason,
-			note: note || undefined
-		}));
-		return result ?? {};
-	}
-);
-
-export const letCalledCommand = command(
-	v.object({
-		reason: LetReasonSchema,
-		note: v.optional(v.string())
-	}),
-	async ({ reason, note }) => {
-		const event = getRequestEvent();
-		const matchId = event.params.matchId!;
-		const result = await applyAction(matchId, (state) => ({
-			type: 'let_called',
-			idempotencyKey: crypto.randomUUID(),
-			observedSeqNo: state.lastSeqNo,
-			reason,
-			note: note || undefined
-		}));
-		return result ?? {};
-	}
-);
-
-export const forfeit = form(v.object({ side: sideSchema }), async ({ side }) => {
+async function forfeitHandler({ side }: { side: v.InferOutput<typeof sideSchema> }) {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	const result = await applyAction(matchId, (state) => ({
@@ -211,22 +183,12 @@ export const forfeit = form(v.object({ side: sideSchema }), async ({ side }) => 
 		reason: 'withdrawal'
 	}));
 	return result ?? {};
-});
+}
 
-export const forfeitCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
-	const event = getRequestEvent();
-	const matchId = event.params.matchId!;
-	const result = await applyAction(matchId, (state) => ({
-		type: 'side_forfeited',
-		idempotencyKey: crypto.randomUUID(),
-		observedSeqNo: state.lastSeqNo,
-		side,
-		reason: 'withdrawal'
-	}));
-	return result ?? {};
-});
+export const forfeit = form(v.object({ side: sideSchema }), forfeitHandler);
+export const forfeitCommand = command(v.object({ side: sideSchema }), forfeitHandler);
 
-export const retire = form(v.object({ side: sideSchema }), async ({ side }) => {
+async function retireHandler({ side }: { side: v.InferOutput<typeof sideSchema> }) {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	const result = await applyAction(matchId, (state) => ({
@@ -237,35 +199,12 @@ export const retire = form(v.object({ side: sideSchema }), async ({ side }) => {
 		reason: 'injury'
 	}));
 	return result ?? {};
-});
+}
 
-export const retireCommand = command(v.object({ side: sideSchema }), async ({ side }) => {
-	const event = getRequestEvent();
-	const matchId = event.params.matchId!;
-	const result = await applyAction(matchId, (state) => ({
-		type: 'side_retired',
-		idempotencyKey: crypto.randomUUID(),
-		observedSeqNo: state.lastSeqNo,
-		side,
-		reason: 'injury'
-	}));
-	return result ?? {};
-});
+export const retire = form(v.object({ side: sideSchema }), retireHandler);
+export const retireCommand = command(v.object({ side: sideSchema }), retireHandler);
 
-export const cutoff = form(async () => {
-	const event = getRequestEvent();
-	const matchId = event.params.matchId!;
-	await requireRefereeMatchAccess(matchId);
-	try {
-		await cancelMatchRubber(matchId);
-	} catch (err) {
-		return { error: err instanceof Error ? err.message : '操作に失敗しました' };
-	}
-	const afterState = await getMatchState(matchId);
-	await broadcastScoreUpdate(matchId, { state: afterState, event: { type: 'cutoff' } });
-});
-
-export const cutoffCommand = command(async () => {
+async function cutoffHandler() {
 	const event = getRequestEvent();
 	const matchId = event.params.matchId!;
 	await requireRefereeMatchAccess(matchId);
@@ -278,7 +217,10 @@ export const cutoffCommand = command(async () => {
 	const scorePayload = { state: afterState, event: { type: 'cutoff' } as const };
 	await broadcastScoreUpdate(matchId, scorePayload);
 	return { scorePayload };
-});
+}
+
+export const cutoff = form(cutoffHandler);
+export const cutoffCommand = command(cutoffHandler);
 
 export const saveRefereeName = form(
 	v.object({ refereeName: v.pipe(v.string(), v.trim(), v.nonEmpty()) }),

@@ -378,31 +378,37 @@ export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
 		throw new Error('打ち切りできる残りの種目がありません');
 	}
 
+	type DbStatement = Parameters<typeof db.batch>[0][number];
+	const ops: DbStatement[] = [];
 	const affectedMatchIds: string[] = [];
 	for (const rubber of remainingRubbers) {
 		if (rubber.matchId) {
 			affectedMatchIds.push(rubber.matchId);
-			await cancelMatchRubber(rubber.matchId, now);
+			const { ops: matchOps } = await buildCancelMatchRubberOps(db, rubber.matchId, now);
+			ops.push(...matchOps);
 			continue;
 		}
 
-		await db
-			.update(rubbers)
-			.set({
-				status: 'cancelled',
-				winnerSide: null,
-				updatedAt: now
-			})
-			.where(eq(rubbers.id, rubber.id));
+		ops.push(
+			db
+				.update(rubbers)
+				.set({
+					status: 'cancelled',
+					winnerSide: null,
+					updatedAt: now
+				})
+				.where(eq(rubbers.id, rubber.id))
+		);
 	}
 
+	// 残り種目すべての更新を1つのバッチにまとめることで、途中の1件が失敗しても
+	// 一部だけキャンセル済みという中途半端な状態を残さない
+	await db.batch(ops as [DbStatement, ...DbStatement[]]);
 	await recalculateTieResult(tieId, now, db);
 	return { affectedMatchIds };
 }
 
-export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
-	const db = await getRequestDbOrThrow();
-
+async function buildCancelMatchRubberOps(db: RequestDb, matchId: string, now: string) {
 	const [match, snapshot] = await db.batch([
 		db.query.matches.findFirst({ where: eq(matches.id, matchId) }),
 		db.query.matchSnapshots.findFirst({ where: eq(matchSnapshots.matchId, matchId) })
@@ -447,8 +453,15 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 		);
 	}
 
+	return { ops, tieId: rubber.tieId };
+}
+
+export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
+	const db = await getRequestDbOrThrow();
+	const { ops, tieId } = await buildCancelMatchRubberOps(db, matchId, now);
+
 	await db.batch(ops);
-	await recalculateTieResult(rubber.tieId, now);
+	await recalculateTieResult(tieId, now);
 }
 
 export async function confirmTie(tieId: string, now = new Date().toISOString()) {

@@ -46,8 +46,9 @@
 		rafId = requestAnimationFrame(tickProgress);
 	}
 
-	function onTouchStart(e: TouchEvent) {
+	function onPointerDown(e: PointerEvent) {
 		if (disabled) return;
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		e.preventDefault();
 		const form = (e.currentTarget as HTMLButtonElement).closest('form');
 		pressing = true;
@@ -61,11 +62,23 @@
 		}, threshold);
 	}
 
-	function onTouchEnd(e: TouchEvent) {
+	function onPointerUp(e: PointerEvent) {
 		e.preventDefault();
 		const wasPressing = pressing;
 		cancelPress();
 		if (wasPressing) onShortPress?.();
+	}
+
+	function onPointerCancel() {
+		cancelPress();
+	}
+
+	// Pointer events cover the long-press gesture for touch, pen, and mouse.
+	// A `click` only reaches here from keyboard activation (Enter/Space), which
+	// the browser reports with detail === 0 — real pointer clicks are handled above.
+	function onClick(e: MouseEvent) {
+		if (e.detail !== 0) return;
+		onclick?.(e);
 	}
 
 	const r = 18;
@@ -76,10 +89,11 @@
 	class={cn('relative touch-none select-none', className)}
 	{disabled}
 	{type}
-	{onclick}
-	ontouchstart={onTouchStart}
-	ontouchend={onTouchEnd}
-	ontouchcancel={onTouchEnd}
+	onclick={onClick}
+	onpointerdown={onPointerDown}
+	onpointerup={onPointerUp}
+	onpointercancel={onPointerCancel}
+	onpointerleave={onPointerCancel}
 >
 	{@render children()}
 

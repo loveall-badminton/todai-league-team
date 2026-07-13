@@ -288,7 +288,7 @@
 
 			{#if matchState.status === 'scheduled'}
 				<form {...start} class="grid gap-3 sm:grid-cols-2">
-					<div class="grid gap-1">
+					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 						<AppSelect
 							name="initialServerPlayerId"
@@ -296,8 +296,8 @@
 							items={allPlayerItems}
 							required
 						/>
-					</div>
-					<div class="grid gap-1">
+					</label>
+					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
 						<AppSelect
 							name="initialReceiverPlayerId"
@@ -305,7 +305,7 @@
 							items={bFirstPlayerItems}
 							required
 						/>
-					</div>
+					</label>
 					<div class="sm:col-span-2">
 						<AppButton type="submit">開始</AppButton>
 					</div>
@@ -313,7 +313,7 @@
 			{:else}
 				<form {...startGame} class="grid gap-3 sm:grid-cols-2">
 					<input type="hidden" name="gameNo" value={matchState.currentGameNo} />
-					<div class="grid gap-1">
+					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 						<AppSelect
 							name="initialServerPlayerId"
@@ -321,8 +321,8 @@
 							items={allPlayerItems}
 							required
 						/>
-					</div>
-					<div class="grid gap-1">
+					</label>
+					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st レシーバー</span>
 						<AppSelect
 							name="initialReceiverPlayerId"
@@ -330,7 +330,7 @@
 							items={bFirstPlayerItems}
 							required
 						/>
-					</div>
+					</label>
 					<div class="sm:col-span-2">
 						<AppButton
 							class="rounded-xl bg-zinc-950 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"

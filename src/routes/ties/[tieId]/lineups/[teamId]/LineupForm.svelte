@@ -133,7 +133,7 @@
 						{ value: '', label: '未入力' },
 						...slotPlayers.map((p) => ({ value: p.id, label: p.name }))
 					]}
-					<div>
+					<label class="block">
 						<span class="mb-1 block text-xs text-muted">
 							{slotLabel(rubber.discipline, typedOrder)}
 						</span>
@@ -143,12 +143,10 @@
 								items={playerItems}
 								placeholder="未入力"
 								onValueChange={(value) => {
-									const item = draftItems.find((i) => i.rubberCode === rubber.code);
-									if (item) {
-										item.player1Id = value;
-										draftItems = [...draftItems];
-										onDraftChange(draftItems);
-									}
+									draftItems = draftItems.map((i) =>
+										i.rubberCode === rubber.code ? { ...i, player1Id: value } : i
+									) as LocalLineupDraft;
+									onDraftChange(draftItems);
 								}}
 							/>
 						{:else}
@@ -157,16 +155,14 @@
 								items={playerItems}
 								placeholder="未入力"
 								onValueChange={(value) => {
-									const item = draftItems.find((i) => i.rubberCode === rubber.code);
-									if (item) {
-										item.player2Id = value;
-										draftItems = [...draftItems];
-										onDraftChange(draftItems);
-									}
+									draftItems = draftItems.map((i) =>
+										i.rubberCode === rubber.code ? { ...i, player2Id: value } : i
+									) as LocalLineupDraft;
+									onDraftChange(draftItems);
 								}}
 							/>
 						{/if}
-					</div>
+					</label>
 				{/each}
 			</div>
 		</div>

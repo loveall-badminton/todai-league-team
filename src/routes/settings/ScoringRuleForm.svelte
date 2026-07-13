@@ -37,50 +37,50 @@
 	</div>
 
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-		<div class="grid gap-1">
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">最大ゲーム</span>
 			<AppInput
 				type="number"
 				{...ruleForm.fields.maxGames.as('text', String(rule.maxGames))}
 				min="1"
 			/>
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">必要ゲーム</span>
 			<AppInput
 				type="number"
 				{...ruleForm.fields.gamesToWin.as('text', String(rule.gamesToWin))}
 				min="1"
 			/>
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">勝利点</span>
 			<AppInput
 				type="number"
 				{...ruleForm.fields.pointsToWin.as('text', String(rule.pointsToWin))}
 				min="1"
 			/>
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">デュース差</span>
 			<AppInput type="number" {...ruleForm.fields.winBy.as('text', String(rule.winBy))} min="1" />
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">上限点</span>
 			<AppInput
 				type="number"
 				{...ruleForm.fields.maxPoints.as('text', String(rule.maxPoints))}
 				min="1"
 			/>
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-muted-emphasis">インターバル</span>
 			<AppInput
 				type="number"
 				{...ruleForm.fields.midGameIntervalPoint.as('text', String(rule.midGameIntervalPoint))}
 				min="1"
 			/>
-		</div>
+		</label>
 	</div>
 
 	<FormToast result={ruleForm.result} />

@@ -23,9 +23,11 @@
 	--color-court-b: var(--color-cyan-500);
 	--color-court-b-bg: var(--color-cyan-50);
 
-	--color-muted: var(--color-zinc-400);
-	--color-muted-foreground: var(--color-zinc-500);
-	--color-muted-emphasis: var(--color-zinc-600);
+	/* zinc-400 (~2.9:1 on white) fails WCAG AA for text; bumped a step so all three
+	   tiers stay readable outdoors/courtside while preserving their relative hierarchy. */
+	--color-muted: var(--color-zinc-500);
+	--color-muted-foreground: var(--color-zinc-600);
+	--color-muted-emphasis: var(--color-zinc-700);
 	--color-default: var(--color-zinc-950);
 	--color-border: var(--color-zinc-200);
 	--color-border-subtle: var(--color-zinc-100);

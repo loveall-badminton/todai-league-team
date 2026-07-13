@@ -61,18 +61,18 @@
 	<input type="hidden" name="id" value={id} />
 
 	<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="grid gap-1">
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-zinc-500">予定時刻</span>
 			<AppInput
 				{...updateTieInstance.fields.scheduledStartAt.as('time', tie.scheduledStartAt ?? '')}
 			/>
-		</div>
-		<div class="grid gap-1">
+		</label>
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-zinc-500">オーダー期限</span>
 			<AppInput {...updateTieInstance.fields.lineupDueAt.as('time', tie.lineupDueAt ?? '')} />
-		</div>
+		</label>
 		{#if teams.length > 0}
-			<div class="grid gap-1">
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">審判担当</span>
 				<AppMultipleSelect
 					name="assignedTeamIds"
@@ -80,27 +80,27 @@
 					items={teamItems}
 					placeholder="未割当"
 				/>
-			</div>
+			</label>
 		{/if}
 	</div>
 
-	<div class="grid gap-1">
+	<label class="grid gap-1">
 		<span class="text-xs font-medium text-zinc-500">体育館・コート</span>
 		<CourtPicker initialVenue={tie.venue} initialCourts={tie.courtBlockCode} />
-	</div>
+	</label>
 
 	<div class="grid gap-3 sm:grid-cols-2">
-		<div class="grid gap-1">
+		<label class="grid gap-1">
 			<span class="text-xs font-medium text-zinc-500">運営メモ</span>
 			<AppInput {...updateTieInstance.fields.operationNote.as('text', tie.operationNote ?? '')} />
-		</div>
+		</label>
 		{#if teams.length > 0}
-			<div class="grid gap-1">
+			<label class="grid gap-1">
 				<span class="text-xs font-medium text-zinc-500">審判メモ</span>
 				<AppInput
 					{...updateTieInstance.fields.officiatingNote.as('text', tie.officiatingNote ?? '')}
 				/>
-			</div>
+			</label>
 		{/if}
 	</div>
 
