@@ -53,9 +53,10 @@
 							</p>
 							{#if ['playing', 'interval', 'suspended', 'finished', 'confirmed'].includes(tie.status)}
 								<span
-									class="shrink-0 text-lg font-bold tabular-nums {tie.status === 'playing'
-										? 'text-emerald-700'
-										: ''}"
+									class={cn(
+										'shrink-0 text-lg font-bold tabular-nums',
+										tie.status === 'playing' && 'text-emerald-700'
+									)}
 								>
 									{tie.teamScoreA}–{tie.teamScoreB}
 								</span>

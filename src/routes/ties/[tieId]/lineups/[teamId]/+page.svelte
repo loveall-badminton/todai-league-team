@@ -27,6 +27,7 @@
 	} from '../lineupDraftStorage';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 	import { formatDurationMin } from '$lib/utils/timeOfDay';
+	import { cn } from '$lib/utils/cn';
 
 	let { data }: PageProps = $props();
 
@@ -148,18 +149,23 @@
 		actions={headerActions}
 	/>
 	<div class="mt-2 flex items-center gap-3">
-		<span class="inline-flex rounded-full px-3 py-1 text-sm font-medium {statusBadgeClass(status)}">
+		<span
+			class={cn('inline-flex rounded-full px-3 py-1 text-sm font-medium', statusBadgeClass(status))}
+		>
 			{submissionStatusLabel(status)}
 		</span>
 		{#if remainingMin !== null}
 			<span
-				class="text-xs {remainingMin <= 0
-					? 'text-muted-foreground'
-					: remainingMin <= 1
-						? 'text-red-600 font-medium'
-						: remainingMin <= 5
-							? 'text-amber-600'
-							: 'text-muted-foreground'}"
+				class={cn(
+					'text-xs',
+					remainingMin <= 0
+						? 'text-muted-foreground'
+						: remainingMin <= 1
+							? 'text-red-600 font-medium'
+							: remainingMin <= 5
+								? 'text-amber-600'
+								: 'text-muted-foreground'
+				)}
 			>
 				{remainingMin > 0 ? `あと ${formatDurationMin(remainingMin)}` : '期限超過'}
 			</span>

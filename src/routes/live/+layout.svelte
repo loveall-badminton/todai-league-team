@@ -5,6 +5,7 @@
 	import type { LayoutProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 	import { formatDurationMin, toTimestamp, tournamentDateBaseMs } from '$lib/utils/timeOfDay';
+	import { cn } from '$lib/utils/cn';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -56,13 +57,15 @@
 					<span class="font-medium">{urgentTie.tieCode}</span> のオーダーが未提出です
 					{#if urgentRemainingMin !== null}
 						— <span
-							class={urgentRemainingMin <= 0
-								? 'text-muted-foreground'
-								: urgentRemainingMin <= 5
-									? 'font-bold text-red-700'
-									: urgentRemainingMin <= 10
-										? 'font-semibold text-amber-900'
-										: ''}
+							class={cn(
+								urgentRemainingMin <= 0
+									? 'text-muted-foreground'
+									: urgentRemainingMin <= 5
+										? 'font-bold text-red-700'
+										: urgentRemainingMin <= 10
+											? 'font-semibold text-amber-900'
+											: ''
+							)}
 							>{urgentRemainingMin > 0
 								? `あと ${formatDurationMin(urgentRemainingMin)}`
 								: '締切済'}</span
@@ -74,13 +77,15 @@
 					オーダー未提出 <span class="font-medium">{pendingLineups.length} 件</span>
 					{#if urgentRemainingMin !== null}
 						— 最短 <span
-							class={urgentRemainingMin <= 0
-								? 'text-muted-foreground'
-								: urgentRemainingMin <= 5
-									? 'font-bold text-red-700'
-									: urgentRemainingMin <= 10
-										? 'font-semibold text-amber-900'
-										: ''}
+							class={cn(
+								urgentRemainingMin <= 0
+									? 'text-muted-foreground'
+									: urgentRemainingMin <= 5
+										? 'font-bold text-red-700'
+										: urgentRemainingMin <= 10
+											? 'font-semibold text-amber-900'
+											: ''
+							)}
 							>{urgentRemainingMin > 0
 								? `あと ${formatDurationMin(urgentRemainingMin)}`
 								: '締切済'}</span
@@ -106,15 +111,21 @@
 	<nav class="mb-4 flex w-fit gap-0.5 rounded-lg bg-zinc-100 p-0.5">
 		<a
 			href={livePath}
-			class="rounded-md px-4 py-1.5 text-sm font-medium {isTabActive(livePath)
-				? 'bg-white shadow-sm text-zinc-900'
-				: 'text-muted hover:text-default hover:bg-zinc-50'}">進行表</a
+			class={cn(
+				'rounded-md px-4 py-1.5 text-sm font-medium',
+				isTabActive(livePath)
+					? 'bg-white shadow-sm text-zinc-900'
+					: 'text-muted hover:text-default hover:bg-zinc-50'
+			)}>進行表</a
 		>
 		<a
 			href={standingsPath}
-			class="rounded-md px-4 py-1.5 text-sm font-medium {isTabActive(standingsPath)
-				? 'bg-white shadow-sm text-zinc-900'
-				: 'text-muted hover:text-default hover:bg-zinc-50'}">順位表</a
+			class={cn(
+				'rounded-md px-4 py-1.5 text-sm font-medium',
+				isTabActive(standingsPath)
+					? 'bg-white shadow-sm text-zinc-900'
+					: 'text-muted hover:text-default hover:bg-zinc-50'
+			)}>順位表</a
 		>
 	</nav>
 {/if}

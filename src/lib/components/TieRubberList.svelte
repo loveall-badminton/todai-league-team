@@ -90,9 +90,10 @@
 			{#each rubbers as rubber (rubber.id)}
 				{@const isPlaying = rubber.status === 'playing'}
 				<div
-					class="grid grid-cols-[4rem_1fr_auto_1fr] items-center gap-x-2 border-t border-zinc-50 px-4 py-2 text-xs {isPlaying
-						? 'bg-emerald-50'
-						: ''}"
+					class={cn(
+						'grid grid-cols-[4rem_1fr_auto_1fr] items-center gap-x-2 border-t border-zinc-50 px-4 py-2 text-xs',
+						isPlaying && 'bg-emerald-50'
+					)}
 				>
 					<span class="font-medium text-zinc-400">{rubberLabel(rubber.code)}</span>
 					<div class="min-w-0">{@render playerNames(rubber.playersA, 'A', rubber)}</div>
@@ -128,7 +129,7 @@
 			<tbody>
 				{#each rubbers as rubber (rubber.id)}
 					{@const isPlaying = rubber.status === 'playing'}
-					<tr class="border-b border-zinc-100 last:border-0 {isPlaying ? 'bg-emerald-50' : ''}">
+					<tr class={cn('border-b border-zinc-100 last:border-0', isPlaying && 'bg-emerald-50')}>
 						<td class="px-2 py-3 font-medium sm:px-4">{rubberLabel(rubber.code)}</td>
 						<td class="px-2 py-3 text-sm sm:px-4"
 							>{@render playerNames(rubber.playersA, 'A', rubber)}</td

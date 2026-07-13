@@ -70,7 +70,7 @@
 		)}
 	>
 		<Select.Value>
-			<span class={value ? 'text-zinc-900' : 'text-muted'}>{selectedLabel}</span>
+			<span class={cn(value ? 'text-zinc-900' : 'text-muted')}>{selectedLabel}</span>
 		</Select.Value>
 		<ChevronDown class="h-4 w-4 shrink-0 text-muted" />
 	</Select.Trigger>

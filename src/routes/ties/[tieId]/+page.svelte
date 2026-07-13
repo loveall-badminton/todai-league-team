@@ -50,6 +50,7 @@
 	import { createRealtimeQueryFlow } from '$lib/realtime/queryFlow';
 	import { hasScoreUpdate } from '$lib/realtime/channels';
 	import { buildRubberScorePatch } from '$lib/realtime/scorePatch';
+	import { cn } from '$lib/utils/cn';
 	import {
 		shouldRefreshTieHeaderData,
 		shouldRefreshTieLiveRubbers,
@@ -396,7 +397,7 @@
 
 	{#snippet rubberExtraCell(row: RubberRow)}
 		<td class="px-4 py-3">
-			<span class="text-xs {rubberStatusBgClass(row.status)}">
+			<span class={cn('text-xs', rubberStatusBgClass(row.status))}>
 				{rubberStatusLabel(row.status)}
 			</span>
 		</td>

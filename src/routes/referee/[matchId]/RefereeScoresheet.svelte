@@ -43,8 +43,10 @@
 				<p class="text-xs font-medium tracking-wide text-muted">第{game.gameNo}ゲーム</p>
 				{#if game.winnerSide}
 					<span
-						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
-								{game.winnerSide === 'A' ? 'bg-pink-100 text-pink-700' : 'bg-cyan-100 text-cyan-700'}"
+						class={cn(
+							'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold',
+							game.winnerSide === 'A' ? 'bg-pink-100 text-pink-700' : 'bg-cyan-100 text-cyan-700'
+						)}
 					>
 						{game.finalScoreA}–{game.finalScoreB}
 					</span>

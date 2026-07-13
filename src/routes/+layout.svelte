@@ -27,6 +27,7 @@
 	import { onDestroy } from 'svelte';
 	import { createPersistentLiveConnectionManager } from '$lib/realtime/persistentLiveConnectionManager.svelte';
 	import { setRealtimeConnectionManager } from '$lib/realtime/realtimeConnectionContext';
+	import { cn } from '$lib/utils/cn';
 
 	let { data, children }: LayoutProps = $props();
 	let drawerOpen = $state(false);
@@ -134,9 +135,10 @@
 
 	<!-- Mobile slide-out drawer -->
 	<div
-		class="fixed inset-y-0 left-0 z-50 w-64 transform overflow-y-auto bg-white shadow-xl transition-transform duration-200 ease-in-out lg:hidden {drawerOpen
-			? 'translate-x-0'
-			: '-translate-x-full'}"
+		class={cn(
+			'fixed inset-y-0 left-0 z-50 w-64 transform overflow-y-auto bg-white shadow-xl transition-transform duration-200 ease-in-out lg:hidden',
+			drawerOpen ? 'translate-x-0' : '-translate-x-full'
+		)}
 	>
 		<div class="flex items-center justify-between border-b border-border px-4 py-4">
 			<span class="text-base font-bold text-default">メニュー</span>
@@ -166,11 +168,10 @@
 				<a
 					href={resolve(item.path)}
 					onclick={closeDrawer}
-					class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors {isActive(
-						item.path
-					)
-						? 'bg-zinc-950 text-white'
-						: 'text-zinc-700 hover:bg-zinc-100'}"
+					class={cn(
+						'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+						isActive(item.path) ? 'bg-zinc-950 text-white' : 'text-zinc-700 hover:bg-zinc-100'
+					)}
 				>
 					<Icon class="h-4 w-4 shrink-0" />
 					{item.label}
@@ -205,11 +206,10 @@
 					{@const Icon = item.icon}
 					<a
 						href={resolve(item.path)}
-						class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors {isActive(
-							item.path
-						)
-							? 'bg-zinc-950 text-white'
-							: 'text-zinc-700 hover:bg-zinc-100'}"
+						class={cn(
+							'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+							isActive(item.path) ? 'bg-zinc-950 text-white' : 'text-zinc-700 hover:bg-zinc-100'
+						)}
 					>
 						<Icon class="h-4 w-4 shrink-0" />
 						{item.label}

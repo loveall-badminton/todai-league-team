@@ -6,6 +6,7 @@
 	import SectionLabel from '$lib/components/ui/SectionLabel.svelte';
 	import { resolve } from '$app/paths';
 	import { tieStatusLabel } from '$lib/domain/tokyoLeagueLabels';
+	import { cn } from '$lib/utils/cn';
 
 	let { query }: { query: QueryValue<StandingsData> } = $props();
 
@@ -106,14 +107,16 @@
 								class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
 							>
 								<span
-									class="w-8 shrink-0 text-center text-sm font-bold tabular-nums {entry.confirmed
-										? 'text-zinc-800'
-										: 'text-zinc-300'}">{entry.rank}位</span
+									class={cn(
+										'w-8 shrink-0 text-center text-sm font-bold tabular-nums',
+										entry.confirmed ? 'text-zinc-800' : 'text-zinc-300'
+									)}>{entry.rank}位</span
 								>
 								<span
-									class="min-w-0 flex-1 text-sm {entry.confirmed
-										? 'font-semibold text-zinc-900'
-										: 'text-zinc-400'}"
+									class={cn(
+										'min-w-0 flex-1 text-sm',
+										entry.confirmed ? 'font-semibold text-zinc-900' : 'text-zinc-400'
+									)}
 								>
 									{entry.name ?? `${matchLabel}待ち`}
 								</span>

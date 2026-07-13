@@ -6,6 +6,7 @@
 	import AppSelect from '$lib/components/ui/AppSelect.svelte';
 	import DialogCloseButton from '$lib/components/ui/DialogCloseButton.svelte';
 	import FormToast from '$lib/components/ui/FormToast.svelte';
+	import { cn } from '$lib/utils/cn';
 	import type { SelectItem } from '$lib/types/ui';
 	import type { ManagedAccount } from '$lib/server/auth/accountManagement';
 	import { updateAccount, resetPassword } from './accounts.remote';
@@ -64,7 +65,7 @@
 								<span class="text-xs font-medium text-muted-emphasis">表示名</span>
 								<AppInput {...updateAccount.fields.name.as('text', editAccount.name)} required />
 							</label>
-							<div class={`grid gap-3 ${acctType === 'team' ? 'sm:grid-cols-2' : ''}`}>
+							<div class={cn('grid gap-3', acctType === 'team' && 'sm:grid-cols-2')}>
 								<label class="grid gap-1">
 									<span class="text-xs font-medium text-muted-emphasis">種別</span>
 									<AppSelect

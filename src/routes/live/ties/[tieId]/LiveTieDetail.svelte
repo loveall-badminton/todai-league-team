@@ -108,9 +108,9 @@
 							: 'text-muted'
 					)}
 				>
-					<span class={g.winnerSide === 'A' ? 'font-bold' : ''}>{g.scoreA}</span>
+					<span class={cn(g.winnerSide === 'A' && 'font-bold')}>{g.scoreA}</span>
 					–
-					<span class={g.winnerSide === 'B' ? 'font-bold' : ''}>{g.scoreB}</span>
+					<span class={cn(g.winnerSide === 'B' && 'font-bold')}>{g.scoreB}</span>
 				</p>
 			{/each}
 		</div>
@@ -169,9 +169,10 @@
 		{@const isExpanded = expandedRubberId === rubber.id}
 		<button
 			type="button"
-			class="flex w-full items-center gap-x-2 border-b border-zinc-50 px-4 py-2.5 text-left text-xs transition-colors hover:bg-zinc-50 {isPlaying
-				? 'bg-emerald-50/50'
-				: ''}"
+			class={cn(
+				'flex w-full items-center gap-x-2 border-b border-zinc-50 px-4 py-2.5 text-left text-xs transition-colors hover:bg-zinc-50',
+				isPlaying && 'bg-emerald-50/50'
+			)}
 			onclick={() => toggleRubber(rubber.id)}
 		>
 			<span class="w-16 shrink-0 font-medium text-muted-foreground">{rubberLabel(rubber.code)}</span

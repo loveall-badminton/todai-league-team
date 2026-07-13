@@ -24,6 +24,7 @@
 	import type { PageProps } from './$types';
 	import { useLineupClock } from '$lib/utils/lineupCountdown.svelte';
 	import { formatDurationMin } from '$lib/utils/timeOfDay';
+	import { cn } from '$lib/utils/cn';
 
 	let { data }: PageProps = $props();
 
@@ -160,9 +161,10 @@
 											{#if tie.lineupDueAt}
 												{@const min = remainingMin(tie.lineupDueAt)}
 												<span
-													class="inline-flex items-center gap-1 font-bold {min !== null && min <= 5
-														? 'text-red-700'
-														: 'text-amber-700'}"
+													class={cn(
+														'inline-flex items-center gap-1 font-bold',
+														min !== null && min <= 5 ? 'text-red-700' : 'text-amber-700'
+													)}
 												>
 													<AlarmClock class="size-3.5 shrink-0" />
 													{#if min === null}
@@ -280,11 +282,12 @@
 							tie.status
 						)}
 						{@const startMin = notStarted ? remainingMin(tie.scheduledStartAt) : null}
-						<Card class="overflow-hidden {hasPlayingRubber ? 'border-emerald-300' : ''}" flush>
+						<Card class={cn('overflow-hidden', hasPlayingRubber && 'border-emerald-300')} flush>
 							<div
-								class="border-b border-border-subtle px-4 py-3 {hasPlayingRubber
-									? 'bg-emerald-50/60'
-									: 'bg-zinc-50/60'}"
+								class={cn(
+									'border-b border-border-subtle px-4 py-3',
+									hasPlayingRubber ? 'bg-emerald-50/60' : 'bg-zinc-50/60'
+								)}
 							>
 								<div class="flex flex-wrap items-center gap-1.5">
 									<p class="text-base font-bold text-zinc-900">{tie.tieCode}</p>
@@ -304,9 +307,10 @@
 									{/if}
 									{#if startMin !== null && startMin > 0 && startMin <= 120}
 										<span
-											class="inline-flex items-center gap-1 text-xs font-bold {startMin <= 10
-												? 'text-red-700'
-												: 'text-amber-700'}"
+											class={cn(
+												'inline-flex items-center gap-1 text-xs font-bold',
+												startMin <= 10 ? 'text-red-700' : 'text-amber-700'
+											)}
 										>
 											<AlarmClock class="size-3.5 shrink-0" />
 											開始まであと {formatDurationMin(startMin)}
@@ -326,12 +330,20 @@
 										<a
 											href={resolve('/referee/[matchId]', { matchId: rubber.matchId! })}
 											data-sveltekit-preload-data="tap"
-											class="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-zinc-50
-												{isPlaying ? 'bg-emerald-50/40' : isDone ? 'bg-zinc-50' : ''}"
+											class={cn(
+												'flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-zinc-50',
+												isPlaying ? 'bg-emerald-50/40' : isDone ? 'bg-zinc-50' : ''
+											)}
 										>
 											<span
-												class="shrink-0 text-sm font-semibold
-													{isPlaying ? 'text-emerald-700' : isDone ? 'text-zinc-500' : 'text-zinc-600'}"
+												class={cn(
+													'shrink-0 text-sm font-semibold',
+													isPlaying
+														? 'text-emerald-700'
+														: isDone
+															? 'text-zinc-500'
+															: 'text-zinc-600'
+												)}
 											>
 												{rubberLabel(rubber.code)}
 											</span>
@@ -351,9 +363,10 @@
 												/>
 												{#if !isDone}
 													<ArrowRight
-														class="size-3.5 shrink-0 {isPlaying
-															? 'text-emerald-500'
-															: 'text-muted'}"
+														class={cn(
+															'size-3.5 shrink-0',
+															isPlaying ? 'text-emerald-500' : 'text-muted'
+														)}
 													/>
 												{/if}
 											</span>

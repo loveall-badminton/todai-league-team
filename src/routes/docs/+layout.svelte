@@ -3,6 +3,7 @@
 	import { ChevronDown } from '@lucide/svelte';
 	import DocSidebar from './DocSidebar.svelte';
 	import type { LayoutProps } from './$types';
+	import { cn } from '$lib/utils/cn';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -35,9 +36,10 @@
 			>
 				<span>ページ一覧</span>
 				<ChevronDown
-					class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 {mobileNavOpen
-						? 'rotate-180'
-						: ''}"
+					class={cn(
+						'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+						mobileNavOpen && 'rotate-180'
+					)}
 				/>
 			</button>
 			{#if mobileNavOpen}

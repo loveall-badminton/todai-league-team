@@ -9,6 +9,7 @@
 	import type { TieSummary } from '$lib/server/repositories/tokyoLeagueRepository';
 	import TieEditForm from '$lib/components/TieEditForm.svelte';
 	import type { EntityOption } from '$lib/types/entities';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		tie,
@@ -39,8 +40,10 @@
 
 <div
 	{@attach sortable.attach}
-	class="overflow-hidden rounded-xl border border-zinc-200 bg-white
-		{sortable.isDragging ? 'opacity-40' : ''}"
+	class={cn(
+		'overflow-hidden rounded-xl border border-zinc-200 bg-white',
+		sortable.isDragging && 'opacity-40'
+	)}
 >
 	<div>
 		<div class="flex items-stretch">
@@ -86,9 +89,10 @@
 					{#if tie.status === 'playing' || tie.status === 'finished' || tie.status === 'confirmed'}
 						<div class="flex flex-col items-end">
 							<span
-								class="text-sm font-bold tabular-nums {tie.status === 'playing'
-									? 'text-emerald-700'
-									: 'text-zinc-700'}"
+								class={cn(
+									'text-sm font-bold tabular-nums',
+									tie.status === 'playing' ? 'text-emerald-700' : 'text-zinc-700'
+								)}
 							>
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</span>
@@ -105,7 +109,7 @@
 						</div>
 					{/if}
 					<ChevronDown
-						class="size-4 text-zinc-400 transition-transform {open ? 'rotate-180' : ''}"
+						class={cn('size-4 text-zinc-400 transition-transform', open && 'rotate-180')}
 					/>
 				</div>
 			</button>

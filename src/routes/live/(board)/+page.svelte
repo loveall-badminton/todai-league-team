@@ -10,6 +10,7 @@
 	import { ArrowRight } from '@lucide/svelte';
 	import { PatchCollection } from '$lib/optimistic';
 	import type { RealtimeUpdate } from '$lib/realtime/updates';
+	import { cn } from '$lib/utils/cn';
 
 	const scheduleQuery = getSchedulePageData();
 	let myTeamId = $derived(page.data.authProfile?.teamId ?? null);
@@ -61,9 +62,10 @@
 					></span>
 				{/if}
 				<span
-					class="relative inline-flex size-2 rounded-full {playingCount > 0
-						? 'bg-emerald-500'
-						: 'bg-zinc-300'}"
+					class={cn(
+						'relative inline-flex size-2 rounded-full',
+						playingCount > 0 ? 'bg-emerald-500' : 'bg-zinc-300'
+					)}
 				></span>
 			</span>
 			{playingCount > 0 ? `${playingCount}試合進行中` : '進行中の試合なし'}

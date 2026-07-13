@@ -4,6 +4,7 @@
 	import { createSortable } from '@dnd-kit/svelte/sortable';
 	import GroupBadge from '$lib/components/GroupBadge.svelte';
 	import type { TeamSummary } from '$lib/server/repositories/tokyoLeagueRepository';
+	import { cn } from '$lib/utils/cn';
 
 	let { team, index }: { team: TeamSummary; index: number } = $props();
 
@@ -19,8 +20,10 @@
 
 <div
 	{@attach sortable.attach}
-	class="flex items-center gap-2 px-4 transition-colors lg:grid lg:grid-cols-[auto_1fr_auto_auto_auto_auto]
-		{sortable.isDragging ? 'opacity-40' : 'hover:bg-zinc-50'}"
+	class={cn(
+		'flex items-center gap-2 px-4 transition-colors lg:grid lg:grid-cols-[auto_1fr_auto_auto_auto_auto]',
+		sortable.isDragging ? 'opacity-40' : 'hover:bg-zinc-50'
+	)}
 >
 	<!-- Drag handle -->
 	<div

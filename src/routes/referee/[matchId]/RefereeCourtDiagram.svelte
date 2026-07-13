@@ -39,9 +39,11 @@
 	{@const isServer = service?.serverPlayerId === playerId}
 	{@const isReceiver = service?.receiverPlayerId === playerId}
 	<div
-		class="flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center
-		{hasBorderBottom ? 'border-b border-border-subtle' : ''}
-		{isServer ? (accent === 'pink' ? 'bg-pink-50' : 'bg-cyan-50') : isReceiver ? 'bg-zinc-50' : ''}"
+		class={cn(
+			'flex min-h-18 flex-col items-center justify-center gap-0.5 p-3 text-center',
+			hasBorderBottom && 'border-b border-border-subtle',
+			isServer ? (accent === 'pink' ? 'bg-pink-50' : 'bg-cyan-50') : isReceiver ? 'bg-zinc-50' : ''
+		)}
 	>
 		{#if isServer}
 			<span class={cn('text-xs font-bold', accent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}

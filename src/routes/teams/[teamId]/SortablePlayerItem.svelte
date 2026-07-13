@@ -9,6 +9,7 @@
 	import type { TeamPlayer } from '$lib/server/repositories/tokyoLeagueRepository';
 	import { toast } from 'svelte-sonner';
 	import { updatePlayer } from './team.remote';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		player,
@@ -53,7 +54,7 @@
 
 <div
 	{@attach sortable.attach}
-	class="px-4 transition-colors {sortable.isDragging ? 'opacity-40' : ''}"
+	class={cn('px-4 transition-colors', sortable.isDragging && 'opacity-40')}
 >
 	{#if !isEditing}
 		<div class="flex w-full items-center gap-2 py-3">
@@ -70,11 +71,14 @@
 				class="-mx-1 flex flex-1 items-center gap-3 rounded-lg px-1 text-left transition-colors hover:bg-zinc-50"
 			>
 				<span
-					class="h-2 w-2 shrink-0 rounded-full {player.gender === 'male'
-						? 'bg-sky-400'
-						: player.gender === 'female'
-							? 'bg-rose-400'
-							: 'bg-zinc-300'}"
+					class={cn(
+						'h-2 w-2 shrink-0 rounded-full',
+						player.gender === 'male'
+							? 'bg-sky-400'
+							: player.gender === 'female'
+								? 'bg-rose-400'
+								: 'bg-zinc-300'
+					)}
 					title={genderLabel(player.gender)}
 				></span>
 				<div class="min-w-0 flex-1">

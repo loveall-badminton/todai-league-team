@@ -8,6 +8,7 @@
 	import { resolve } from '$app/paths';
 	import { Clock, ArrowRight, CircleCheck, CircleAlert } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import { cn } from '$lib/utils/cn';
 
 	type ScheduleTie = ScheduleData[number];
 
@@ -70,29 +71,35 @@
 							<a
 								href={resolve('/live/ties/[tieId]', { tieId: tie.id })}
 								data-sveltekit-preload-data="tap"
-								class="relative flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100
-									{myTie ? 'bg-blue-50/60' : ''}"
+								class={cn(
+									'relative flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 active:bg-zinc-100',
+									myTie && 'bg-blue-50/60'
+								)}
 								style="view-transition-name: tie-card-{tie.id}"
 							>
 								{#if myTie}
 									<span class="absolute inset-y-0 left-0 w-0.5 rounded-full bg-blue-400"></span>
 								{/if}
 								<span
-									class="h-2 w-2 shrink-0 self-start mt-1.5 rounded-full {statusDot(tie.status)}"
+									class={cn(
+										'h-2 w-2 shrink-0 self-start mt-1.5 rounded-full',
+										statusDot(tie.status)
+									)}
 								></span>
 								<!-- main content -->
 								<div class="min-w-0 flex-1">
 									<!-- meta row: tieCode + time -->
 									<div class="flex items-center gap-1.5 text-[11px] text-muted">
-										<span class="font-semibold {myTie ? 'text-blue-600' : 'text-zinc-500'}">
+										<span class={cn('font-semibold', myTie ? 'text-blue-600' : 'text-zinc-500')}>
 											{tie.tieCode}
 										</span>
 										{#if tie.scheduledStartAt}
 											<span class="text-zinc-300">·</span>
 											<span
-												class="inline-flex items-center gap-0.5 tabular-nums {myTie
-													? 'text-blue-500'
-													: 'text-zinc-400'}"
+												class={cn(
+													'inline-flex items-center gap-0.5 tabular-nums',
+													myTie ? 'text-blue-500' : 'text-zinc-400'
+												)}
 											>
 												<Clock class="size-3 shrink-0" />
 												{tie.scheduledStartAt}
@@ -101,17 +108,20 @@
 									</div>
 									<!-- team name -->
 									<p
-										class="truncate text-sm font-semibold {myTie
-											? 'text-zinc-900'
-											: 'text-zinc-700'}"
+										class={cn(
+											'truncate text-sm font-semibold',
+											myTie ? 'text-zinc-900' : 'text-zinc-700'
+										)}
 									>
 										{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 									</p>
 									{#if needsDeadline && myTie}
 										<div class="mt-0.5 flex flex-wrap items-center gap-2">
 											<p
-												class="inline-flex items-center gap-1 text-[11px] font-medium
-													{lineupSubmitted ? 'text-emerald-600' : 'text-amber-600'}"
+												class={cn(
+													'inline-flex items-center gap-1 text-[11px] font-medium',
+													lineupSubmitted ? 'text-emerald-600' : 'text-amber-600'
+												)}
 											>
 												{#if lineupSubmitted}
 													<CircleCheck class="size-3 shrink-0" />
@@ -145,15 +155,15 @@
 								<div class="flex shrink-0 flex-col items-end gap-0.5">
 									{#if hasScore}
 										<span
-											class="text-base font-bold tabular-nums leading-tight {tie.status ===
-											'playing'
-												? 'text-emerald-700'
-												: 'text-muted-emphasis'}"
+											class={cn(
+												'text-base font-bold tabular-nums leading-tight',
+												tie.status === 'playing' ? 'text-emerald-700' : 'text-muted-emphasis'
+											)}
 										>
 											{tie.teamScoreA}–{tie.teamScoreB}
 										</span>
 									{/if}
-									<span class="text-[11px] {statusText(tie.status)}">
+									<span class={cn('text-[11px]', statusText(tie.status))}>
 										{tieStatusLabel(tie.status)}
 									</span>
 								</div>

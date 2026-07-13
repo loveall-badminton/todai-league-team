@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		sections,
@@ -29,9 +30,12 @@
 					<a
 						href={resolve(doc.slug ? `/docs/${doc.slug}` : '/docs')}
 						onclick={onNavigate}
-						class="block rounded-lg px-3 py-1.5 text-sm transition-colors {isActive(doc.slug)
-							? 'bg-zinc-100 font-medium text-zinc-900'
-							: 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800'}"
+						class={cn(
+							'block rounded-lg px-3 py-1.5 text-sm transition-colors',
+							isActive(doc.slug)
+								? 'bg-zinc-100 font-medium text-zinc-900'
+								: 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800'
+						)}
 					>
 						{doc.title}
 					</a>

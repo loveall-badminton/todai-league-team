@@ -80,9 +80,10 @@
 			{:else}
 				{#each standings as row (row.teamId)}
 					<tr
-						class="border-b border-zinc-50 last:border-0 {row.requiresTiebreaker
-							? 'bg-amber-50'
-							: ''}"
+						class={cn(
+							'border-b border-zinc-50 last:border-0',
+							row.requiresTiebreaker && 'bg-amber-50'
+						)}
 					>
 						<td
 							class="px-2 py-2.5 text-center text-sm font-bold text-zinc-400 tabular-nums sm:px-4"
