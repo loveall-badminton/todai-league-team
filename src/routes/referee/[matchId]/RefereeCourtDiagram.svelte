@@ -65,7 +65,7 @@
 				<span class={cn('font-semibold', leftAccent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
 					>左</span
 				>
-				{#if leftSidePlayers[0].teamName}
+				{#if leftSidePlayers[0]?.teamName}
 					<span class="text-muted-emphasis">
 						{leftSidePlayers[0].teamName}
 					</span>
@@ -77,9 +77,9 @@
 					class={cn('font-semibold', rightAccent === 'pink' ? 'text-pink-600' : 'text-cyan-600')}
 					>右</span
 				>
-				{#if rightSidePlayers[0].teamName}
+				{#if rightSidePlayers[0]?.teamName}
 					<span class="text-muted-emphasis">
-						{leftSidePlayers[0].teamName}
+						{rightSidePlayers[0].teamName}
 					</span>
 				{/if}
 			</p>
