@@ -1,3 +1,4 @@
+import { now as nowIso } from '$lib/utils/now';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { RUBBER_DEFINITIONS, type RubberCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
@@ -114,7 +115,7 @@ export async function saveLineupDraft(params: {
 	now?: string;
 }) {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const validation = await validateLineup({ ...params, now });
 	if (validation.errors.length > 0) {
 		throw new Error(validation.errors.join('\n'));
@@ -180,7 +181,7 @@ export async function saveLineupDraft(params: {
 
 export async function submitLineup(params: { tieId: string; teamId: string; now?: string }) {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const submission = await getSubmission(params.tieId, params.teamId);
 	const items = await getSubmissionItems(submission.id);
 	const validation = await validateLineup({
@@ -203,7 +204,7 @@ export async function submitLineup(params: { tieId: string; teamId: string; now?
 
 export async function lockLineup(params: { tieId: string; teamId: string; now?: string }) {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const submission = await getSubmission(params.tieId, params.teamId);
 	await db
 		.update(lineupSubmissions)
@@ -214,7 +215,7 @@ export async function lockLineup(params: { tieId: string; teamId: string; now?: 
 
 export async function unlockLineup(params: { tieId: string; teamId: string; now?: string }) {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const submission = await getSubmission(params.tieId, params.teamId);
 	await db
 		.update(lineupSubmissions)

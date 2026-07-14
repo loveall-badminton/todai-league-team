@@ -121,7 +121,11 @@ export class LiveBoard extends Server<Env> {
 		if (!entry || entry.expiresAt <= now) {
 			if (entry) {
 				this.entryCache.delete(key);
-				void this.ctx.storage.delete(CACHE_ENTRY_PREFIX + key).catch(() => {});
+				void this.ctx.storage
+					.delete(CACHE_ENTRY_PREFIX + key)
+					.catch((err) =>
+						console.error('LiveBoard: failed to delete expired cache entry', key, err)
+					);
 			}
 			return Response.json({ ok: false, epoch }, { status: 404 });
 		}
@@ -152,7 +156,11 @@ export class LiveBoard extends Server<Env> {
 			topics: parsed.output.topics
 		};
 		this.entryCache.set(parsed.output.key, entry);
-		void this.ctx.storage.put(CACHE_ENTRY_PREFIX + parsed.output.key, entry).catch(() => {});
+		void this.ctx.storage
+			.put(CACHE_ENTRY_PREFIX + parsed.output.key, entry)
+			.catch((err) =>
+				console.error('LiveBoard: failed to persist cache entry', parsed.output.key, err)
+			);
 		return Response.json({ ok: true });
 	}
 
@@ -174,7 +182,9 @@ export class LiveBoard extends Server<Env> {
 		// エントリ数に比例してコストが増大するため、スコア更新（高頻度）の
 		// パスでは実行しない。エントリは TTL により自然期限切れする。
 		this.entryEpoch = (await this.getEpoch()) + 1;
-		void this.ctx.storage.put(CACHE_EPOCH_KEY, this.entryEpoch).catch(() => {});
+		void this.ctx.storage
+			.put(CACHE_EPOCH_KEY, this.entryEpoch)
+			.catch((err) => console.error('LiveBoard: failed to persist cache epoch', err));
 
 		const topicSet = new Set(topics);
 		const matches = (entry: GenericCacheEntry) => entry.topics.some((t) => topicSet.has(t));

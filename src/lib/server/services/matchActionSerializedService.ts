@@ -1,3 +1,4 @@
+import { now as nowIso } from '$lib/utils/now';
 import { getRequestDb } from '$lib/server/db/request';
 import {
 	MatchActionCoordinatorResponseSchema,
@@ -63,7 +64,7 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 					matchId: params.matchId,
 					inputType: params.input.type,
 					timeoutMs: DO_FETCH_TIMEOUT_MS,
-					at: new Date().toISOString()
+					at: nowIso()
 				}
 			);
 			throw new Error(
@@ -86,7 +87,7 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 					matchId: params.matchId,
 					inputType: params.input.type,
 					timeoutMs: DO_FETCH_TIMEOUT_MS,
-					at: new Date().toISOString()
+					at: nowIso()
 				});
 				throw new Error(
 					`[DO:${params.matchId}/${params.input.type}] timed out — 処理が混み合っています。しばらくしてから再試行してください`,
@@ -102,7 +103,7 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 					inputType: params.input.type,
 					firstError: firstErr instanceof Error ? firstErr.message : String(firstErr),
 					secondError: secondErr instanceof Error ? secondErr.message : String(secondErr),
-					at: new Date().toISOString()
+					at: nowIso()
 				}
 			);
 			const db = getRequestDb();
@@ -130,7 +131,7 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 
 	return {
 		afterState: parsed.output.afterState,
-		input: parsed.output.input as ScoreEventInput
+		input: parsed.output.input
 	};
 }
 

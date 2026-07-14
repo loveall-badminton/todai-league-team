@@ -88,9 +88,16 @@ async function fetchLiveGameScores(matchIds: string[]): Promise<PublicGameScoreI
 		let state: v.InferOutput<typeof MatchStateSchema>;
 		try {
 			const parsed = v.safeParse(MatchStateSchema, JSON.parse(snapshot.stateJson));
-			if (!parsed.success) continue;
+			if (!parsed.success) {
+				console.warn(
+					'fetchLiveGameScores: match snapshot failed schema validation',
+					snapshot.matchId
+				);
+				continue;
+			}
 			state = parsed.output;
-		} catch {
+		} catch (err) {
+			console.warn('fetchLiveGameScores: failed to parse match snapshot', snapshot.matchId, err);
 			continue;
 		}
 		for (const game of state.games) {

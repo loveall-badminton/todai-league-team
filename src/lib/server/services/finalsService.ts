@@ -1,3 +1,4 @@
+import { now as nowIso } from '$lib/utils/now';
 import { eq } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
 import type { TieStatus } from '$lib/domain/tieProgress';
@@ -167,10 +168,7 @@ export function buildFinalAndThirdPlaceAssignments(
 	return assignments;
 }
 
-export async function generateSemifinals(
-	input: ManualSemifinalAssignments,
-	now = new Date().toISOString()
-) {
+export async function generateSemifinals(input: ManualSemifinalAssignments, now = nowIso()) {
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
@@ -195,10 +193,7 @@ export async function generateSemifinals(
 	return changed;
 }
 
-export async function generateFifthPlace(
-	input: ManualFifthPlaceAssignment,
-	now = new Date().toISOString()
-) {
+export async function generateFifthPlace(input: ManualFifthPlaceAssignment, now = nowIso()) {
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');
 
@@ -253,7 +248,7 @@ async function assertSelectedTeamsAreValid(assignments: FinalTieAssignment[]) {
 	}
 }
 
-export async function generateFinalAndThirdPlace(now = new Date().toISOString()) {
+export async function generateFinalAndThirdPlace(now = nowIso()) {
 	const db = getRequestDb();
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.knockoutScoringRuleId) throw new Error('決勝トーナメント得点ルールが未設定です');

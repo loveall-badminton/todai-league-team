@@ -1,3 +1,4 @@
+import { now as nowIso } from '$lib/utils/now';
 import { and, asc, eq, like, sql } from 'drizzle-orm';
 import {
 	groupPhaseFor,
@@ -7,6 +8,7 @@ import {
 	type VenueCode
 } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchAll } from '$lib/server/db/utils';
 import { rubbers, teams, ties } from '$lib/server/db/schema';
 import { subtractMinutesFromHhMm } from '$lib/utils/timeOfDay';
 import { ensureDefaultSettings } from './tokyoLeagueSetupService';
@@ -57,7 +59,7 @@ export async function createTieWithRubbers(params: {
 		);
 	}
 
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const settings = await ensureDefaultSettings(now);
 	const lineupDueAt =
 		params.lineupDueAt ??
@@ -108,7 +110,7 @@ export async function ensureRubbersForTie(params: {
 	const missing = RUBBER_DEFINITIONS.filter((rubber) => !existingCodes.has(rubber.code));
 	if (missing.length === 0) return;
 
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	await db
 		.insert(rubbers)
 		.values(rubberInsertValues(params.tieId, params.scoringRuleId, now, missing));
@@ -121,7 +123,7 @@ export async function generateGroupRoundRobinTies(params: {
 	now?: string;
 }): Promise<number> {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const settings = await ensureDefaultSettings(now);
 	const lineupDueAt = inferLineupDueAt(
 		null,
@@ -143,9 +145,8 @@ export async function generateGroupRoundRobinTies(params: {
 
 	const existingPairs = new Set(existingTies.map((t) => [t.teamAId, t.teamBId].sort().join('|')));
 
-	type DbStatement = Parameters<typeof db.batch>[0][number];
-	const tieInserts: DbStatement[] = [];
-	const rubberInserts: DbStatement[] = [];
+	const tieInserts: Parameters<typeof db.batch>[0][number][] = [];
+	const rubberInserts: Parameters<typeof db.batch>[0][number][] = [];
 
 	for (const [teamA, teamB] of generateRoundRobinPairs(groupTeams)) {
 		if (existingPairs.has([teamA.id, teamB.id].sort().join('|'))) continue;
@@ -175,7 +176,7 @@ export async function generateGroupRoundRobinTies(params: {
 	}
 
 	if (tieInserts.length > 0) {
-		await db.batch([...tieInserts, ...rubberInserts] as [DbStatement, ...DbStatement[]]);
+		await batchAll(db, [...tieInserts, ...rubberInserts]);
 	}
 
 	return tieInserts.length;

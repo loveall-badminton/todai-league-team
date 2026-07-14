@@ -1,7 +1,9 @@
+import { now as nowIso } from '$lib/utils/now';
 import { eq } from 'drizzle-orm';
 import type { MatchDiscipline } from '$lib/domain/types';
 import type { GroupCode } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchAll } from '$lib/server/db/utils';
 import {
 	matches,
 	rankingTiebreakers,
@@ -109,7 +111,7 @@ export async function createRankingTiebreaker(params: {
 	now?: string;
 }) {
 	const db = getRequestDb();
-	const now = params.now ?? new Date().toISOString();
+	const now = params.now ?? nowIso();
 	const settings = await ensureDefaultSettings(now);
 	if (!settings.tiebreakerScoringRuleId) throw new Error('順位決定再試合ルールが未設定です');
 	const scoringRule = await db.query.scoringRules.findFirst({
@@ -175,17 +177,17 @@ export async function createRankingTiebreaker(params: {
 		matchId
 	);
 
-	await db.batch([
+	await batchAll(db, [
 		...statements,
 		db
 			.update(rankingTiebreakers)
 			.set({ matchId, updatedAt: now })
 			.where(eq(rankingTiebreakers.id, rankingTiebreakerId))
-	] as unknown as Parameters<typeof db.batch>[0]);
+	]);
 	return { rankingTiebreakerId, matchId };
 }
 
-export async function syncRankingTiebreakerResult(matchId: string, now = new Date().toISOString()) {
+export async function syncRankingTiebreakerResult(matchId: string, now = nowIso()) {
 	const db = getRequestDb();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rankingTiebreakerId || !match.winnerSide) return;

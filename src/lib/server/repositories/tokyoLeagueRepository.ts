@@ -1,6 +1,6 @@
 import { isGroupPhase, type GroupCode, type TiePhase } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
-import { batchQuery } from '$lib/server/db/utils';
+import { batchAll, batchQuery } from '$lib/server/db/utils';
 import {
 	appSettings,
 	groupStandingOverrides,
@@ -268,7 +268,8 @@ export async function updateTeamPlayer(input: {
 
 export async function reorderTeams(orderedIds: string[], now: string) {
 	const db = getRequestDb();
-	await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
+	await batchAll(
+		db,
 		orderedIds.map((id, i) =>
 			db.update(teams).set({ displayOrder: i, updatedAt: now }).where(eq(teams.id, id))
 		)
@@ -277,7 +278,8 @@ export async function reorderTeams(orderedIds: string[], now: string) {
 
 export async function reorderTeamPlayers(orderedIds: string[], now: string) {
 	const db = getRequestDb();
-	await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
+	await batchAll(
+		db,
 		orderedIds.map((id, i) =>
 			db.update(teamPlayers).set({ displayOrder: i, updatedAt: now }).where(eq(teamPlayers.id, id))
 		)
@@ -338,7 +340,8 @@ export async function reorderTies(orderedIds: string[], now: string) {
 	// 挟まないと「他の行がまだ持っている値」に更新しようとして制約違反になる。
 	const codeChanges = updates.filter((u) => u.tieCode);
 	if (codeChanges.length > 0) {
-		await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
+		await batchAll(
+			db,
 			codeChanges.map((u) =>
 				db
 					.update(ties)
@@ -348,7 +351,8 @@ export async function reorderTies(orderedIds: string[], now: string) {
 		);
 	}
 
-	await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)(
+	await batchAll(
+		db,
 		updates.map((u) => {
 			const set: Partial<typeof ties.$inferInsert> = {
 				displayOrder: u.displayOrder,
@@ -363,7 +367,7 @@ export async function reorderTies(orderedIds: string[], now: string) {
 export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 	const db = getRequestDb();
 
-	const [tieRows, teamRows] = (await (db.batch as unknown as (q: unknown[]) => Promise<unknown>)([
+	const [tieRows, teamRows] = await db.batch([
 		phase
 			? db
 					.select()
@@ -372,7 +376,7 @@ export async function listTies(phase?: TiePhase): Promise<TieSummary[]> {
 					.orderBy(asc(ties.displayOrder), asc(ties.tieCode))
 			: db.select().from(ties).orderBy(asc(ties.displayOrder), asc(ties.tieCode)),
 		db.select().from(teams)
-	])) as [(typeof ties.$inferSelect)[], (typeof teams.$inferSelect)[]];
+	]);
 
 	const teamMap = new Map(teamRows.map((t) => [t.id, t.name]));
 

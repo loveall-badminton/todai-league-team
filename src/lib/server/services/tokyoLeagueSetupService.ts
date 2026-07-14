@@ -1,10 +1,11 @@
+import { now as nowIso } from '$lib/utils/now';
 import { eq, inArray } from 'drizzle-orm';
 import type { ScoringConfig } from '$lib/domain/types';
 import { TOKYO_LEAGUE_SCORING_RULES } from '$lib/domain/tokyoLeague';
 import { getRequestDb } from '$lib/server/db/request';
 import { appSettings, scoringRules, tournaments } from '$lib/server/db/schema';
 
-async function ensureDefaultScoringRules(now = new Date().toISOString()) {
+async function ensureDefaultScoringRules(now = nowIso()) {
 	const db = getRequestDb();
 	const codes = TOKYO_LEAGUE_SCORING_RULES.map((r) => r.code);
 	const existing = await db
@@ -30,7 +31,7 @@ async function ensureDefaultScoringRules(now = new Date().toISOString()) {
 	}
 }
 
-export async function ensureDefaultSettings(now = new Date().toISOString()) {
+export async function ensureDefaultSettings(now = nowIso()) {
 	const db = getRequestDb();
 	await ensureDefaultScoringRules(now);
 
@@ -66,7 +67,7 @@ const APP_SETTINGS_CACHE_TTL_MS = 60_000;
 let cachedAppSettings: { value: AppSettings; expiresAt: number } | null = null;
 
 /** ページロード用のキャッシュ付き設定取得。書き込み系の処理では使わないこと。 */
-export async function getCachedAppSettings(now = new Date().toISOString()): Promise<AppSettings> {
+export async function getCachedAppSettings(now = nowIso()): Promise<AppSettings> {
 	if (cachedAppSettings && cachedAppSettings.expiresAt > Date.now()) {
 		return cachedAppSettings.value;
 	}

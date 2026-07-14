@@ -1,5 +1,7 @@
+import { now as nowIso } from '$lib/utils/now';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { getRequestDb } from '$lib/server/db/request';
+import { batchAll } from '$lib/server/db/utils';
 import {
 	buildCreateMatchWithPlayersStatements,
 	createMatchWithPlayers
@@ -30,7 +32,7 @@ import { buildRevealLineupsStatements } from './lineupService';
 
 export async function startTie(tieId: string, options: { force?: boolean; now?: string } = {}) {
 	const db = await getRequestDbOrThrow();
-	const now = options.now ?? new Date().toISOString();
+	const now = options.now ?? nowIso();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('対戦が見つかりません');
 
@@ -44,8 +46,7 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 	if (!ready && !options.force) throw new Error('両チームのオーダー承認が必要です');
 
 	const allRubbers = await db.select().from(rubbers).where(eq(rubbers.tieId, tieId));
-	type DbStatement = Parameters<typeof db.batch>[0][number];
-	const statements: DbStatement[] = [];
+	const statements: Parameters<typeof db.batch>[0][number][] = [];
 	await ensureInternalTournament(now);
 
 	if (!tie.lineupsRevealedAt) {
@@ -130,12 +131,12 @@ export async function startTie(tieId: string, options: { force?: boolean; now?: 
 		db.update(rubbers).set({ status: 'scheduled', updatedAt: now }).where(eq(rubbers.tieId, tieId))
 	);
 
-	await db.batch(statements as [DbStatement, ...DbStatement[]]);
+	await batchAll(db, statements);
 }
 
 // startTie の取り消し。まだ得点が入っていない(全ラバー scheduled のまま)場合に限り、
 // 作成済み match を削除してオーダー承認済み(lineup_submitted)の状態まで巻き戻す。
-export async function unstartTie(tieId: string, now = new Date().toISOString()) {
+export async function unstartTie(tieId: string, now = nowIso()) {
 	const db = await getRequestDbOrThrow();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('対戦が見つかりません');
@@ -149,8 +150,7 @@ export async function unstartTie(tieId: string, now = new Date().toISOString()) 
 		throw new Error('スコアが入力された種目があるため開始を取り消せません');
 	}
 
-	type DbStatement = Parameters<typeof db.batch>[0][number];
-	const statements: DbStatement[] = [];
+	const statements: Parameters<typeof db.batch>[0][number][] = [];
 
 	for (const rubber of rubberRows) {
 		if (rubber.matchId) statements.push(db.delete(matches).where(eq(matches.id, rubber.matchId)));
@@ -186,7 +186,7 @@ export async function unstartTie(tieId: string, now = new Date().toISOString()) 
 			.where(eq(ties.id, tieId))
 	);
 
-	await db.batch(statements as [DbStatement, ...DbStatement[]]);
+	await batchAll(db, statements);
 }
 
 function buildMatchPlayersForRubber(params: {
@@ -230,10 +230,7 @@ function resolveRubberLineupPlayers(params: {
 	return [params.player1, params.player2] as const;
 }
 
-export async function createMatchFromRubber(
-	rubberId: string,
-	now = new Date().toISOString()
-): Promise<string> {
+export async function createMatchFromRubber(rubberId: string, now = nowIso()): Promise<string> {
 	const db = await getRequestDbOrThrow();
 
 	const rubber = await db.query.rubbers.findFirst({ where: eq(rubbers.id, rubberId) });
@@ -311,7 +308,7 @@ export async function createMatchFromRubber(
 	return matchId;
 }
 
-export async function syncRubberResultFromMatch(matchId: string, now = new Date().toISOString()) {
+export async function syncRubberResultFromMatch(matchId: string, now = nowIso()) {
 	const db = await getRequestDbOrThrow();
 	const match = await db.query.matches.findFirst({ where: eq(matches.id, matchId) });
 	if (!match?.rubberId) return;
@@ -331,16 +328,12 @@ export async function syncRubberResultFromMatch(matchId: string, now = new Date(
 	if (rubber) await recalculateTieResult(rubber.tieId, now);
 }
 
-export async function recalculateTieResult(
-	tieId: string,
-	now = new Date().toISOString(),
-	dbParam?: RequestDb
-) {
+export async function recalculateTieResult(tieId: string, now = nowIso(), dbParam?: RequestDb) {
 	const db = await getRequestDbOrThrow(dbParam);
 	const [tie, rubberRows] = await db.batch([
 		db.query.ties.findFirst({ where: eq(ties.id, tieId) }),
 		db.select().from(rubbers).where(eq(rubbers.tieId, tieId)).orderBy(asc(rubbers.displayOrder))
-	] as [Parameters<typeof db.batch>[0][number], Parameters<typeof db.batch>[0][number]]);
+	]);
 	if (!tie) throw new Error('Tie not found');
 	const result = calculateTieResult(tie, rubberRows);
 
@@ -357,7 +350,7 @@ export async function recalculateTieResult(
 		.where(eq(ties.id, tieId));
 }
 
-export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
+export async function cutoffTie(tieId: string, now = nowIso()) {
 	const db = await getRequestDbOrThrow();
 	const tie = await db.query.ties.findFirst({ where: eq(ties.id, tieId) });
 	if (!tie) throw new Error('対戦が見つかりません');
@@ -378,8 +371,7 @@ export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
 		throw new Error('打ち切りできる残りの種目がありません');
 	}
 
-	type DbStatement = Parameters<typeof db.batch>[0][number];
-	const ops: DbStatement[] = [];
+	const ops: Parameters<typeof db.batch>[0][number][] = [];
 	const affectedMatchIds: string[] = [];
 	for (const rubber of remainingRubbers) {
 		if (rubber.matchId) {
@@ -403,7 +395,7 @@ export async function cutoffTie(tieId: string, now = new Date().toISOString()) {
 
 	// 残り種目すべての更新を1つのバッチにまとめることで、途中の1件が失敗しても
 	// 一部だけキャンセル済みという中途半端な状態を残さない
-	await db.batch(ops as [DbStatement, ...DbStatement[]]);
+	await batchAll(db, ops);
 	await recalculateTieResult(tieId, now, db);
 	return { affectedMatchIds };
 }
@@ -456,7 +448,7 @@ async function buildCancelMatchRubberOps(db: RequestDb, matchId: string, now: st
 	return { ops, tieId: rubber.tieId };
 }
 
-export async function cancelMatchRubber(matchId: string, now = new Date().toISOString()) {
+export async function cancelMatchRubber(matchId: string, now = nowIso()) {
 	const db = await getRequestDbOrThrow();
 	const { ops, tieId } = await buildCancelMatchRubberOps(db, matchId, now);
 
@@ -464,7 +456,7 @@ export async function cancelMatchRubber(matchId: string, now = new Date().toISOS
 	await recalculateTieResult(tieId, now);
 }
 
-export async function confirmTie(tieId: string, now = new Date().toISOString()) {
+export async function confirmTie(tieId: string, now = nowIso()) {
 	const db = await getRequestDbOrThrow();
 	await recalculateTieResult(tieId, now);
 	await db.update(ties).set({ status: 'confirmed', updatedAt: now }).where(eq(ties.id, tieId));

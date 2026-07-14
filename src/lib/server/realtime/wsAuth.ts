@@ -1,3 +1,9 @@
+import * as v from 'valibot';
+
+const SessionResponseSchema = v.object({
+	user: v.optional(v.nullable(v.unknown()))
+});
+
 /**
  * `/parties/*` (LiveBoard WebSocket / 内部キャッシュ API) は wrangler.jsonc の
  * main エントリ (src/worker.ts) 内で routePartykitRequest により SvelteKit の
@@ -20,8 +26,9 @@ export async function checkPartySessionAuthorized(
 		});
 		const response = await appFetch(sessionRequest);
 		if (!response.ok) return false;
-		const body = (await response.json().catch(() => null)) as { user?: unknown } | null;
-		return !!body && typeof body === 'object' && body.user != null;
+		const raw = await response.json().catch(() => null);
+		const parsed = v.safeParse(SessionResponseSchema, raw);
+		return parsed.success && parsed.output.user != null;
 	} catch {
 		return false;
 	}

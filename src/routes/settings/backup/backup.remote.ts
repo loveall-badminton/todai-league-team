@@ -3,6 +3,14 @@ import { command } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
 import { error } from '@sveltejs/kit';
 import { fetchBackupWorker } from './backupClient.server';
+import * as v from 'valibot';
+
+const TriggerBackupResponseSchema = v.object({
+	ok: v.boolean(),
+	generatedAt: v.string(),
+	lastEventId: v.number(),
+	pdfGenerated: v.boolean()
+});
 
 export const triggerBackup = command(async () => {
 	requireAdmin();
@@ -26,10 +34,9 @@ export const triggerBackup = command(async () => {
 		error(502, `バックアップ生成に失敗しました (HTTP ${response.status})`);
 	}
 
-	return (await response.json()) as {
-		ok: boolean;
-		generatedAt: string;
-		lastEventId: number;
-		pdfGenerated: boolean;
-	};
+	const parsed = v.safeParse(TriggerBackupResponseSchema, await response.json());
+	if (!parsed.success) {
+		error(502, 'バックアップWorkerから予期しない応答を受け取りました');
+	}
+	return parsed.output;
 });

@@ -96,10 +96,12 @@ const undoableColumns = {
 	createdAt: scoreEvents.createdAt
 } as const;
 
+export type UndoableScoreEvent = Pick<ScoreEvent, keyof typeof undoableColumns>;
+
 export async function getLastUndoableScoreEvent(
 	matchId: string,
 	dbParam?: RequestDb
-): Promise<ScoreEvent | null> {
+): Promise<UndoableScoreEvent | null> {
 	const db = await getRequestDbOrThrow(dbParam);
 	// LEFT JOIN + IS NULL で未キャンセルの最新イベントだけを取得する。
 	const [row] = await db
@@ -121,7 +123,7 @@ export async function getLastUndoableScoreEvent(
 		)
 		.orderBy(desc(scoreEvents.seqNo))
 		.limit(1);
-	return (row ?? null) as unknown as ScoreEvent | null;
+	return row ?? null;
 }
 
 export async function hasUndoLink(

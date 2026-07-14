@@ -266,7 +266,8 @@ function parsePayload(payloadJson: string): {
 		const input = record.input ? v.parse(ScoreEventInputSchema, record.input) : undefined;
 
 		return { beforeState, afterState, input };
-	} catch {
+	} catch (err) {
+		console.error('matchActionCore: failed to parse score event payload', err);
 		return {};
 	}
 }
