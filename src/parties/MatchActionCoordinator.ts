@@ -7,6 +7,7 @@ import {
 	type MatchActionCoordinatorResponse,
 	type MatchActionCoordinatorSuccess
 } from '$lib/server/services/matchActionProtocol';
+import { resolvePlayersCache } from './matchActionCache';
 import type { MatchPlayer, MatchState, ScoreEventInput } from '$lib/domain/types';
 import * as v from 'valibot';
 
@@ -43,10 +44,8 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 			const input: ScoreEventInput = parsed.output.input;
 			const inputType = input.type;
 
-			const players = this.cachedPlayers ?? clientPlayers;
-			if (clientPlayers && !this.cachedPlayers) {
-				this.cachedPlayers = clientPlayers;
-			}
+			const { players, nextCache } = resolvePlayersCache(clientPlayers, this.cachedPlayers);
+			this.cachedPlayers = nextCache;
 
 			try {
 				const db = getDb(this.env.DB);

@@ -150,6 +150,117 @@ describe('applySerializedMatchAction', () => {
 		expect(result).toEqual({ afterState, input });
 	});
 
+	test('retries once on a transient DO fetch failure before falling back', async () => {
+		const afterState = createMatchState();
+		const input: ScoreEventInput = {
+			type: 'rally_won',
+			side: 'A',
+			observedSeqNo: 0,
+			idempotencyKey: 'idem-retry'
+		};
+		const fetch = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('network blip'))
+			.mockResolvedValueOnce(Response.json({ ok: true, afterState, input }));
+		mockState.event = {
+			platform: {
+				env: {
+					MatchActionCoordinator: {
+						getByName: () => ({ fetch })
+					}
+				}
+			}
+		};
+
+		const result = await applySerializedMatchAction({
+			matchId: 'match-1',
+			input,
+			now: '2026-06-26T00:00:01.000Z'
+		});
+
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(applyMatchActionWithDb).not.toHaveBeenCalled();
+		expect(result).toEqual({ afterState, input });
+	});
+
+	test('falls back to direct DB write when the DO stays unreachable across the retry', async () => {
+		const afterState = createMatchState();
+		const input: ScoreEventInput = {
+			type: 'rally_won',
+			side: 'A',
+			observedSeqNo: 0,
+			idempotencyKey: 'idem-down'
+		};
+		const fetch = vi.fn().mockRejectedValue(new Error('do down'));
+		mockState.event = {
+			platform: {
+				env: {
+					MatchActionCoordinator: {
+						getByName: () => ({ fetch })
+					}
+				}
+			}
+		};
+		applyMatchActionWithDb.mockResolvedValue({ afterState, input });
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const result = await applySerializedMatchAction({
+			matchId: 'match-1',
+			input,
+			now: '2026-06-26T00:00:01.000Z'
+		});
+
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(applyMatchActionWithDb).toHaveBeenCalledWith(mockState.db, {
+			matchId: 'match-1',
+			input,
+			now: '2026-06-26T00:00:01.000Z'
+		});
+		expect(result).toEqual({ afterState, input });
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining('unreachable'),
+			expect.objectContaining({ matchId: 'match-1' })
+		);
+		errorSpy.mockRestore();
+	});
+
+	test('rejects with a retryable error on timeout without falling back to direct DB write', async () => {
+		const input: ScoreEventInput = {
+			type: 'rally_won',
+			side: 'A',
+			observedSeqNo: 0,
+			idempotencyKey: 'idem-timeout'
+		};
+		const timeoutError = Object.assign(new Error('The operation was aborted due to timeout'), {
+			name: 'TimeoutError'
+		});
+		const fetch = vi.fn().mockRejectedValue(timeoutError);
+		mockState.event = {
+			platform: {
+				env: {
+					MatchActionCoordinator: {
+						getByName: () => ({ fetch })
+					}
+				}
+			}
+		};
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await expect(
+			applySerializedMatchAction({
+				matchId: 'match-1',
+				input,
+				now: '2026-06-26T00:00:01.000Z'
+			})
+		).rejects.toThrow('timed out');
+
+		// タイムアウトは DO 側の書き込みが継続中かもしれないため、直接書き込みへは
+		// フォールバックしない(二重書き込みレースを避ける)。1回目のタイムアウトで即座に諦める。
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(applyMatchActionWithDb).not.toHaveBeenCalled();
+		errorSpy.mockRestore();
+	});
+
 	test('throws coordinator errors back to the caller', async () => {
 		const input: ScoreEventInput = {
 			type: 'rally_won',

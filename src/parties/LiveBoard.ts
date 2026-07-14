@@ -1,8 +1,19 @@
-import { Server, type Connection } from 'partyserver';
-import { liveMessageSchema, type LiveMessage } from '$lib/realtime/channels';
+import { Server, type Connection, type WSMessage } from 'partyserver';
+import {
+	liveMessageSchema,
+	type LiveMessage,
+	type LiveUpdatedMessage
+} from '$lib/realtime/channels';
+import { computeHeartbeatReply } from './heartbeat';
+import { computeResyncReplies } from './resync';
 import * as v from 'valibot';
 
 const ALLOWED_INTERNAL_HOST = 'live-board.internal';
+
+// 切断→再接続の間に流れた updated を再送できるようにするための直近バッファ。
+// DO インスタンスのメモリ上にのみ保持し、hibernation からの復帰等でリセットされても
+// 安全(resolveResyncReplies が resync_failed を返し、クライアント側がフル refresh するだけ)。
+const RESYNC_BUFFER_SIZE = 50;
 
 // 汎用エントリキャッシュ(グローバル L2)。エッジキャッシュ(PoP ローカル)のミス時に
 // ここを参照することで、D1 への再計算を「PoP 数 × TTL」から「失効イベントごとに1回」に抑える。
@@ -27,9 +38,29 @@ export class LiveBoard extends Server<Env> {
 	private entryCache = new Map<string, GenericCacheEntry>();
 	private entryEpoch: number | null = null;
 
+	// resync 用の直近 updated バッファと単調増加 seqNo (DO インスタンスメモリのみ)
+	private recentMessages: LiveUpdatedMessage[] = [];
+	private nextSeqNo = 1;
+
 	async onConnect(connection: Connection) {
-		const hello: LiveMessage = { type: 'hello', at: new Date().toISOString() };
+		const hello: LiveMessage = {
+			type: 'hello',
+			at: new Date().toISOString(),
+			seqNo: this.nextSeqNo - 1
+		};
 		connection.send(JSON.stringify(hello));
+	}
+
+	async onMessage(connection: Connection, message: WSMessage) {
+		const heartbeatReply = computeHeartbeatReply(message);
+		if (heartbeatReply) {
+			connection.send(JSON.stringify(heartbeatReply));
+			return;
+		}
+		const resyncReplies = computeResyncReplies(message, this.recentMessages);
+		for (const reply of resyncReplies) {
+			connection.send(JSON.stringify(reply));
+		}
 	}
 
 	async onRequest(request: Request): Promise<Response> {
@@ -57,10 +88,12 @@ export class LiveBoard extends Server<Env> {
 			}
 			// 更新ブロードキャストと同時に、関係するキャッシュエントリをグローバルに失効させる。
 			// クライアントはこのメッセージを受けて即再取得するため、broadcast 前に完了させる。
+			let outgoing: LiveMessage = parsed.output;
 			if (parsed.output.type === 'updated') {
 				await this.invalidateEntriesByTopics(parsed.output.topics);
+				outgoing = this.bufferOutgoingUpdate(parsed.output);
 			}
-			this.broadcast(JSON.stringify(parsed.output));
+			this.broadcast(JSON.stringify(outgoing));
 			return Response.json({ ok: true });
 		}
 		return new Response('Not found', { status: 404 });
@@ -121,6 +154,15 @@ export class LiveBoard extends Server<Env> {
 		this.entryCache.set(parsed.output.key, entry);
 		void this.ctx.storage.put(CACHE_ENTRY_PREFIX + parsed.output.key, entry).catch(() => {});
 		return Response.json({ ok: true });
+	}
+
+	private bufferOutgoingUpdate(message: LiveUpdatedMessage): LiveUpdatedMessage {
+		const withSeq: LiveUpdatedMessage = { ...message, seqNo: this.nextSeqNo++ };
+		this.recentMessages.push(withSeq);
+		if (this.recentMessages.length > RESYNC_BUFFER_SIZE) {
+			this.recentMessages.shift();
+		}
+		return withSeq;
 	}
 
 	private async invalidateEntriesByTopics(topics: readonly string[]): Promise<void> {

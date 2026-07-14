@@ -7,6 +7,7 @@
 		LIVE_BOARD_CHANNEL,
 		filterSubscribedTopics,
 		isLiveUpdatedMessage,
+		isResyncFailedMessage,
 		type LiveTopic,
 		type LiveUpdateData
 	} from '$lib/realtime/channels';
@@ -112,6 +113,12 @@
 				}
 			},
 			onMessage: (message) => {
+				if (isResyncFailedMessage(message)) {
+					// 切断中に取りこぼした updated を DO のバッファから再送できなかった
+					// (欠落が確定した)ため、フル refresh で確実に復旧する。
+					void handleUpdate({ topics: [...topics], source: 'poll', channel });
+					return;
+				}
 				if (!isLiveUpdatedMessage(message)) return;
 				const matched = filterSubscribedTopics(message.topics, topics);
 				if (matched.length === 0) return;

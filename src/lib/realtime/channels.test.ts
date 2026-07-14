@@ -1,10 +1,15 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_BWF_SCORING_CONFIG, type MatchState } from '$lib/domain/types';
 import {
+	createLivePingMessage,
+	createLivePongMessage,
+	createLiveResyncMessage,
 	createLiveUpdatedMessage,
+	createResyncFailedMessage,
 	filterSubscribedTopics,
 	hasScoreUpdate,
 	isLiveUpdatedMessage,
+	isResyncFailedMessage,
 	parseLiveMessage
 } from './channels';
 
@@ -117,6 +122,34 @@ describe('realtime channel contracts', () => {
 		expect(parsed.data?.schedule?.scopes).toEqual(['tie_header']);
 		expect(parsed.data?.schedule?.ties?.[0]?.teamScoreA).toBe(3);
 		expect(parsed.data?.finals?.phases).toEqual(['final']);
+	});
+
+	test('round-trips ping/pong heartbeat messages', () => {
+		const ping = parseLiveMessage(createLivePingMessage());
+		const pong = parseLiveMessage(createLivePongMessage());
+
+		expect(ping?.type).toBe('ping');
+		expect(pong?.type).toBe('pong');
+	});
+
+	test('round-trips resync request/failure messages and carries seqNo on hello/updated', () => {
+		const resync = parseLiveMessage(createLiveResyncMessage(5));
+		expect(resync?.type).toBe('resync');
+		if (resync?.type === 'resync') expect(resync.sinceSeqNo).toBe(5);
+
+		const failed = parseLiveMessage(createResyncFailedMessage());
+		expect(failed).not.toBeNull();
+		expect(failed && isResyncFailedMessage(failed)).toBe(true);
+
+		const hello = parseLiveMessage({ type: 'hello', at: new Date().toISOString(), seqNo: 3 });
+		expect(hello?.type).toBe('hello');
+		if (hello?.type === 'hello') expect(hello.seqNo).toBe(3);
+
+		const updated = parseLiveMessage({
+			...createLiveUpdatedMessage(['score']),
+			seqNo: 7
+		});
+		expect(updated && isLiveUpdatedMessage(updated) && updated.seqNo).toBe(7);
 	});
 
 	test('rejects invalid topic metadata values', () => {

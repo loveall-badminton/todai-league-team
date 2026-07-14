@@ -312,7 +312,7 @@
 				</form>
 			{:else}
 				<form {...startGame} class="grid gap-3 sm:grid-cols-2">
-					<input type="hidden" name="gameNo" value={matchState.currentGameNo} />
+					<input {...startGame.fields.gameNo.as('hidden', matchState.currentGameNo.toString())} />
 					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 						<AppSelect

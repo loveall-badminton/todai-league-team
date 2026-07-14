@@ -100,19 +100,57 @@ export type LiveUpdateData<TTopic extends LiveTopic = LiveTopic> = Partial<
 	Pick<LiveTopicPayloadMap, TTopic>
 >;
 
+// seqNo は DO インスタンスが updated を broadcast するたびに割り振る単調増加番号。
+// 再接続時に「このseqNo以降を送って」と要求できるようにするためのもので、
+// DO再起動(hibernation からの復帰等)で 1 にリセットされることがあるため、
+// クライアント側は連続性が壊れていたら resync_failed として扱う必要がある。
 const helloMessageSchema = v.object({
 	type: v.literal('hello'),
-	at: v.string()
+	at: v.string(),
+	seqNo: v.optional(v.number())
 });
 
 const updatedMessageSchema = v.object({
 	type: v.literal('updated'),
 	topics: v.array(liveTopicSchema),
 	at: v.string(),
-	data: v.optional(liveUpdateDataSchema)
+	data: v.optional(liveUpdateDataSchema),
+	seqNo: v.optional(v.number())
 });
 
-export const liveMessageSchema = v.union([helloMessageSchema, updatedMessageSchema]);
+// クライアントが定期送信するハートビート。バックグラウンド凍結等で
+// ソケットが "open" のまま実質死んでいる状態を pong の有無で検知するために使う。
+const pingMessageSchema = v.object({
+	type: v.literal('ping'),
+	at: v.string()
+});
+
+const pongMessageSchema = v.object({
+	type: v.literal('pong'),
+	at: v.string()
+});
+
+// 再接続時にクライアントが送る「このseqNo以降を再送して」というリクエスト。
+const resyncMessageSchema = v.object({
+	type: v.literal('resync'),
+	sinceSeqNo: v.number()
+});
+
+// DO のバッファが sinceSeqNo まで遡れなかった(=取りこぼしが確定した)ことの通知。
+// クライアントはこれを受けたら purposeful にフル refresh するべき。
+const resyncFailedMessageSchema = v.object({
+	type: v.literal('resync_failed'),
+	at: v.string()
+});
+
+export const liveMessageSchema = v.union([
+	helloMessageSchema,
+	updatedMessageSchema,
+	pingMessageSchema,
+	pongMessageSchema,
+	resyncMessageSchema,
+	resyncFailedMessageSchema
+]);
 
 export type LiveMessage = v.InferOutput<typeof liveMessageSchema>;
 export type LiveUpdatedMessage = v.InferOutput<typeof updatedMessageSchema>;
@@ -136,6 +174,26 @@ export function createLiveUpdatedMessage<TTopics extends readonly LiveTopic[]>(
 
 export function isLiveUpdatedMessage(message: LiveMessage): message is LiveUpdatedMessage {
 	return message.type === 'updated';
+}
+
+export function createLivePingMessage(): LiveMessage {
+	return { type: 'ping', at: new Date().toISOString() };
+}
+
+export function createLivePongMessage(): LiveMessage {
+	return { type: 'pong', at: new Date().toISOString() };
+}
+
+export function createLiveResyncMessage(sinceSeqNo: number): LiveMessage {
+	return { type: 'resync', sinceSeqNo };
+}
+
+export function createResyncFailedMessage(): LiveMessage {
+	return { type: 'resync_failed', at: new Date().toISOString() };
+}
+
+export function isResyncFailedMessage(message: LiveMessage): boolean {
+	return message.type === 'resync_failed';
 }
 
 export function filterSubscribedTopics<TTopic extends LiveTopic>(
