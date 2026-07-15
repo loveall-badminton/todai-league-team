@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
@@ -66,9 +67,7 @@
 		scorePatches.invalidateStale(snapshot);
 	}
 
-	$effect(() => {
-		return () => scorePatches.destroy();
-	});
+	onDestroy(() => scorePatches.destroy());
 
 	function refreshAll() {
 		void refreshTieDetail();

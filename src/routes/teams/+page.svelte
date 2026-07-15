@@ -21,7 +21,9 @@
 	let showForm = $state(false);
 	let fileInput: HTMLInputElement | undefined;
 
-	$effect(() => {
+	const enhancedImportTeams = importTeams.enhance(async (form) => {
+		if (!(await form.submit())) return;
+		if (fileInput) fileInput.value = '';
 		const result = importTeams.result;
 		if (!result?.success) return;
 		const { addedCount, createdTeams } = result;
@@ -48,7 +50,7 @@
 </svelte:head>
 
 {#snippet headerActions()}
-	<form {...importTeams} enctype="multipart/form-data" class="hidden">
+	<form {...enhancedImportTeams} enctype="multipart/form-data" class="hidden">
 		<input
 			bind:this={fileInput}
 			type="file"

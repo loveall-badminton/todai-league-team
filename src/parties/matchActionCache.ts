@@ -10,9 +10,6 @@ import type { MatchPlayer } from '$lib/domain/types';
 export function resolvePlayersCache(
 	clientPlayers: MatchPlayer[] | undefined,
 	cachedPlayers: MatchPlayer[] | undefined
-): { players: MatchPlayer[] | undefined; nextCache: MatchPlayer[] | undefined } {
-	if (clientPlayers) {
-		return { players: clientPlayers, nextCache: clientPlayers };
-	}
-	return { players: cachedPlayers, nextCache: cachedPlayers };
+): MatchPlayer[] | undefined {
+	return clientPlayers ?? cachedPlayers;
 }

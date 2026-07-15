@@ -126,15 +126,21 @@ export function createLiveChannel(options: LiveChannelOptions): LiveChannel {
 						lastSeqNo = message.seqNo;
 					}
 					if (message.type === 'hello') {
-						if (lastSeqNo !== null) {
-							// 再接続: 切断中に取りこぼした updated があれば再送してもらう
+						if (lastSeqNo === null) {
+							// 初回接続: 現在の seqNo を基準にするだけ(取りこぼしは無いので resync 不要)
+							if (typeof message.seqNo === 'number') lastSeqNo = message.seqNo;
+						} else {
+							// 再接続。hello.seqNo が lastSeqNo より小さい = DO 再起動で
+							// カウンタが巻き戻ったので、古い値で resync せず基準を合わせる。
+							if (typeof message.seqNo === 'number' && message.seqNo < lastSeqNo) {
+								lastSeqNo = message.seqNo;
+							}
+							// 切断中に取りこぼした updated があれば再送してもらう
 							try {
 								ws.send(JSON.stringify(createLiveResyncMessage(lastSeqNo)));
 							} catch {
 								// send 失敗は次の close/error イベントに委ねる
 							}
-						} else if (typeof message.seqNo === 'number') {
-							lastSeqNo = message.seqNo;
 						}
 					}
 					options.onMessage(message);

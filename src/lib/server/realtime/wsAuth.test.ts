@@ -40,13 +40,25 @@ describe('checkPartySessionAuthorized', () => {
 		expect(authorized).toBe(false);
 	});
 
+	test('rejects a cookie header without a session token before calling the app', async () => {
+		const appFetch = vi.fn();
+		const authorized = await checkPartySessionAuthorized(
+			makeRequest({ cookie: 'other=1; theme=dark' }),
+			appFetch
+		);
+
+		expect(authorized).toBe(false);
+		expect(appFetch).not.toHaveBeenCalled();
+	});
+
 	test('rejects when the internal call fails or errors', async () => {
+		const cookie = 'better-auth.session_token=abc';
 		const failing = vi.fn(async () => new Response('error', { status: 500 }));
 		const throwing = vi.fn(async () => {
 			throw new Error('network error');
 		});
 
-		expect(await checkPartySessionAuthorized(makeRequest({ cookie: 'x=1' }), failing)).toBe(false);
-		expect(await checkPartySessionAuthorized(makeRequest({ cookie: 'x=1' }), throwing)).toBe(false);
+		expect(await checkPartySessionAuthorized(makeRequest({ cookie }), failing)).toBe(false);
+		expect(await checkPartySessionAuthorized(makeRequest({ cookie }), throwing)).toBe(false);
 	});
 });

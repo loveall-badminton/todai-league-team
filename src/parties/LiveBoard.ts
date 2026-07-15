@@ -1,6 +1,7 @@
 import { Server, type Connection, type WSMessage } from 'partyserver';
 import {
 	liveMessageSchema,
+	parseLiveMessage,
 	type LiveMessage,
 	type LiveUpdatedMessage
 } from '$lib/realtime/channels';
@@ -52,13 +53,22 @@ export class LiveBoard extends Server<Env> {
 	}
 
 	async onMessage(connection: Connection, message: WSMessage) {
-		const heartbeatReply = computeHeartbeatReply(message);
+		if (typeof message !== 'string') return;
+		let raw: unknown;
+		try {
+			raw = JSON.parse(message);
+		} catch {
+			return;
+		}
+		const parsed = parseLiveMessage(raw);
+		if (!parsed) return;
+
+		const heartbeatReply = computeHeartbeatReply(parsed);
 		if (heartbeatReply) {
 			connection.send(JSON.stringify(heartbeatReply));
 			return;
 		}
-		const resyncReplies = computeResyncReplies(message, this.recentMessages);
-		for (const reply of resyncReplies) {
+		for (const reply of computeResyncReplies(parsed, this.recentMessages)) {
 			connection.send(JSON.stringify(reply));
 		}
 	}

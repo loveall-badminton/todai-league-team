@@ -22,6 +22,7 @@
 	import { rallyWonCommand, start, startGame, undoCommand } from './referee.remote';
 	import { loadJsonFromLocalStorage, saveJsonToLocalStorage } from '$lib/utils/localStorage';
 	import {
+		hasFormError,
 		undoLabel as buildUndoLabel,
 		findLastUndoableEvent,
 		playerOptions
@@ -30,7 +31,7 @@
 	import AppSelect from '$lib/components/ui/AppSelect.svelte';
 	import { Undo2 } from '@lucide/svelte';
 
-	let { data, form: formResult }: PageProps = $props();
+	let { data }: PageProps = $props();
 
 	const scoreOverlay = new OptimisticOverlay({
 		getServerData: (): RefereeLiveView => ({ state: data.state, events: data.events }),
@@ -71,9 +72,24 @@
 		return typeof v === 'object' && v !== null && 'scorePayload' in v;
 	}
 
-	$effect(() => {
-		if (!hasScorePayload(formResult)) return;
-		if (scoreOverlay.apply(formResult.scorePayload) === 'refresh') void invalidateAll();
+	async function handleStartFormResult(result: unknown) {
+		if (hasFormError(result)) {
+			toast.error(result.error);
+			return;
+		}
+		if (hasScorePayload(result) && scoreOverlay.apply(result.scorePayload) === 'refresh') {
+			await invalidateAll();
+		}
+	}
+
+	const enhancedStart = start.enhance(async (form) => {
+		await form.submit();
+		await handleStartFormResult(start.result);
+	});
+
+	const enhancedStartGame = startGame.enhance(async (form) => {
+		await form.submit();
+		await handleStartFormResult(startGame.result);
 	});
 
 	const courtSideSchema = v.picklist(['left', 'right']);
@@ -167,29 +183,6 @@
 
 	let leftAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'pink' : 'cyan');
 	let rightAccent = $derived<'pink' | 'cyan'>(leftSide === 'A' ? 'cyan' : 'pink');
-
-	let prevError: string | undefined;
-	let prevSavedRefereeName: string | null = null;
-	function hasFormError(v: unknown): v is { error: string } {
-		return typeof v === 'object' && v !== null && 'error' in v && typeof v.error === 'string';
-	}
-
-	$effect(() => {
-		if (!hasFormError(formResult)) return;
-		const err = formResult.error;
-		if (err !== prevError) {
-			toast.error(err);
-			prevError = err;
-		}
-	});
-
-	$effect(() => {
-		const savedName = data.match.refereeName?.trim() ?? '';
-		if (!savedName) return;
-		if (savedName === prevSavedRefereeName) return;
-		toast.success('審判名を保存しました');
-		prevSavedRefereeName = savedName;
-	});
 </script>
 
 {#snippet scoreCard(
@@ -287,7 +280,7 @@
 			</div>
 
 			{#if matchState.status === 'scheduled'}
-				<form {...start} class="grid gap-3 sm:grid-cols-2">
+				<form {...enhancedStart} class="grid gap-3 sm:grid-cols-2">
 					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>
 						<AppSelect
@@ -311,7 +304,7 @@
 					</div>
 				</form>
 			{:else}
-				<form {...startGame} class="grid gap-3 sm:grid-cols-2">
+				<form {...enhancedStartGame} class="grid gap-3 sm:grid-cols-2">
 					<input {...startGame.fields.gameNo.as('hidden', matchState.currentGameNo.toString())} />
 					<label class="grid gap-1">
 						<span class="text-xs font-medium text-muted-foreground">1st サーバー</span>

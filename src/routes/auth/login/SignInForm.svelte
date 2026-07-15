@@ -2,13 +2,19 @@
 	import { Eye, EyeOff } from '@lucide/svelte';
 	import AppButton from '$lib/components/ui/AppButton.svelte';
 	import AppInput from '$lib/components/ui/AppInput.svelte';
+	import { toast } from 'svelte-sonner';
 	import { signIn } from './login.remote';
 
 	let { redirectTo }: { redirectTo: string } = $props();
 	let showPassword = $state(false);
+
+	const enhancedForm = signIn.enhance(async (form) => {
+		await form.submit();
+		if (signIn.result?.message) toast.error(signIn.result.message);
+	});
 </script>
 
-<form {...signIn} class="mt-6 space-y-4">
+<form {...enhancedForm} class="mt-6 space-y-4">
 	<input {...signIn.fields.redirectTo.as('hidden', redirectTo)} />
 
 	<label class="grid gap-1.5">

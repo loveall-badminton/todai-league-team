@@ -1,17 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
-	import { toast } from 'svelte-sonner';
 	import Footer from '$lib/components/Footer.svelte';
 	import type { PageProps } from './$types';
 	import { signIn } from './login.remote';
 	import SignInForm from './SignInForm.svelte';
 
 	let { data }: PageProps = $props();
-
-	$effect(() => {
-		if (signIn.result?.message) toast.error(signIn.result.message);
-	});
 </script>
 
 <svelte:head>

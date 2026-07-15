@@ -8,6 +8,7 @@ import {
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
+import { now as nowIso } from '$lib/utils/now';
 
 function emit(
 	label: string,
@@ -16,7 +17,7 @@ function emit(
 	data?: LiveUpdateData
 ): void {
 	if (dev) {
-		console.log(`[broadcast] ${label}`, { channels, topics, data, at: new Date().toISOString() });
+		console.log(`[broadcast] ${label}`, { channels, topics, data, at: nowIso() });
 	}
 	const message = createLiveUpdatedMessage(topics, data);
 	for (const channel of channels) {
@@ -88,7 +89,7 @@ async function dispatchWithRetry(
 		channel,
 		attempts: DISPATCH_MAX_ATTEMPTS,
 		error: lastError instanceof Error ? lastError.message : String(lastError),
-		at: new Date().toISOString()
+		at: nowIso()
 	});
 }
 
@@ -100,7 +101,7 @@ function dispatch(channel: string, message: LiveMessage): void {
 			if (dev) {
 				console.warn('[broadcast] LiveBoard binding not available', {
 					channel,
-					at: new Date().toISOString()
+					at: nowIso()
 				});
 			}
 			return;
@@ -113,7 +114,7 @@ function dispatch(channel: string, message: LiveMessage): void {
 		console.error('[broadcast] dispatch exception', {
 			channel,
 			error: err instanceof Error ? err.message : String(err),
-			at: new Date().toISOString()
+			at: nowIso()
 		});
 	}
 }

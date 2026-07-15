@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { toast } from 'svelte-sonner';
 	import AppButton from '$lib/components/ui/AppButton.svelte';
 	import AppInput from '$lib/components/ui/AppInput.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import { confirmWinner, saveRefereeName, unconfirmWinner } from './referee.remote';
+	import { hasFormError } from './refereeUtils';
 
 	interface Props {
 		status: 'finished' | 'forfeited' | 'retired';
@@ -27,6 +29,25 @@
 		scoreText
 	}: Props = $props();
 	let initialRefereeName = $derived(refereeName);
+
+	const enhancedSaveRefereeName = saveRefereeName.enhance(async (form) => {
+		const ok = await form.submit();
+		if (hasFormError(saveRefereeName.result)) {
+			toast.error(saveRefereeName.result.error);
+		} else if (ok) {
+			toast.success('審判名を保存しました');
+		}
+	});
+
+	const enhancedConfirmWinner = confirmWinner.enhance(async (form) => {
+		await form.submit();
+		if (hasFormError(confirmWinner.result)) toast.error(confirmWinner.result.error);
+	});
+
+	const enhancedUnconfirmWinner = unconfirmWinner.enhance(async (form) => {
+		await form.submit();
+		if (hasFormError(unconfirmWinner.result)) toast.error(unconfirmWinner.result.error);
+	});
 </script>
 
 <Card>
@@ -39,7 +60,7 @@
 				: '試合が終了しました'}
 	</p>
 	<div class="mt-4 grid gap-3">
-		<form {...saveRefereeName} class="grid-cols-[1fr_auto] gap-2 grid">
+		<form {...enhancedSaveRefereeName} class="grid-cols-[1fr_auto] gap-2 grid">
 			<div class="grid gap-1">
 				<label class="text-xs font-medium text-muted-foreground" for="referee-name">審判名</label>
 				<AppInput
@@ -63,13 +84,13 @@
 					<strong>勝者（{winnerSideName}）</strong>に試合結果の確認を求めてください
 				</p>
 				{#if winnerConfirmed}
-					<form {...unconfirmWinner} class="contents">
+					<form {...enhancedUnconfirmWinner} class="contents">
 						<AppButton type="submit" variant="secondary" class="w-full" disabled={isLocked}>
 							確認を取り消す
 						</AppButton>
 					</form>
 				{:else}
-					<form {...confirmWinner} class="contents">
+					<form {...enhancedConfirmWinner} class="contents">
 						<AppButton
 							type="submit"
 							variant="success"

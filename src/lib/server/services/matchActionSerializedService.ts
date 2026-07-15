@@ -48,52 +48,43 @@ export async function applySerializedMatchAction(params: ApplyMatchActionParams)
 		players: params.players ?? null
 	});
 
-	let response: Response;
-	try {
-		response = await stub.fetch(MATCH_ACTION_COORDINATOR_URL, {
+	const doFetch = () =>
+		stub.fetch(MATCH_ACTION_COORDINATOR_URL, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: requestBody,
 			signal: AbortSignal.timeout(DO_FETCH_TIMEOUT_MS)
 		});
+
+	// タイムアウト時は直接DB書き込みにフォールバックしない(DO側の書き込みが裏で継続し
+	// 二重書き込みレースになるため)。呼び出し元にリトライを促すエラーを投げる。
+	const timeoutError = (cause: unknown) => {
+		console.error(
+			'[matchAction] MatchActionCoordinator timed out (D1 write may still be in-flight)',
+			{
+				matchId: params.matchId,
+				inputType: params.input.type,
+				timeoutMs: DO_FETCH_TIMEOUT_MS,
+				at: nowIso()
+			}
+		);
+		return new Error(
+			`[DO:${params.matchId}/${params.input.type}] timed out — 処理が混み合っています。しばらくしてから再試行してください`,
+			{ cause }
+		);
+	};
+
+	let response: Response;
+	try {
+		response = await doFetch();
 	} catch (firstErr) {
-		if (isTimeoutError(firstErr)) {
-			console.error(
-				'[matchAction] MatchActionCoordinator timed out (D1 write may still be in-flight)',
-				{
-					matchId: params.matchId,
-					inputType: params.input.type,
-					timeoutMs: DO_FETCH_TIMEOUT_MS,
-					at: nowIso()
-				}
-			);
-			throw new Error(
-				`[DO:${params.matchId}/${params.input.type}] timed out — 処理が混み合っています。しばらくしてから再試行してください`,
-				{ cause: firstErr }
-			);
-		}
+		if (isTimeoutError(firstErr)) throw timeoutError(firstErr);
 		// 単発のネットワーク瞬断で直列化をバイパスしてしまわないよう、一度だけ再試行する
 		await sleep(DO_FETCH_RETRY_DELAY_MS);
 		try {
-			response = await stub.fetch(MATCH_ACTION_COORDINATOR_URL, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: requestBody,
-				signal: AbortSignal.timeout(DO_FETCH_TIMEOUT_MS)
-			});
+			response = await doFetch();
 		} catch (secondErr) {
-			if (isTimeoutError(secondErr)) {
-				console.error('[matchAction] MatchActionCoordinator timed out on retry', {
-					matchId: params.matchId,
-					inputType: params.input.type,
-					timeoutMs: DO_FETCH_TIMEOUT_MS,
-					at: nowIso()
-				});
-				throw new Error(
-					`[DO:${params.matchId}/${params.input.type}] timed out — 処理が混み合っています。しばらくしてから再試行してください`,
-					{ cause: secondErr }
-				);
-			}
+			if (isTimeoutError(secondErr)) throw timeoutError(secondErr);
 			// DO に本当に到達できない(=リージョン障害等)場合のみ、直列化なしの直接書き込みに
 			// フォールバックする。同時書き込みレースが再発しうる経路のため必ずログに残す。
 			console.error(

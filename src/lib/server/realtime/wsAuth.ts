@@ -4,6 +4,19 @@ const SessionResponseSchema = v.object({
 	user: v.optional(v.nullable(v.unknown()))
 });
 
+const SESSION_TOKEN_COOKIES = [
+	'better-auth.session_token',
+	'__Secure-better-auth.session_token'
+] as const;
+
+function hasSessionToken(cookieHeader: string): boolean {
+	for (const part of cookieHeader.split(';')) {
+		const key = part.trim().split('=')[0];
+		if ((SESSION_TOKEN_COOKIES as readonly string[]).includes(key)) return true;
+	}
+	return false;
+}
+
 /**
  * `/parties/*` (LiveBoard WebSocket / 内部キャッシュ API) は wrangler.jsonc の
  * main エントリ (src/worker.ts) 内で routePartykitRequest により SvelteKit の
@@ -19,6 +32,9 @@ export async function checkPartySessionAuthorized(
 ): Promise<boolean> {
 	const cookie = request.headers.get('cookie');
 	if (!cookie) return false;
+	// セッショントークン Cookie が無ければ、SvelteKit ハンドラを起動せず即座に拒否する。
+	// (未認証の WS アップグレード試行でアプリを毎回スピンアップさせない)
+	if (!hasSessionToken(cookie)) return false;
 
 	try {
 		const sessionRequest = new Request(new URL('/api/auth/get-session', request.url), {

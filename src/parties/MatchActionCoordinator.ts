@@ -44,8 +44,8 @@ export class MatchActionCoordinator extends DurableObject<Env> {
 			const input: ScoreEventInput = parsed.output.input;
 			const inputType = input.type;
 
-			const { players, nextCache } = resolvePlayersCache(clientPlayers, this.cachedPlayers);
-			this.cachedPlayers = nextCache;
+			const players = resolvePlayersCache(clientPlayers, this.cachedPlayers);
+			this.cachedPlayers = players;
 
 			try {
 				const db = getDb(this.env.DB);

@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import { MatchStateSchema } from '$lib/domain/schemas';
 import { TIE_STATUSES } from '$lib/domain/tieProgress';
+import { now } from '$lib/utils/now';
 
 const liveTopicSchema = v.picklist(['score', 'standings', 'schedule', 'finals'] as const);
 
@@ -167,7 +168,7 @@ export function createLiveUpdatedMessage<TTopics extends readonly LiveTopic[]>(
 	return {
 		type: 'updated',
 		topics: [...topics],
-		at: new Date().toISOString(),
+		at: now(),
 		...(data ? { data } : {})
 	};
 }
@@ -177,11 +178,11 @@ export function isLiveUpdatedMessage(message: LiveMessage): message is LiveUpdat
 }
 
 export function createLivePingMessage(): LiveMessage {
-	return { type: 'ping', at: new Date().toISOString() };
+	return { type: 'ping', at: now() };
 }
 
 export function createLivePongMessage(): LiveMessage {
-	return { type: 'pong', at: new Date().toISOString() };
+	return { type: 'pong', at: now() };
 }
 
 export function createLiveResyncMessage(sinceSeqNo: number): LiveMessage {
@@ -189,7 +190,7 @@ export function createLiveResyncMessage(sinceSeqNo: number): LiveMessage {
 }
 
 export function createResyncFailedMessage(): LiveMessage {
-	return { type: 'resync_failed', at: new Date().toISOString() };
+	return { type: 'resync_failed', at: now() };
 }
 
 export function isResyncFailedMessage(message: LiveMessage): boolean {

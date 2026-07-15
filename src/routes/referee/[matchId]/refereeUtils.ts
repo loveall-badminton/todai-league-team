@@ -64,3 +64,8 @@ export function undoLabel(
 export function playerOptions(players: EntityOption[]): SelectItem[] {
 	return players.map((p) => ({ value: p.id, label: p.name }));
 }
+
+/** referee.remote の各アクションが返すエラー結果 ({ error: string }) を判定する型ガード。 */
+export function hasFormError(v: unknown): v is { error: string } {
+	return typeof v === 'object' && v !== null && 'error' in v && typeof v.error === 'string';
+}
