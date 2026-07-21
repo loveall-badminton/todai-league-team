@@ -31,7 +31,6 @@
 		{
 			"binding": "DB",
 			"database_name": "todai-league",
-			"database_id": "ca60f5c9-9b5d-4b15-ae15-cbd70c7fee3e",
 			"migrations_dir": "drizzle"
 		}
 	],

@@ -28,7 +28,6 @@
 		{
 			"binding": "DB",
 			"database_name": "todai-league-staging",
-			"database_id": "3d75ba3e-36e6-4af4-9fcc-62c44f445e6d",
 			"migrations_dir": "drizzle"
 		}
 	],
@@ -62,8 +61,5 @@
 			"tag": "v3",
 			"new_sqlite_classes": ["MatchActionCoordinator"]
 		}
-	],
-	"vars": {
-		"BETTER_AUTH_URL": "https://todai-league-staging.qwg2pfmvzk.workers.dev"
-	}
+	]
 }
