@@ -19,7 +19,7 @@
 	let { data }: PageProps = $props();
 
 	let showForm = $state(false);
-	let fileInput: HTMLInputElement | undefined;
+	let fileInput: HTMLInputElement | undefined = $state();
 
 	const enhancedImportTeams = importTeams.enhance(async (form) => {
 		if (!(await form.submit())) return;
@@ -62,7 +62,7 @@
 	<AppButton type="button" variant="secondary" onclick={() => fileInput?.click()}>
 		インポート
 	</AppButton>
-	<AppButton variant="secondary" href="/teams/export">エクスポート</AppButton>
+	<AppButton variant="secondary" href="/teams/export" target="_blank">エクスポート</AppButton>
 	<AppButton type="button" onclick={() => (showForm = !showForm)}>
 		{showForm ? 'キャンセル' : '+ 追加'}
 	</AppButton>
