@@ -11,11 +11,30 @@ order: 5
 作業を始める前に、以下を準備してください。
 
 - [ ] Cloudflare アカウントを所持している
-- [ ] 本リポジトリをローカルに clone 済み
-- [ ] Node.js 22 以上、pnpm がインストール済み
-- [ ] `corepack enable && pnpm install` を実行済み
+- [ ] ブラウザからアクセスできる（Deploy Button を使う場合）
+- [ ] 本リポジトリをローカルに clone 済み（CLI を使う場合）
+- [ ] Node.js 22 以上、pnpm がインストール済み（CLI を使う場合）
+- [ ] `corepack enable && pnpm install` を実行済み（CLI を使う場合）
 
-## 初回デプロイ
+## ブラウザからの初回セットアップ（Deploy to Cloudflare ボタン）
+
+ターミナルや Git 操作なしで、ブラウザから初回デプロイできます。
+
+1. README 上部の **Deploy to Cloudflare** バッジをクリックします。
+2. Cloudflare アカウントでログインし、表示されるプロンプトに従います。
+3. Cloudflare がリポジトリを読み込み、新しい Worker と D1 データベース（`todai-league`）、Durable Objects（`LiveBoard`、`MatchActionCoordinator`）をプロビジョニングしてデプロイします。
+
+この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm deploy` 環境や手元の D1 データベースには接続しません。`wrangler.jsonc` の `d1_databases[0].database_id` は **省略したままである必要があり**（設定されている UUID がボタン生成のものであっても）、ボタンの `deploy:button` は固定データベース名 `todai-league` で migration を適用します。万一 `database_id` が記載されている構成では migration / deploy / secret 作成は一切行われず、ブラウザ専用のダッシュボード復旧手順を返します。
+
+`BETTER_AUTH_SECRET` は `deploy:button` が Workers Builds 内で作成しようとします。成功すれば自動的に Worker が再デプロイされます。失敗した場合は、Cloudflare ダッシュボードから手動で作成し、再デプロイをトリガーしてください（下記「ボタン経路での復旧」を参照）。
+
+- [Deploy to Cloudflare ボタン（公式）](https://developers.cloudflare.com/workers/tutorials/deploy-button/)
+- [Workers Builds 概要](https://developers.cloudflare.com/workers/ci-cd/builds/)
+- [Workers Builds 設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+
+## 初回デプロイ（CLI 経由）
+
+ターミナルが使える開発者や、staging 環境を含めて細かく制御したい場合はこちらを使ってください。ブラウザだけで済ませたい場合は上記の Deploy Button を利用してください。
 
 ### 1. Cloudflare へのログイン
 
@@ -60,7 +79,7 @@ pnpm deploy
 
 ### 3. リソースの確認
 
-本プロジェクトのデプロイは必ず `pnpm deploy` 経由で行ってください。上部の「Deploy to Cloudflare」ボタンは使用しないでください。このボタンは本リポジトリの migration / secret / bootstrap オーケストレーションをバイパスするためです。**デプロイ後は必ず Cloudflare ダッシュボードで生成されたリソースを確認してください**。
+初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください。**デプロイ後は必ず Cloudflare ダッシュボードで生成されたリソースを確認してください**。
 
 確認すべき主なリソース：
 
@@ -93,9 +112,57 @@ https://<your-worker-url>/auth/bootstrap
 - 「チーム」から参加チームと選手を登録する
 - 必要に応じて A / B リーグに振り分ける
 
-## 通常の更新
+## 通常の更新：ターミナル不要（Workers Builds）
 
-コードを更新した後は、以下で本番に反映します。
+初回セットアップが完了し、以下が満たされている場合、以降のコード更新は **ブラウザだけ** で行えます。
+
+- 本番用 D1 データベース（`todai-league`）が作成済み
+- `wrangler.jsonc` の `d1_databases[0].database_id` にその UUID がコミット済み
+- `BETTER_AUTH_SECRET` が Cloudflare ダッシュボードの **Secrets** から設定済み
+- リポジトリが GitHub または GitLab に接続済み
+
+### 操作手順
+
+1. GitHub / GitLab の Web UI で main ブランチに変更をマージまたはプッシュします。
+2. Cloudflare ダッシュボードの Workers Builds が自動的に以下を実行します。
+   - Build command: `pnpm build`
+   - Deploy command: `pnpm run deploy:workers-builds`
+
+ダッシュボードから「Retry deploy」や手動トリガーを実行した場合も、同じ Build / Deploy コマンドが実行されます。
+
+### ダッシュボード設定詳細（初回のみ）
+
+1. [Cloudflare ダッシュボード](https://dash.cloudflare.com/) → Workers & Pages → 対象 Worker を開きます。
+2. **Workers Builds** タブ（または CI/CD / Builds）から Git リポジトリを連携します。
+3. 本番ブランチは `main` を指定します。
+4. ビルド設定を入力します。
+
+   | 項目           | 値                               |
+   | -------------- | -------------------------------- |
+   | Build command  | `pnpm build`                     |
+   | Deploy command | `pnpm run deploy:workers-builds` |
+
+5. Node.js 22 / pnpm は `package.json` の `packageManager` フィールドと corepack で自動的に有効化されます。ダッシュボードで Node バージョンを指定できる場合は `22` を選択してください。
+
+### Workers Builds での secret 管理
+
+`BETTER_AUTH_SECRET` は **必ず Cloudflare ダッシュボードの Secrets から作成** し、リポジトリやビルドログに含めないでください。`deploy:workers-builds` は秘密情報を一切生成・書き換えしません。
+
+- [Worker Secrets 公式ドキュメント](https://developers.cloudflare.com/workers/configuration/secrets/)
+
+### ロールバック
+
+Cloudflare ダッシュボードから Worker のバージョンロールバックができます。ただし **D1 migration は自動で巻き戻りません**。データベースの変更を元に戻す必要がある場合は、開発者に相談してください。
+
+### 公式ドキュメント
+
+- [Workers Builds 概要](https://developers.cloudflare.com/workers/ci-cd/builds/)
+- [Workers Builds 設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+- [D1 Migrations](https://developers.cloudflare.com/d1/reference/migrations/)
+
+## ターミナルからの本番更新
+
+Workers Builds を使わず、開発者や特権を持つ運営者が直接実行する場合は `pnpm deploy` を使います。
 
 ```bash
 pnpm deploy
@@ -117,16 +184,35 @@ staging は本番投入前の動作確認用です。本番データに影響を
 
 ## ロールバック
 
-直前の Worker バージョンに戻す場合は以下を実行します。
+Worker のコードと設定を直前のバージョンに戻すには、Cloudflare ダッシュボードから行うか、CLI を使います。
 
-```bash
-pnpm exec wrangler rollback --config wrangler.jsonc
-```
+- ダッシュボード: Workers & Pages → 対象 Worker → **Deployments** → ロールバックしたいバージョンを選択
+- CLI:
 
-実行すると、CLI 上でバージョンの選択や確認を求められることがあります。表示に従って進めてください。
+  ```bash
+  pnpm exec wrangler rollback --config wrangler.jsonc
+  ```
 
 > [!WARNING]
-> `wrangler rollback` は Worker のコードと設定を巻き戻しますが、**D1 の migration は巻き戻しません**。データベースの変更を元に戻す必要がある場合は、開発者と相談してください。
+> Worker のロールバックはコードと設定を巻き戻しますが、**D1 の migration は巻き戻しません**。データベースの変更を元に戻す必要がある場合は、開発者と相談してください。
+
+## ボタン経路での復旧（ターミナル不要）
+
+Deploy Button 経路で D1 migration や secret 作成に失敗した場合、ターミナルを使わずに Cloudflare ダッシュボードから復旧できます。
+
+### D1 migration に失敗した場合
+
+1. [Cloudflare ダッシュボード](https://dash.cloudflare.com/) → **Workers & Pages** → **D1** を開き、Deploy Button で作成された Worker 専用の `todai-league` データベースが存在するか確認します。プロビジョニングが完了していない場合は、ダッシュボードから作成・紐付けを行います。
+2. `wrangler.jsonc` の `database_id` は **記載しないまま** にしておきます。Deploy Button 経路では既存 DB の誤アタッチを防ぐため、設定済みの ID は拒否されます。
+3. バインディングの用意が確認できたら、ダッシュボードの Deploy Button / Workers Builds から **Retry deploy** を実行します。
+
+### `BETTER_AUTH_SECRET` の作成に失敗した場合
+
+1. ダッシュボード → **Workers & Pages** → 対象 Worker → **Secrets** を開きます。
+2. `BETTER_AUTH_SECRET` を追加します（値は強固な乱数を安全な方法で生成してください）。
+3. ダッシュボードから **Retry deploy** を実行します。
+
+secret 値はリポジトリやビルドログに含めないでください。
 
 ## トラブルシューティング
 
@@ -168,6 +254,18 @@ pnpm exec wrangler secret put BETTER_AUTH_URL --config wrangler.jsonc
 ```
 
 値としてカスタムドメインの URL（例：`https://badminton.example.com`）を入力してください。
+
+### Workers Builds で `d1_databases[0].database_id must be a valid UUID` と出る
+
+`deploy:workers-builds` は既存のプロビジョニング済み環境専用です。`wrangler.jsonc` に本番 D1 の `database_id` が含まれていないとこのエラーになります。復旧手順：
+
+1. Cloudflare ダッシュボード → D1 → `todai-league` → database ID をコピー
+2. `wrangler.jsonc` の `d1_databases[0]` に `"database_id": "<コピーしたUUID>"` を追加
+3. main ブランチへコミット・プッシュ
+
+### Workers Builds で `BETTER_AUTH_SECRET is not configured` と出る
+
+`BETTER_AUTH_SECRET` が Cloudflare ダッシュボードの secret として設定されていません。ダッシュボード → Workers & Pages → 対象 Worker → **Secrets** から `BETTER_AUTH_SECRET` を作成してください。値は `pnpm dlx auth@latest secret` などで生成できます。
 
 ## 開発者への引き継ぎ
 

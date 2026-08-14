@@ -7,8 +7,10 @@ Canonical guidance for AI coding agents working in this repository. `CLAUDE.md` 
 ```bash
 pnpm dev              # Vite dev server (no D1/DO — UI only, no auth redirect)
 pnpm preview          # wrangler dev with D1 + Durable Objects (port 4173, full auth)
-pnpm build            # gen:check + vite build (production)
-pnpm deploy           # build + wrangler deploy
+pnpm build                        # gen:check + vite build (production)
+pnpm deploy                       # build + wrangler deploy (CLI/bootstrap route)
+pnpm deploy:workers-builds        # Deploy-command-only path for Cloudflare Workers Builds (existing env only)
+pnpm deploy:button                # Cloudflare Deploy Button initial deploy (isolated environment, browser-only)
 
 pnpm check            # svelte-check (runs gen first)
 pnpm lint             # prettier --check + eslint (run format first to fix)
@@ -152,7 +154,7 @@ Coverage thresholds: 90% statements, 80% branches, 90% functions, 90% lines. Sch
 
 ## Environment
 
-`.env` (see `.env.example`) provides `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_DATABASE_ID` / `CLOUDFLARE_D1_TOKEN` for `drizzle-kit` operations (push, generate, migrate, studio). `BETTER_AUTH_SECRET` is generated automatically on first deploy; for local development put it in `.dev.vars`.
+`.env` (see `.env.example`) provides `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_DATABASE_ID` / `CLOUDFLARE_D1_TOKEN` for `drizzle-kit` operations (push, generate, migrate, studio). `BETTER_AUTH_SECRET` is generated automatically on first CLI deploy (`pnpm deploy` or `pnpm deploy:button` when Workers Builds has permission); for local development put it in `.dev.vars`. For routine Workers Builds deployments, set `BETTER_AUTH_SECRET` once via the Cloudflare dashboard and never commit or regenerate it per build.
 
 ## Tailwind v4
 

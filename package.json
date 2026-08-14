@@ -51,7 +51,9 @@
 		"cf:deploy-worker:staging": "wrangler deploy -c wrangler.staging.jsonc",
 		"deploy": "pnpm run deploy:prod",
 		"deploy:prod": "node scripts/deploy.mjs --target prod",
-		"deploy:staging": "node scripts/deploy.mjs --target staging"
+		"deploy:staging": "node scripts/deploy.mjs --target staging",
+		"deploy:workers-builds": "node scripts/deploy-workers-builds.mjs",
+		"deploy:button": "node scripts/deploy-button.mjs"
 	},
 	"cloudflare": {
 		"bindings": {

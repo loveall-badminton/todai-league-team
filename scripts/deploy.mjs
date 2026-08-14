@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, rename, unlink, stat, chmod } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
+import { readFile, writeFile, rename, unlink, stat, chmod } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { ensureCloudflareSecrets } from './ensure-cloudflare-secrets.mjs';
 
 const HELP = `Usage: node scripts/deploy.mjs [--target prod|staging] [--help]
 
@@ -353,7 +354,7 @@ export function parseDatabaseInfoUuid(stdout) {
 }
 
 function secretWasCreated(result) {
-	return result.stdout.includes(' created');
+	return result.created instanceof Set && result.created.size > 0;
 }
 
 function logOutput(result) {
@@ -383,7 +384,16 @@ async function deployWorker(config) {
 
 async function ensureSecrets(config) {
 	console.log('Ensuring Worker secrets...');
-	return run('node', ['scripts/ensure-cloudflare-secrets.mjs', '--config', config]);
+	const { created } = await ensureCloudflareSecrets(config);
+	return {
+		ok: true,
+		code: 0,
+		stdout: Array.from(created)
+			.map((name) => `${name} created`)
+			.join('\n'),
+		stderr: '',
+		created
+	};
 }
 
 async function runPreflight(target) {

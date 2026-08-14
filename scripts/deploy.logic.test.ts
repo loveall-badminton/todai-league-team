@@ -251,14 +251,15 @@ function buildDeployDeps(overrides?: {
 		return (
 			overrides?.secretResult ?? {
 				ok: true,
+				created: new Set<string>(),
 				stdout: 'BETTER_AUTH_SECRET already exists',
 				stderr: '',
 				code: 0
 			}
 		);
 	});
-	const secretWasCreated = vi.fn((result: { stdout: string }) => {
-		return result.stdout.includes(' created');
+	const secretWasCreated = vi.fn((result: { created?: Set<string> }) => {
+		return result.created instanceof Set && result.created.size > 0;
 	});
 
 	return {
@@ -346,7 +347,13 @@ describe('runDeploy failure handling and final redeploy', () => {
 
 	test('performs a second final deploy in order when a new secret was created', async () => {
 		const { deps, calls, spies } = buildDeployDeps({
-			secretResult: { ok: true, stdout: 'BETTER_AUTH_SECRET created', stderr: '', code: 0 }
+			secretResult: {
+				ok: true,
+				created: new Set(['BETTER_AUTH_SECRET']),
+				stdout: 'BETTER_AUTH_SECRET created',
+				stderr: '',
+				code: 0
+			}
 		});
 
 		await runDeploy('staging', deps);
@@ -414,7 +421,13 @@ describe('runDeploy failure handling and final redeploy', () => {
 		{
 			name: 'final redeploy failure after a newly created secret rejects with clear failure',
 			overrides: {
-				secretResult: { ok: true, stdout: 'BETTER_AUTH_SECRET created', stderr: '', code: 0 },
+				secretResult: {
+					ok: true,
+					created: new Set(['BETTER_AUTH_SECRET']),
+					stdout: 'BETTER_AUTH_SECRET created',
+					stderr: '',
+					code: 0
+				},
 				deployResult: [{ ok: true, stdout: '', stderr: '', code: 0 }, failureResult]
 			},
 			expectedError: /Final Worker deploy failed/,

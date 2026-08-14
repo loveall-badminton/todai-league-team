@@ -1,5 +1,7 @@
 # 東大リーグ団体戦 運営システム
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button.svg)](https://deploy.workers.cloudflare.com/?url=https://github.com/loveall-badminton/todai-league-team)
+
 東大リーグ団体戦の運営・スコア管理アプリです。大会のセットアップから試合進行、結果確定までの一連の流れをデジタル化し、参加者・運営者・観戦者のそれぞれに適した情報を提供します。
 
 本システムは東大リーグ団体戦向けに設計されています。
@@ -12,7 +14,25 @@
 - **対戦カード管理** — グループステージ・決勝トーナメントの日程・会場・進行管理
 - **順位自動計算** — 勝敗・得失点差に基づくリーグ順位の自動集計
 
-## 運営者向け：初回デプロイ
+## 運営者向け：ブラウザからの初回デプロイ（Deploy to Cloudflare ボタン）
+
+上記の **Deploy to Cloudflare** バッジから、ターミナルや Git 操作なしで初回デプロイできます。
+
+1. バッジをクリックして Cloudflare アカウントでログインします（プロンプトに従うだけ）。
+2. プロジェクト名などを確認・決定します。
+3. Cloudflare がリポジトリを読み込み、D1 データベース（`todai-league`）と Durable Objects（`LiveBoard`、`MatchActionCoordinator`）を新規にプロビジョニングして Worker をデプロイします。
+
+この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm deploy` 環境や手元の D1 データベースには接続しません。D1 にはボタンによってプロビジョニングされたデータベースが使用されます。
+
+`BETTER_AUTH_SECRET` は、Workers Builds の実行権限が許せば `deploy:button` によって自動的に作成されます。作成に成功すると Worker が再デプロイされて反映されます。もし secret の作成に失敗した場合は、Cloudflare ダッシュボード → Workers & Pages → 対象 Worker → **Secrets** から `BETTER_AUTH_SECRET` を手動で作成し、ダッシュボードの「Retry deploy」で再デプロイをトリガーしてください。値は強固な乱数を安全な方法で生成してください。
+
+> [!IMPORTANT]
+> Deploy Button 経路で D1 migration や secret 作成に失敗した場合、ターミナルコマンドは実行せず、Cloudflare ダッシュボードから復旧してください。復旧手順は [docs/admin/deployment.md](./docs/admin/deployment.md) を参照してください。
+> Deploy Button は新規の隔離環境の初回セットアップ用です。既存環境の更新には [Workers Builds](#運営者向け通常の更新ターミナル不要) を使用してください。
+
+## 運営者向け：初回デプロイ（開発者・CLI 向け）
+
+ターミナルが使える開発者や、staging 環境を含めて細かく制御したい場合は `pnpm deploy` を使ってください。ブラウザだけで済ませたい場合は上記の Deploy Button を利用してください。
 
 1. Cloudflare ダッシュボードにログインするか、CLI でログインします。
 
@@ -51,7 +71,7 @@
 
    もしリモートに同名のデータベースがすでに存在するのに設定に `database_id` が記載されていない場合、`pnpm deploy` はエラーを出して停止します。その場合は既存のデータベース ID をダッシュボードまたは `pnpm exec wrangler d1 info todai-league --json` で確認し、対象の wrangler 設定に手動で追記してから再実行してください。
 
-   本プロジェクトは `pnpm deploy` 経由でデプロイしてください。上部の「Deploy to Cloudflare」ボタンは使用しないでください。このボタンは本リポジトリの migration / secret / bootstrap オーケストレーションをバイパスするためです。
+   初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください（後述）。
 
 4. デプロイ後に表示された Worker URL を開き、`/auth/bootstrap` にアクセスして管理者アカウントを作成します。
 
@@ -64,9 +84,45 @@
 
 詳細な運用ガイドは [docs/admin/deployment.md](./docs/admin/deployment.md) を参照してください。
 
-## 運営者向け：通常の更新
+## 運営者向け：通常の更新（ターミナル不要）
 
-コードを更新した後は `pnpm deploy` で本番に反映します。D1 migration が追加されている場合は、Worker をデプロイする前に自動的に適用されます。通常の更新では Worker は 1 回のデプロイで済み、新しい secret を作成した場合のみ追加の再デプロイが行われます。
+初回セットアップが完了し、`wrangler.jsonc` に本番 D1 の `database_id` がコミット済みで、`BETTER_AUTH_SECRET` が Cloudflare ダッシュボードの secret として設定済みなら、以降のコード更新は **ブラウザだけ** でデプロイできます。
+
+1. GitHub / GitLab の Web UI で main ブランチへ変更をマージ / プッシュします。
+2. Cloudflare ダッシュボードで Workers Builds が自動的にビルド → デプロイを実行します。
+   - Build command: `pnpm build`
+   - Deploy command: `pnpm run deploy:workers-builds`
+
+ダッシュボードの「Retry deploy」や手動トリガーでも同じコマンドが実行されます。
+
+### Workers Builds 設定チェックリスト（初回のみ）
+
+- [ ] リポジトリが GitHub または GitLab にある
+- [ ] 本番 Worker および D1 データベース（`todai-league`）が既に作成済み
+- [ ] `wrangler.jsonc` の `d1_databases[0].database_id` に本番 D1 の UUID がコミット済み
+- [ ] `BETTER_AUTH_SECRET` を Cloudflare ダッシュボードの **Secrets** から作成済み
+- [ ] Cloudflare ダッシュボードで Workers Builds を有効化し、本番ブランチを `main` に設定
+- [ ] Build command: `pnpm build`
+- [ ] Deploy command: `pnpm run deploy:workers-builds`
+- [ ] Node.js 22 / pnpm が corepack / `packageManager` フィールドで有効になっている
+
+詳細は [docs/admin/deployment.md](./docs/admin/deployment.md) と Cloudflare 公式ドキュメントを参照してください。
+
+- [Workers Builds 概要](https://developers.cloudflare.com/workers/ci-cd/builds/)
+- [Workers Builds 設定](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+- [D1 Migrations](https://developers.cloudflare.com/d1/reference/migrations/)
+- [Worker Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
+
+> [!IMPORTANT]
+> `deploy:workers-builds` は **既存のリソースに対してのみ** 動作します。D1 の作成、database_id の書き込み、secret の生成は行いません。これらは初回デプロイ時に `pnpm deploy` またはダッシュボード操作で済ませてください。
+
+### ロールバック
+
+Cloudflare ダッシュボードから Worker のバージョンロールバックができます。ただし **D1 migration は自動で巻き戻りません**。データベースの変更を元に戻す必要がある場合は、開発者に相談してください。`BETTER_AUTH_SECRET` などの秘密情報は必ずダッシュボード secret として管理し、リポジトリやビルドログに含めないでください。
+
+## 運営者向け：ターミナルからの本番デプロイ
+
+Workers Builds を使わず、開発者が直接実行する場合は `pnpm deploy` を使います。これは初回セットアップや staging 確認で使う経路です。
 
 ```bash
 pnpm deploy
@@ -109,18 +165,20 @@ pnpm preview
 ## 便利なコマンド
 
 ```bash
-pnpm preflight          # 環境チェック
-pnpm deploy             # 本番デプロイ（deploy:prod と同じ）
-pnpm deploy:staging     # Staging デプロイ
-pnpm dev                # Vite dev サーバー（UI のみ）
-pnpm preview            # wrangler dev（D1/DO/auth あり）
-pnpm build              # 型生成 + svelte-check + Vite build
-pnpm check              # gen + svelte-check
-pnpm lint               # Prettier check + ESLint
-pnpm format             # Prettier write
-pnpm test               # vitest run
-pnpm db:migrate:prod    # 本番 D1 に migration を適用
-pnpm db:migrate:staging # Staging D1 に migration を適用
+pnpm preflight                 # 環境チェック
+pnpm deploy                    # 本番デプロイ（deploy:prod と同じ。CLI/bootstrap 用）
+pnpm deploy:staging            # Staging デプロイ
+pnpm deploy:workers-builds     # Workers Builds の Deploy コマンド用（既存環境のみ）
+pnpm deploy:button             # Deploy to Cloudflare ボタンの初回デプロイ用（隔離環境）
+pnpm dev                       # Vite dev サーバー（UI のみ）
+pnpm preview                   # wrangler dev（D1/DO/auth あり）
+pnpm build                     # 型生成 + svelte-check + Vite build
+pnpm check                     # gen + svelte-check
+pnpm lint                      # Prettier check + ESLint
+pnpm format                    # Prettier write
+pnpm test                      # vitest run
+pnpm db:migrate:prod           # 本番 D1 に migration を適用
+pnpm db:migrate:staging        # Staging D1 に migration を適用
 ```
 
 ## 注意事項
