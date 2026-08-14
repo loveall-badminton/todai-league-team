@@ -218,3 +218,7 @@ export const LIVE_BOARD_CHANNEL = 'live-board';
 export function matchChannel(matchId: string): string {
 	return `match:${matchId}`;
 }
+
+export function tieChannel(tieId: string): string {
+	return `tie:${tieId}`;
+}

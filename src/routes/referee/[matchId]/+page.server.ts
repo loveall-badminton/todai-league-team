@@ -11,10 +11,12 @@ export const load: PageServerLoad = async () => {
 	const matchId = params.matchId!;
 	await requireRefereeMatchAccess(matchId);
 
-	const match = await getMatchWithPlayers(matchId);
+	const [match, state, events] = await Promise.all([
+		getMatchWithPlayers(matchId),
+		getMatchState(matchId),
+		getScoreEvents(matchId)
+	]);
 	if (!match) error(404, 'Match not found');
-
-	const [state, events] = await Promise.all([getMatchState(matchId), getScoreEvents(matchId)]);
 
 	return {
 		...match,

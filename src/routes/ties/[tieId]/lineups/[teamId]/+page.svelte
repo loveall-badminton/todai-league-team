@@ -19,6 +19,7 @@
 	import RealtimeSync from '$lib/components/RealtimeSync.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { shouldRefreshTieLineups } from '$lib/realtime/updates';
+	import { tieChannel } from '$lib/realtime/channels';
 	import { onMount } from 'svelte';
 	import {
 		clearLocalLineupDraft,
@@ -125,6 +126,7 @@
 		refresh={() => invalidateAll()}
 		shouldRefresh={(update) => shouldRefreshTieLineups(update, data.tie.id)}
 		pollInterval={15000}
+		channel={tieChannel(data.tie.id)}
 	/>
 {/snippet}
 

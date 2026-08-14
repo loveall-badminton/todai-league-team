@@ -3,7 +3,7 @@ import {
 	assignOfficiatingTeams,
 	updateTieSchedule
 } from '$lib/server/repositories/tokyoLeagueRepository';
-import { notifyLiveBoard } from '$lib/server/realtime/broadcast';
+import { notifyTie } from '$lib/server/realtime/broadcast';
 import { emptyToNull, uniqueNonEmpty, venueOrNull } from '$lib/utils/validation';
 import * as v from 'valibot';
 
@@ -43,7 +43,7 @@ export async function persistUpdateTie(params: {
 		note: emptyToNull(params.officiatingNote),
 		now: params.now
 	});
-	notifyLiveBoard(['schedule'], {
+	notifyTie(params.id, ['schedule'], {
 		// lineupDueAt の変更をオーダー入力ページにも届けるため lineups スコープを含める
 		schedule: { tieIds: [params.id], scopes: ['tie_header', 'lineups'] }
 	});

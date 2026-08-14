@@ -32,7 +32,10 @@ function dbWithGroupTies() {
 				findMany: vi.fn().mockResolvedValue([])
 			},
 			teams: {
-				findFirst: vi.fn().mockResolvedValue({ id: 'team' })
+				findFirst: vi.fn().mockResolvedValue({ id: 'team' }),
+				findMany: vi
+					.fn()
+					.mockResolvedValue(['a1', 'a2', 'a3', 'b1', 'b2', 'b3'].map((id) => ({ id })))
 			}
 		}
 	};

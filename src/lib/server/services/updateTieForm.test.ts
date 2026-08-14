@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mockUpdateTieSchedule = vi.hoisted(() => vi.fn());
 const mockAssignOfficiatingTeams = vi.hoisted(() => vi.fn());
-const mockNotifyLiveBoard = vi.hoisted(() => vi.fn());
+const mockNotifyTie = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/server/repositories/tokyoLeagueRepository', () => ({
 	assignOfficiatingTeams: mockAssignOfficiatingTeams,
@@ -10,7 +10,7 @@ vi.mock('$lib/server/repositories/tokyoLeagueRepository', () => ({
 }));
 
 vi.mock('$lib/server/realtime/broadcast', () => ({
-	notifyLiveBoard: mockNotifyLiveBoard
+	notifyTie: mockNotifyTie
 }));
 
 import { persistUpdateTie } from './updateTieForm';
@@ -50,7 +50,7 @@ describe('persistUpdateTie', () => {
 			note: 'umpire',
 			now: '2026-07-02T00:00:00.000Z'
 		});
-		expect(mockNotifyLiveBoard).toHaveBeenCalledWith(['schedule'], {
+		expect(mockNotifyTie).toHaveBeenCalledWith('tie-1', ['schedule'], {
 			schedule: { tieIds: ['tie-1'], scopes: ['tie_header', 'lineups'] }
 		});
 	});

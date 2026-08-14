@@ -5,6 +5,7 @@ import {
 	LIVE_BOARD_CHANNEL,
 	createLiveUpdatedMessage,
 	matchChannel,
+	tieChannel,
 	type LiveTopic
 } from '$lib/realtime/channels';
 import type { LiveMessage, LiveUpdateData } from '$lib/realtime/channels';
@@ -35,6 +36,14 @@ export function notifyLiveBoard(
 	data?: LiveUpdateData
 ): void {
 	emit('notifyLiveBoard', [LIVE_BOARD_CHANNEL], topics, data);
+}
+
+export function notifyTie<TTopics extends readonly LiveTopic[]>(
+	tieId: string,
+	topics: TTopics,
+	data?: LiveUpdateData<TTopics[number]>
+): void {
+	emit('notifyTie', [LIVE_BOARD_CHANNEL, tieChannel(tieId)], topics, data);
 }
 
 export function notifyMatch<TTopics extends readonly LiveTopic[]>(

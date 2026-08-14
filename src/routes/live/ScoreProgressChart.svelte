@@ -1,5 +1,7 @@
 <script lang="ts">
-	import * as d3 from 'd3';
+	import { scaleLinear } from 'd3-scale';
+	import { max } from 'd3-array';
+	import { line, curveLinear } from 'd3-shape';
 	import { buildScoreProgressionSeries } from '$lib/utils/scoreProgression';
 
 	let {
@@ -24,24 +26,20 @@
 
 	let xScale = $derived(
 		series
-			? d3
-					.scaleLinear()
+			? scaleLinear()
 					.domain([0, series.a.length - 1])
 					.range([0, innerW])
-			: d3.scaleLinear().range([0, innerW])
+			: scaleLinear().range([0, innerW])
 	);
 
-	let yMax = $derived(
-		series ? Math.max(5, d3.max([...series.a, ...series.b], (d) => d.y) ?? 5) : 5
-	);
-	let yScale = $derived(d3.scaleLinear().domain([0, yMax]).range([innerH, 0]).nice());
+	let yMax = $derived(series ? Math.max(5, max([...series.a, ...series.b], (d) => d.y) ?? 5) : 5);
+	let yScale = $derived(scaleLinear().domain([0, yMax]).range([innerH, 0]).nice());
 
 	let lineGen = $derived(
-		d3
-			.line<{ x: number; y: number }>()
+		line<{ x: number; y: number }>()
 			.x((d) => xScale(d.x))
 			.y((d) => yScale(d.y))
-			.curve(d3.curveLinear)
+			.curve(curveLinear)
 	);
 
 	let pathA = $derived(series ? (lineGen(series.a) ?? '') : '');

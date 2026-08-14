@@ -1,5 +1,5 @@
 import { now as nowIso } from '$lib/utils/now';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { FINAL_TIE_DEFINITIONS } from '$lib/domain/tokyoLeague';
 import type { TieStatus } from '$lib/domain/tieProgress';
 import { getRequestDb } from '$lib/server/db/request';
@@ -242,9 +242,12 @@ async function assertSelectedTeamsAreValid(assignments: FinalTieAssignment[]) {
 		throw new Error('同じチームを複数の枠に選択することはできません');
 	}
 
-	for (const teamId of normalizedTeamIds) {
-		const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
-		if (!team) throw new Error('選択されたチームが見つかりません');
+	const existingTeams = await db.query.teams.findMany({
+		where: inArray(teams.id, normalizedTeamIds)
+	});
+	const existingTeamIds = new Set(existingTeams.map((team) => team.id));
+	if (normalizedTeamIds.some((teamId) => !existingTeamIds.has(teamId))) {
+		throw new Error('選択されたチームが見つかりません');
 	}
 }
 

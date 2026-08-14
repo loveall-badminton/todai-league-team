@@ -1,6 +1,6 @@
 import { command, getRequestEvent, query } from '$app/server';
 import { requireAdmin } from '$lib/server/auth/access';
-import { notifyLiveBoard, notifyScoreChange } from '$lib/server/realtime/broadcast';
+import { notifyLiveBoard, notifyScoreChange, notifyTie } from '$lib/server/realtime/broadcast';
 import { actionErrorMessage } from '$lib/server/errors';
 import { deleteTie as deleteTieRepo } from '$lib/server/repositories/tokyoLeagueRepository';
 import { getMatchState } from '$lib/server/repositories/matchRepository';
@@ -38,7 +38,7 @@ export const startTie = command(async () => {
 	await runAdminMutation(
 		() => startTieService(tieId),
 		(resolvedTieId) =>
-			notifyLiveBoard(['score', 'schedule'], {
+			notifyTie(resolvedTieId, ['score', 'schedule'], {
 				// 対戦開始でオーダーが公開されるため lineups スコープも含める
 				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers', 'lineups'] }
 			})
@@ -50,7 +50,7 @@ export const unstartTie = command(async () => {
 	await runAdminMutation(
 		() => unstartTieService(tieId),
 		(resolvedTieId) =>
-			notifyLiveBoard(['score', 'schedule'], {
+			notifyTie(resolvedTieId, ['score', 'schedule'], {
 				schedule: { tieIds: [resolvedTieId], scopes: ['tie_header', 'rubbers', 'lineups'] }
 			})
 	);
@@ -134,13 +134,13 @@ async function runAdminMutation<T>(action: () => Promise<T>, notify: (tieId: str
 }
 
 function notifyTieLineupChange(tieId: string) {
-	notifyLiveBoard(['schedule'], {
+	notifyTie(tieId, ['schedule'], {
 		schedule: { tieIds: [tieId], scopes: ['tie_header', 'lineups'] }
 	});
 }
 
 function notifyTieStructureChange(tieId: string) {
-	notifyLiveBoard(['standings', 'schedule', 'finals'], {
+	notifyTie(tieId, ['standings', 'schedule', 'finals'], {
 		standings: { tieIds: [tieId] },
 		schedule: { tieIds: [tieId], scopes: ['tie_header'] },
 		finals: { tieIds: [tieId] }
@@ -165,7 +165,7 @@ async function applyLifecycleMatchAction(
 	// 管理画面は必ず tie 配下で操作するため、payload を付けて関係ページだけに絞る
 	const tieId = getRequestEvent().params.tieId;
 	if (tieId) {
-		notifyLiveBoard(['schedule', 'standings'], {
+		notifyTie(tieId, ['schedule', 'standings'], {
 			schedule: { tieIds: [tieId], scopes: ['tie_header', 'rubbers'] },
 			standings: { tieIds: [tieId] }
 		});

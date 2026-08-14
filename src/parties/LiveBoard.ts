@@ -7,6 +7,7 @@ import {
 } from '$lib/realtime/channels';
 import { computeHeartbeatReply } from './heartbeat';
 import { computeResyncReplies } from './resync';
+import { isCacheEntryStale } from './cacheEntry';
 import * as v from 'valibot';
 
 const ALLOWED_INTERNAL_HOST = 'live-board.internal';
@@ -30,7 +31,7 @@ const CacheEntryPutSchema = v.object({
 	epoch: v.optional(v.number())
 });
 
-type GenericCacheEntry = { data: unknown; expiresAt: number; topics: string[] };
+type GenericCacheEntry = { data: unknown; expiresAt: number; topics: string[]; epoch: number };
 
 export class LiveBoard extends Server<Env> {
 	static options = { hibernate: true };
@@ -128,7 +129,7 @@ export class LiveBoard extends Server<Env> {
 			if (entry) this.entryCache.set(key, entry);
 		}
 
-		if (!entry || entry.expiresAt <= now) {
+		if (!entry || isCacheEntryStale(entry, now, epoch)) {
 			if (entry) {
 				this.entryCache.delete(key);
 				void this.ctx.storage
@@ -155,7 +156,8 @@ export class LiveBoard extends Server<Env> {
 			return Response.json({ ok: false, error: 'invalid payload' }, { status: 400 });
 		}
 
-		if (parsed.output.epoch !== undefined && parsed.output.epoch !== (await this.getEpoch())) {
+		const epoch = await this.getEpoch();
+		if (parsed.output.epoch !== undefined && parsed.output.epoch !== epoch) {
 			// 計算開始後に失効が走った(=計算結果が古い可能性がある)ため受け入れない
 			return Response.json({ ok: false, error: 'stale epoch' }, { status: 409 });
 		}
@@ -163,7 +165,8 @@ export class LiveBoard extends Server<Env> {
 		const entry: GenericCacheEntry = {
 			data: parsed.output.data,
 			expiresAt: Date.now() + parsed.output.ttlMs,
-			topics: parsed.output.topics
+			topics: parsed.output.topics,
+			epoch
 		};
 		this.entryCache.set(parsed.output.key, entry);
 		void this.ctx.storage
