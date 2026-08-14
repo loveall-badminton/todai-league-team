@@ -28,6 +28,6 @@
 			</a>
 		{/if}
 
-		<Footer class="pb-0 mt-4" />
+		<Footer class="mt-4 pb-0" />
 	</section>
 </div>

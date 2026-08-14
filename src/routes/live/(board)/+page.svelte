@@ -106,7 +106,7 @@
 									{tie.teamAName ?? '未定'} vs {tie.teamBName ?? '未定'}
 								</p>
 							</div>
-							<span class="shrink-0 text-base font-bold tabular-nums text-emerald-700">
+							<span class="shrink-0 text-base font-bold text-emerald-700 tabular-nums">
 								{tie.teamScoreA}–{tie.teamScoreB}
 							</span>
 							<ArrowRight class="size-4 shrink-0 text-zinc-300" />

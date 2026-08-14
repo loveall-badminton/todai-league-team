@@ -220,7 +220,7 @@
 
 <header>
 	<a
-		class="text-sm text-muted-foreground hover:text-zinc-700 inline-flex items-center gap-1"
+		class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-zinc-700"
 		href={resolve('/ties')}
 	>
 		<ArrowLeft class="size-3" /> 対戦一覧

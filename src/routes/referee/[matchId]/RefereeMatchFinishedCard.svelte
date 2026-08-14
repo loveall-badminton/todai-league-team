@@ -60,7 +60,7 @@
 				: '試合が終了しました'}
 	</p>
 	<div class="mt-4 grid gap-3">
-		<form {...enhancedSaveRefereeName} class="grid-cols-[1fr_auto] gap-2 grid">
+		<form {...enhancedSaveRefereeName} class="grid grid-cols-[1fr_auto] gap-2">
 			<div class="grid gap-1">
 				<label class="text-xs font-medium text-muted-foreground" for="referee-name">審判名</label>
 				<AppInput

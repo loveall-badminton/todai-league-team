@@ -82,7 +82,7 @@
 								{/if}
 								<span
 									class={cn(
-										'h-2 w-2 shrink-0 self-start mt-1.5 rounded-full',
+										'mt-1.5 h-2 w-2 shrink-0 self-start rounded-full',
 										statusDot(tie.status)
 									)}
 								></span>
@@ -156,7 +156,7 @@
 									{#if hasScore}
 										<span
 											class={cn(
-												'text-base font-bold tabular-nums leading-tight',
+												'text-base leading-tight font-bold tabular-nums',
 												tie.status === 'playing' ? 'text-emerald-700' : 'text-muted-emphasis'
 											)}
 										>

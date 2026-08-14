@@ -114,8 +114,8 @@
 			class={cn(
 				'rounded-md px-4 py-1.5 text-sm font-medium',
 				isTabActive(livePath)
-					? 'bg-white shadow-sm text-zinc-900'
-					: 'text-muted hover:text-default hover:bg-zinc-50'
+					? 'bg-white text-zinc-900 shadow-sm'
+					: 'text-muted hover:bg-zinc-50 hover:text-default'
 			)}>進行表</a
 		>
 		<a
@@ -123,8 +123,8 @@
 			class={cn(
 				'rounded-md px-4 py-1.5 text-sm font-medium',
 				isTabActive(standingsPath)
-					? 'bg-white shadow-sm text-zinc-900'
-					: 'text-muted hover:text-default hover:bg-zinc-50'
+					? 'bg-white text-zinc-900 shadow-sm'
+					: 'text-muted hover:bg-zinc-50 hover:text-default'
 			)}>順位表</a
 		>
 	</nav>

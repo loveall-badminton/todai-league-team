@@ -9,14 +9,14 @@
 
 <footer
 	class={cn(
-		'border-t border-border bg-white p-4 text-xs text-muted-foreground @container',
+		'@container border-t border-border bg-white p-4 text-xs text-muted-foreground',
 		className
 	)}
 >
 	<div
 		class="mx-auto flex max-w-7xl flex-col items-center justify-center gap-3 @sm:flex-row @sm:gap-4"
 	>
-		<p class="flex flex-col @sm:flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+		<p class="flex flex-col flex-wrap items-center justify-center gap-x-1.5 gap-y-1 @sm:flex-row">
 			<span>
 				&copy; {year} LOVE ALL
 			</span>
@@ -31,7 +31,7 @@
 					href="https://opensource.org/license/mit"
 					target="_blank"
 					rel="noreferrer"
-					class="text-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+					class="text-foreground hover:text-primary underline-offset-4 transition-colors hover:underline"
 				>
 					MIT License
 				</a>
@@ -43,7 +43,7 @@
 			target="_blank"
 			rel="noreferrer"
 			aria-label="GitHub リポジトリ"
-			class="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+			class="hover:text-foreground inline-flex items-center justify-center text-muted-foreground transition-colors"
 		>
 			<GitHub class="size-4" aria-hidden="true" />
 		</a>

@@ -131,7 +131,7 @@
 <!-- Header -->
 <header>
 	<a
-		class="text-sm text-muted-foreground hover:text-zinc-700 flex items-center"
+		class="flex items-center text-sm text-muted-foreground hover:text-zinc-700"
 		href={data.user?.role === 'admin'
 			? resolve('/ties/[tieId]', { tieId: data.tie.id })
 			: resolve('/live/tasks')}
@@ -161,7 +161,7 @@
 					remainingMin <= 0
 						? 'text-muted-foreground'
 						: remainingMin <= 1
-							? 'text-red-600 font-medium'
+							? 'font-medium text-red-600'
 							: remainingMin <= 5
 								? 'text-amber-600'
 								: 'text-muted-foreground'

@@ -102,7 +102,7 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
 		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl outline-none"
+			class="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl outline-none"
 		>
 			<Dialog.Title class="text-base font-semibold text-default">{title}</Dialog.Title>
 			{#if description}

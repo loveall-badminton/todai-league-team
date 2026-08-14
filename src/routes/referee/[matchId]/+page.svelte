@@ -199,7 +199,7 @@
 		)}
 		innerClass="flex flex-col h-full"
 	>
-		<p class="text-sm font-medium text-muted-foreground grow">{name}</p>
+		<p class="grow text-sm font-medium text-muted-foreground">{name}</p>
 		{#if teamName}
 			<p class="text-xs text-muted">{teamName}</p>
 		{/if}

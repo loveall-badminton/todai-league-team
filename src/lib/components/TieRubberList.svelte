@@ -106,7 +106,7 @@
 {:else}
 	<!-- Full table layout (tie detail style) -->
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[18rem] text-sm sm:min-w-150 text-nowrap">
+		<table class="w-full min-w-[18rem] text-sm text-nowrap sm:min-w-150">
 			<thead>
 				<tr class="border-b border-zinc-100">
 					<th

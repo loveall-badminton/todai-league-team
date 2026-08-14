@@ -89,7 +89,7 @@
 		<div class="text-center">
 			<p
 				class={cn(
-					'text-xs tabular-nums leading-tight',
+					'text-xs leading-tight tabular-nums',
 					rubber.winnerSide
 						? 'font-extrabold text-emerald-700'
 						: isPlaying
