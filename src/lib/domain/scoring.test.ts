@@ -4,6 +4,7 @@ import {
 	applyScoreEvent,
 	createInitialDoublesServiceState,
 	createInitialMatchState,
+	getCurrentGame,
 	isGameWon,
 	isMatchWon
 } from './scoring';
@@ -1489,5 +1490,137 @@ describe('confirmed match rejects mutations', () => {
 				}
 			})
 		).toThrow('承認済み');
+	});
+});
+
+// ─── getCurrentGame ─────────────────────────────────────────────────────────
+
+describe('getCurrentGame', () => {
+	test('returns the current game', () => {
+		const s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		expect(getCurrentGame(s).gameNo).toBe(1);
+	});
+
+	test('throws when current game is missing', () => {
+		const s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		s.games = [];
+		expect(() => getCurrentGame(s)).toThrow('Current game not found: 1');
+	});
+});
+
+// ─── undo validation ────────────────────────────────────────────────────────
+
+describe('undo validation', () => {
+	test('throws when restoreState is missing', () => {
+		const s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		expect(() =>
+			applyScoreEvent({
+				state: s,
+				players: singlesPlayers,
+				now: '2026-06-03T00:00:01.000Z',
+				input: {
+					type: 'undo',
+					idempotencyKey: 'u1',
+					observedSeqNo: 0
+				} as Parameters<typeof applyScoreEvent>[0]['input']
+			})
+		).toThrow('Undo restore state is required');
+	});
+});
+
+// ─── match_unconfirmed fallback ─────────────────────────────────────────────
+
+describe('match_unconfirmed fallback status', () => {
+	test('falls back to finished when confirmedFromStatus is missing', () => {
+		const s: MatchState = {
+			...createInitialMatchState({
+				matchId: 'm',
+				tournamentId: 't',
+				courtId: null,
+				discipline: 'MS',
+				now: '2026-06-03T00:00:00.000Z'
+			}),
+			status: 'confirmed',
+			confirmedFromStatus: null
+		};
+		const unconfirmed = applyScoreEvent({
+			state: s,
+			players: singlesPlayers,
+			now: '2026-06-03T00:00:01.000Z',
+			input: { type: 'match_unconfirmed', idempotencyKey: 'unconf', observedSeqNo: 0 }
+		});
+		expect(unconfirmed.status).toBe('finished');
+		expect(unconfirmed.confirmedFromStatus).toBeNull();
+	});
+});
+
+// ─── correction maps over all games ─────────────────────────────────────────
+
+describe('correction preserves non-target games', () => {
+	test('only updates the current game when multiple games exist', () => {
+		let s = createInitialMatchState({
+			matchId: 'm',
+			tournamentId: 't',
+			courtId: null,
+			discipline: 'MS',
+			now: '2026-06-03T00:00:00.000Z'
+		});
+		s = step(
+			s,
+			{
+				type: 'match_started',
+				idempotencyKey: 'start',
+				initialServerPlayerId: 'a1',
+				initialReceiverPlayerId: 'b1'
+			},
+			singlesPlayers
+		);
+		s = playRallies(s, 'A', 21, singlesPlayers);
+		s = step(
+			s,
+			{
+				type: 'game_started',
+				idempotencyKey: 'g2',
+				gameNo: 2,
+				initialServerPlayerId: 'b1',
+				initialReceiverPlayerId: 'a1'
+			},
+			singlesPlayers
+		);
+
+		const after = step(
+			s,
+			{
+				type: 'correction',
+				idempotencyKey: 'corr',
+				gameNo: 2,
+				score: { A: 10, B: 8 },
+				reason: 'test'
+			},
+			singlesPlayers
+		);
+
+		const game1 = after.games.find((g) => g.gameNo === 1)!;
+		const game2 = after.games.find((g) => g.gameNo === 2)!;
+		expect(game1.score).toEqual({ A: 21, B: 0 });
+		expect(game2.score).toEqual({ A: 10, B: 8 });
 	});
 });

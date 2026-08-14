@@ -27,11 +27,12 @@ export function buildRealtimeScoreEvent(
 	const eventGameNo = inputGameNo ?? beforeState.currentGameNo;
 	const eventGame = afterState.games.find((g) => g.gameNo === eventGameNo);
 	const targetSeqNo = input.type === 'undo' ? (input as UndoInput).targetSeqNo : undefined;
+	const inputSide = 'side' in input ? (input as { side: string }).side : undefined;
 
 	return {
 		type: eventTypeForInput(input),
 		seqNo,
-		side: 'side' in input ? (input as { side: string }).side : undefined,
+		...(inputSide !== undefined ? { side: inputSide } : {}),
 		gameNo: eventGameNo,
 		scoreA: eventGame?.score.A,
 		scoreB: eventGame?.score.B,

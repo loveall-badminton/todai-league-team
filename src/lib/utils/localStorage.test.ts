@@ -54,6 +54,12 @@ describe('localStorage helpers', () => {
 		expect(loadJsonFromLocalStorage('key', schema)).toBeNull();
 	});
 
+	test('returns null when stored json fails schema validation', () => {
+		localStorage.setItem('key', JSON.stringify({ name: 'Alice', count: 'not-a-number' }));
+
+		expect(loadJsonFromLocalStorage('key', schema)).toBeNull();
+	});
+
 	test('removes stored values', () => {
 		localStorage.setItem('key', JSON.stringify({ name: 'Alice', count: 2 }));
 		removeLocalStorageItem('key');

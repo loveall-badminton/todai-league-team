@@ -273,6 +273,22 @@ describe('createInitialDoublesServiceState', () => {
 			})
 		).toThrow('exactly two players on side A');
 	});
+
+	test('throws when partners cannot be identified', () => {
+		const players: MatchPlayer[] = [
+			{ id: 'a1', side: 'A', order: 1, name: 'A1' },
+			{ id: 'a1', side: 'A', order: 2, name: 'A1 dup' },
+			{ id: 'b1', side: 'B', order: 1, name: 'B1' },
+			{ id: 'b2', side: 'B', order: 2, name: 'B2' }
+		];
+		expect(() =>
+			createInitialDoublesServiceState({
+				players,
+				initialServerPlayerId: 'a1',
+				initialReceiverPlayerId: 'b1'
+			})
+		).toThrow('Invalid doubles pair');
+	});
 });
 
 // ─── applySinglesServiceAfterRally ──────────────────────────────────────────
@@ -348,6 +364,17 @@ describe('applySinglesServiceAfterRally', () => {
 		});
 		expect(after.servingSide).toBe('B');
 		expect(after.serviceCourt).toBe('left'); // B score 9 → odd → left
+	});
+
+	test('throws when the new serving side has no player', () => {
+		expect(() =>
+			applySinglesServiceAfterRally({
+				before: initialState,
+				scoreAfter: { A: 0, B: 1 },
+				rallyWinner: 'B',
+				players: [{ id: 'a1', side: 'A', order: 1, name: 'A1' }]
+			})
+		).toThrow('Singles match requires one player per side');
 	});
 });
 

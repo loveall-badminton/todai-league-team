@@ -2,7 +2,12 @@ import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 
 const REQUIRED_SECRETS = ['BETTER_AUTH_SECRET'];
-const WRANGLER_CONFIG = 'wrangler.jsonc';
+const DEFAULT_WRANGLER_CONFIG = 'wrangler.jsonc';
+
+const HELP = `Usage: node scripts/ensure-cloudflare-secrets.mjs [--config <wrangler-config>]
+
+Ensures required Cloudflare Worker secrets exist. Creates missing secrets safely
+without printing their values. Defaults to --config ${DEFAULT_WRANGLER_CONFIG}.`;
 
 function run(command, args, options = {}) {
 	return new Promise((resolve, reject) => {
@@ -35,12 +40,49 @@ function run(command, args, options = {}) {
 	});
 }
 
-async function listSecretNames() {
-	const { stdout } = await run('wrangler', [
+function parseArgs(argv) {
+	let config = DEFAULT_WRANGLER_CONFIG;
+	for (let i = 0; i < argv.length; i += 1) {
+		const arg = argv[i];
+		if (arg === '--help' || arg === '-h') {
+			console.log(HELP);
+			process.exit(0);
+		}
+		if (arg === '--config') {
+			const value = argv[i + 1];
+			if (!value || value.startsWith('-')) {
+				console.error('Missing value for --config');
+				console.error(`\n${HELP}`);
+				process.exit(1);
+			}
+			config = value;
+			i += 1;
+			continue;
+		}
+		if (arg.startsWith('--config=')) {
+			config = arg.slice('--config='.length);
+			if (!config) {
+				console.error('Missing value for --config');
+				console.error(`\n${HELP}`);
+				process.exit(1);
+			}
+			continue;
+		}
+		console.error(`Unknown argument: ${arg}`);
+		console.error(`\n${HELP}`);
+		process.exit(1);
+	}
+	return { config };
+}
+
+async function listSecretNames(wranglerConfig) {
+	const { stdout } = await run('pnpm', [
+		'exec',
+		'wrangler',
 		'secret',
 		'list',
 		'--config',
-		WRANGLER_CONFIG,
+		wranglerConfig,
 		'--format',
 		'json'
 	]);
@@ -51,13 +93,15 @@ async function listSecretNames() {
 	return new Set(secrets.map((secret) => secret.name).filter(Boolean));
 }
 
-async function putSecret(name, value) {
-	await run('wrangler', ['secret', 'put', name, '--config', WRANGLER_CONFIG], {
+async function putSecret(name, value, wranglerConfig) {
+	await run('pnpm', ['exec', 'wrangler', 'secret', 'put', name, '--config', wranglerConfig], {
 		input: `${value}\n`
 	});
 }
 
-const existingSecretNames = await listSecretNames();
+const { config: WRANGLER_CONFIG } = parseArgs(process.argv.slice(2));
+
+const existingSecretNames = await listSecretNames(WRANGLER_CONFIG);
 
 for (const name of REQUIRED_SECRETS) {
 	if (existingSecretNames.has(name)) {
@@ -66,6 +110,6 @@ for (const name of REQUIRED_SECRETS) {
 	}
 
 	const value = randomBytes(32).toString('base64url');
-	await putSecret(name, value);
+	await putSecret(name, value, WRANGLER_CONFIG);
 	console.log(`${name} created`);
 }

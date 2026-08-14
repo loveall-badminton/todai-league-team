@@ -13,7 +13,13 @@ export default defineConfig({
 	test: {
 		expect: { requireAssertions: true },
 		coverage: {
-			exclude: ['.svelte-kit/**', 'src/lib/server/db/schema.ts', 'src/lib/server/db/*.schema.ts'],
+			provider: 'istanbul',
+			exclude: [
+				'.svelte-kit/**',
+				'src/lib/server/db/schema.ts',
+				'src/lib/server/db/*.schema.ts',
+				'scripts/**'
+			],
 			thresholds: {
 				statements: 90,
 				branches: 80,
@@ -42,7 +48,11 @@ export default defineConfig({
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}', 'workers/**/*.{test,spec}.{js,ts}'],
+					include: [
+						'src/**/*.{test,spec}.{js,ts}',
+						'workers/**/*.{test,spec}.{js,ts}',
+						'scripts/**/*.{test,spec}.{js,ts}'
+					],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.cf.{test,spec}.{js,ts}']
 				}
 			},

@@ -148,4 +148,37 @@ describe('loadLiveTasksPageData', () => {
 			}
 		});
 	});
+
+	test('maps null team ids to null team names', async () => {
+		mockGetTeamNamesByIds.mockResolvedValue(new Map());
+		mockListTiesForTeam.mockResolvedValue([
+			{
+				id: 'tie-null',
+				tieCode: 'G1-9',
+				status: 'scheduled',
+				teamAId: null,
+				teamBId: null,
+				scheduledStartAt: null,
+				lineupDueAt: null
+			}
+		]);
+		mockListOfficiatingTieIds.mockResolvedValue([]);
+		mockListTiesByIds.mockResolvedValue([]);
+		mockGetBatchedPublicRubbers.mockResolvedValue([[{ tieId: 'tie-null', rubberCode: 'WD1' }]]);
+
+		const result = await loadLiveTasksPageData({ accountType: 'team', teamId: 'team-a' } as never);
+
+		expect(result.myTies).toEqual([
+			{
+				id: 'tie-null',
+				tieCode: 'G1-9',
+				status: 'scheduled',
+				teamAName: null,
+				teamBName: null,
+				scheduledStartAt: null,
+				lineupDueAt: null
+			}
+		]);
+		expect(mockGetTeamNamesByIds).toHaveBeenCalledWith([]);
+	});
 });

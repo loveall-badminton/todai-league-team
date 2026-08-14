@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { groupPhaseFor, RUBBER_DEFINITIONS, TOKYO_LEAGUE_SCORING_RULES } from './tokyoLeague';
+import {
+	groupPhaseFor,
+	isGroupPhase,
+	RUBBER_DEFINITIONS,
+	TOKYO_LEAGUE_SCORING_RULES
+} from './tokyoLeague';
 
 describe('tokyo league constants', () => {
 	test('rubber definitions are fixed in operation order', () => {
@@ -43,5 +48,12 @@ describe('tokyo league constants', () => {
 	test('group phase mapping is stable', () => {
 		expect(groupPhaseFor('A')).toBe('group_a');
 		expect(groupPhaseFor('B')).toBe('group_b');
+	});
+
+	test('isGroupPhase recognizes group phases', () => {
+		expect(isGroupPhase('group_a')).toBe(true);
+		expect(isGroupPhase('group_b')).toBe(true);
+		expect(isGroupPhase('final')).toBe(false);
+		expect(isGroupPhase('semifinal')).toBe(false);
 	});
 });

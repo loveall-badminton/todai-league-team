@@ -23,6 +23,7 @@ import {
 	getMatchPlayers,
 	getMatchState,
 	getMatchWithPlayers,
+	getTieContextForMatch,
 	updateMatchDerivedState,
 	updateMatchResultVerification,
 	upsertMatchServiceState,
@@ -47,8 +48,14 @@ function createMockDb(): MockDb {
 	const updateChain = {
 		set: vi.fn(() => ({ where: vi.fn(() => undefined) }))
 	};
+	const joinChain = {
+		where: vi.fn(() => ({
+			limit: vi.fn(async () => [])
+		}))
+	};
 	const selectChain = {
 		from: vi.fn(() => ({
+			innerJoin: vi.fn(() => joinChain),
 			where: vi.fn(() => ({
 				orderBy: vi.fn(async () => [
 					{
@@ -218,5 +225,14 @@ describe('matchRepository', () => {
 		expect(mockBuildMatchUpdate).toHaveBeenCalledWith(db, state);
 		expect(mockBuildMatchSnapshotUpsert).toHaveBeenCalledWith(db, state);
 		expect(mockBuildMatchServiceStateUpsert).toHaveBeenCalledWith(db, state);
+	});
+
+	test('getTieContextForMatch returns null when no tie is linked', async () => {
+		await expect(getTieContextForMatch('match-no-tie')).resolves.toBeNull();
+	});
+
+	test('getMatchState throws when snapshot is missing', async () => {
+		db.query.matchSnapshots.findFirst.mockResolvedValue(null);
+		await expect(getMatchState('missing', db as never)).rejects.toThrow('Match snapshot not found');
 	});
 });

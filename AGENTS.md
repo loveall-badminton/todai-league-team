@@ -15,6 +15,7 @@ pnpm lint             # prettier --check + eslint (run format first to fix)
 pnpm format           # prettier --write
 pnpm test             # vitest run (unit + component)
 pnpm test:unit        # vitest watch
+pnpm test:related     # vitest related --run (pass source file(s) after `--`, see Testing below)
 pnpm test:coverage    # vitest coverage (90% line / 80% branch thresholds)
 pnpm test:e2e         # playwright (chromium project; auto-starts server via webServer)
 pnpm test:e2e:full    # playwright full-simulation project (excluded from normal runs)
@@ -142,6 +143,10 @@ Vitest projects defined in `vite.config.ts`:
 - **cloudflare** — workerd environment via `@cloudflare/vitest-pool-workers`. `*.cf.{test,spec}.{js,ts}`
 
 Run a single test file: `pnpm test:unit -- path/to/file.test.ts`
+
+Run tests related to changed source files: `pnpm test:related src/lib/realtime/updates.ts`. This uses Vitest's `related` mode to discover tests that import the given source file(s). It is intended only as a fast local feedback shortcut; it is not a substitute for `pnpm test` or CI.
+
+E2E tests run with `workers: 1` and `fullyParallel: false` in `playwright.config.ts` because they share a persisted local D1 database (`--persist-to .wrangler/e2e-state`) and global authentication state.
 
 Coverage thresholds: 90% statements, 80% branches, 90% functions, 90% lines. Schema files are excluded.
 

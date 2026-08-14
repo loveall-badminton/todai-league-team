@@ -60,4 +60,47 @@ describe('createRealtimeQueryFlow', () => {
 		expect(refresh).toHaveBeenCalledTimes(1);
 		vi.useRealTimers();
 	});
+
+	test('shouldRefresh returning false skips the refresh', async () => {
+		const refresh = vi.fn(async () => undefined);
+		const handle = createRealtimeQueryFlow({
+			refresh,
+			shouldRefresh: () => false
+		});
+
+		await handle(update());
+
+		expect(refresh).not.toHaveBeenCalled();
+	});
+
+	test('zero debounceMs refreshes immediately', async () => {
+		const refresh = vi.fn(async () => undefined);
+		const handle = createRealtimeQueryFlow({
+			refresh,
+			debounceMs: 0
+		});
+
+		await handle(update());
+
+		expect(refresh).toHaveBeenCalledTimes(1);
+	});
+
+	test('refresh result cancels a pending debounced refresh', async () => {
+		vi.useFakeTimers();
+		const refresh = vi.fn(async () => undefined);
+		const handle = createRealtimeQueryFlow({
+			refresh,
+			applyUpdate: (incoming) => (incoming.topics.includes('score') ? 'refresh' : 'ignore'),
+			shouldRefresh: () => true
+		});
+
+		await handle(update({ topics: ['schedule'] }));
+		await handle(update({ topics: ['score'] }));
+
+		expect(refresh).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(200);
+		expect(refresh).toHaveBeenCalledTimes(1);
+		vi.useRealTimers();
+	});
 });

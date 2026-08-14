@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest';
+import type { GroupCode } from '$lib/domain/tokyoLeague';
+import type { LiveTopic, LiveUpdateData } from './channels';
 import type { RealtimeUpdate } from './updates';
 import {
 	shouldRefreshOnScheduleOrTerminalScore,
@@ -19,13 +21,45 @@ function liveUpdate(update: Partial<RealtimeUpdate>): RealtimeUpdate {
 	};
 }
 
+function updateData(data: LiveUpdateData | undefined): LiveUpdateData | undefined {
+	return data;
+}
+
+function scoreState(matchId: string, status: 'playing' | 'finished' = 'playing') {
+	return {
+		schemaVersion: 1 as const,
+		matchId,
+		tournamentId: 't1',
+		courtId: null,
+		discipline: 'MD' as const,
+		status,
+		scoring: {
+			maxGames: 3,
+			gamesToWin: 2,
+			pointsToWin: 21,
+			winBy: 2,
+			maxPoints: 30,
+			midGameIntervalPoint: 11
+		},
+		currentGameNo: 1,
+		games: [],
+		gamesWon: { A: 0, B: 0 },
+		winnerSide: null,
+		terminalReason: null,
+		service: null,
+		lastSeqNo: 1,
+		createdAt: '',
+		updatedAt: ''
+	};
+}
+
 describe('realtime consumer routing', () => {
 	test('finals page ignores unrelated group schedule metadata', () => {
 		expect(
 			shouldRefreshFinalsPage(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { phases: ['group_a'], tieIds: ['a-1'] } }
+					data: { schedule: { phases: ['group_a'] as const, tieIds: ['a-1'] } }
 				}),
 				['X-1', 'X-2']
 			)
@@ -57,11 +91,44 @@ describe('realtime consumer routing', () => {
 			shouldRefreshFinalsPage(
 				liveUpdate({
 					topics: ['finals'],
-					data: { finals: { phases: ['final'] } }
+					data: { finals: { phases: ['final'] as const } }
 				}),
 				['X-1', 'X-2']
 			)
 		).toBe(true);
+	});
+
+	test('finals page refreshes on relevant tie id in finals payload', () => {
+		expect(
+			shouldRefreshFinalsPage(
+				liveUpdate({
+					topics: ['finals'],
+					data: { finals: { tieIds: ['X-1'] } }
+				}),
+				['X-1', 'X-2']
+			)
+		).toBe(true);
+	});
+
+	test('finals page ignores unrelated finals and schedule metadata', () => {
+		expect(
+			shouldRefreshFinalsPage(
+				liveUpdate({
+					topics: ['finals'],
+					data: { finals: { tieIds: ['other-1'], phases: ['group_a'] as const } }
+				}),
+				['X-1', 'X-2']
+			)
+		).toBe(false);
+		expect(
+			shouldRefreshFinalsPage(
+				liveUpdate({
+					topics: ['schedule'],
+					data: { schedule: { phases: ['group_a'] as const } }
+				}),
+				['X-1', 'X-2']
+			)
+		).toBe(false);
 	});
 
 	test('group page ignores standings metadata for another group', () => {
@@ -69,7 +136,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshGroupPage(
 				liveUpdate({
 					topics: ['standings'],
-					data: { standings: { groupCodes: ['B'] } }
+					data: { standings: { groupCodes: ['B'] as const } }
 				}),
 				'A',
 				['a-1', 'a-2']
@@ -246,7 +313,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieHeaderData(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] } }
+					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] as const } }
 				}),
 				'tie-1'
 			)
@@ -255,7 +322,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieHeaderData(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], scopes: ['tie_header'] } }
+					data: { schedule: { tieIds: ['tie-1'], scopes: ['tie_header'] as const } }
 				}),
 				'tie-1'
 			)
@@ -287,7 +354,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieLineups(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], scopes: ['tie_header'] } }
+					data: { schedule: { tieIds: ['tie-1'], scopes: ['tie_header'] as const } }
 				}),
 				'tie-1'
 			)
@@ -296,7 +363,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieLineups(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] } }
+					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] as const } }
 				}),
 				'tie-1'
 			)
@@ -371,7 +438,13 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieLiveRubbers(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], phases: ['group_a'], scopes: ['rubbers'] } }
+					data: {
+						schedule: {
+							tieIds: ['tie-1'],
+							phases: ['group_a'] as const,
+							scopes: ['rubbers'] as const
+						}
+					}
 				}),
 				'tie-1',
 				['m1']
@@ -384,7 +457,7 @@ describe('realtime consumer routing', () => {
 			shouldRefreshTieLiveRubbers(
 				liveUpdate({
 					topics: ['schedule'],
-					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] } }
+					data: { schedule: { tieIds: ['tie-1'], scopes: ['lineups'] as const } }
 				}),
 				'tie-1',
 				['m1']
@@ -434,5 +507,326 @@ describe('realtime consumer routing', () => {
 
 		const scheduleUpdate = liveUpdate({ topics: ['schedule'] });
 		expect(shouldRefreshOnScheduleOrTerminalScore(scheduleUpdate)).toBe(true);
+	});
+
+	describe('shouldRefreshFinalsPage branch coverage', () => {
+		test.each([
+			{
+				label: 'empty finals payload',
+				topics: ['finals'],
+				data: updateData({ finals: {} }),
+				expected: true
+			},
+			{
+				label: 'finals payload with only irrelevant phases',
+				topics: ['finals'],
+				data: updateData({ finals: { phases: ['group_a'] } }),
+				expected: false
+			},
+			{
+				label: 'finals payload with irrelevant tie id and no phases',
+				topics: ['finals'],
+				data: updateData({ finals: { tieIds: ['other-1'] } }),
+				expected: false
+			},
+			{
+				label: 'schedule payload missing',
+				topics: ['schedule'],
+				data: updateData(undefined),
+				expected: true
+			},
+			{
+				label: 'empty schedule payload',
+				topics: ['schedule'],
+				data: updateData({ schedule: {} }),
+				expected: true
+			},
+			{
+				label: 'schedule relevant tie id',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['X-1'] } }),
+				expected: true
+			},
+			{
+				label: 'schedule relevant finals phase',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['final'] } }),
+				expected: true
+			},
+			{
+				label: 'unrelated topic',
+				topics: ['score'],
+				data: updateData(undefined),
+				expected: false
+			}
+		])('$label', ({ topics, data, expected }) => {
+			expect(
+				shouldRefreshFinalsPage(liveUpdate({ topics: topics as LiveTopic[], data }), ['X-1', 'X-2'])
+			).toBe(expected);
+		});
+	});
+
+	describe('shouldRefreshGroupPage branch coverage', () => {
+		test.each([
+			{
+				label: 'standings payload missing',
+				topics: ['standings'],
+				data: updateData({}),
+				expected: true
+			},
+			{
+				label: 'empty standings payload',
+				topics: ['standings'],
+				data: updateData({ standings: {} }),
+				expected: true
+			},
+			{
+				label: 'matching group code',
+				topics: ['standings'],
+				data: updateData({ standings: { groupCodes: ['A'] } }),
+				expected: true
+			},
+			{
+				label: 'relevant tie id in standings',
+				topics: ['standings'],
+				data: updateData({ standings: { tieIds: ['a-1'] } }),
+				expected: true
+			},
+			{
+				label: 'schedule payload missing',
+				topics: ['schedule'],
+				data: updateData(undefined),
+				expected: true
+			},
+			{
+				label: 'empty schedule payload',
+				topics: ['schedule'],
+				data: updateData({ schedule: {} }),
+				expected: true
+			},
+			{
+				label: 'matching group phase',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['group_a'] } }),
+				expected: true
+			},
+			{
+				label: 'wrong group phase',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['group_a'] } }),
+				groupCode: 'B' as GroupCode,
+				expected: false
+			},
+			{
+				label: 'unrelated topic',
+				topics: ['finals'],
+				data: updateData(undefined),
+				expected: false
+			}
+		])('$label', ({ topics, data, groupCode = 'A' as GroupCode, expected }) => {
+			expect(
+				shouldRefreshGroupPage(liveUpdate({ topics: topics as LiveTopic[], data }), groupCode, [
+					'a-1',
+					'a-2'
+				])
+			).toBe(expected);
+		});
+	});
+
+	describe('shouldRefreshTieHeaderData branch coverage', () => {
+		test.each([
+			{
+				label: 'schedule payload missing',
+				topics: ['schedule'],
+				data: updateData({}),
+				expected: true
+			},
+			{
+				label: 'empty schedule payload',
+				topics: ['schedule'],
+				data: updateData({ schedule: {} }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with no scopes',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'] } }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with empty scopes',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'], scopes: [] } }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with lineups scope',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'], scopes: ['lineups'] } }),
+				expected: false
+			},
+			{
+				label: 'schedule phases without tie id',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['group_a'] } }),
+				expected: false
+			},
+			{
+				label: 'standings empty payload',
+				topics: ['standings'],
+				data: updateData({ standings: {} }),
+				expected: true
+			},
+			{
+				label: 'standings relevant tie id',
+				topics: ['standings'],
+				data: updateData({ standings: { tieIds: ['tie-1'] } }),
+				expected: true
+			},
+			{
+				label: 'standings groupCodes only',
+				topics: ['standings'],
+				data: updateData({ standings: { groupCodes: ['A'] } }),
+				expected: false
+			},
+			{
+				label: 'finals empty payload',
+				topics: ['finals'],
+				data: updateData({ finals: {} }),
+				expected: true
+			},
+			{
+				label: 'finals relevant tie id',
+				topics: ['finals'],
+				data: updateData({ finals: { tieIds: ['tie-1'] } }),
+				expected: true
+			},
+			{
+				label: 'finals phases only',
+				topics: ['finals'],
+				data: updateData({ finals: { phases: ['final'] } }),
+				expected: false
+			},
+			{
+				label: 'unrelated topic',
+				topics: ['score'],
+				data: updateData(undefined),
+				expected: false
+			}
+		])('$label', ({ topics, data, expected }) => {
+			expect(
+				shouldRefreshTieHeaderData(liveUpdate({ topics: topics as LiveTopic[], data }), 'tie-1')
+			).toBe(expected);
+		});
+	});
+
+	describe('shouldRefreshTieLineups branch coverage', () => {
+		test.each([
+			{
+				label: 'non-schedule topic',
+				topics: ['standings'],
+				data: updateData(undefined),
+				expected: false
+			},
+			{
+				label: 'empty schedule payload',
+				topics: ['schedule'],
+				data: updateData({ schedule: {} }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with no scopes',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'] } }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with empty scopes',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'], scopes: [] } }),
+				expected: true
+			},
+			{
+				label: 'schedule wrong tie id',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['other'] } }),
+				expected: false
+			},
+			{
+				label: 'schedule phases only',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['group_a'] } }),
+				expected: false
+			}
+		])('$label', ({ topics, data, expected }) => {
+			expect(
+				shouldRefreshTieLineups(liveUpdate({ topics: topics as LiveTopic[], data }), 'tie-1')
+			).toBe(expected);
+		});
+	});
+
+	describe('shouldRefreshTieLiveRubbers branch coverage', () => {
+		test.each([
+			{
+				label: 'score topic without score payload',
+				topics: ['score'],
+				data: updateData(undefined),
+				expected: true
+			},
+			{
+				label: 'score topic matching match id',
+				topics: ['score'],
+				data: updateData({ score: { state: scoreState('m1', 'playing') } }),
+				expected: true
+			},
+			{
+				label: 'schedule payload missing',
+				topics: ['schedule'],
+				data: updateData(undefined),
+				expected: true
+			},
+			{
+				label: 'empty schedule payload',
+				topics: ['schedule'],
+				data: updateData({ schedule: {} }),
+				expected: true
+			},
+			{
+				label: 'schedule tie id with no scopes',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['tie-1'] } }),
+				expected: true
+			},
+			{
+				label: 'schedule wrong tie id',
+				topics: ['schedule'],
+				data: updateData({ schedule: { tieIds: ['other'] } }),
+				expected: false
+			},
+			{
+				label: 'schedule phases only',
+				topics: ['schedule'],
+				data: updateData({ schedule: { phases: ['group_a'] } }),
+				expected: false
+			},
+			{
+				label: 'unrelated topic',
+				topics: ['standings'],
+				data: updateData(undefined),
+				expected: false
+			}
+		])('$label', ({ topics, data, expected }) => {
+			expect(
+				shouldRefreshTieLiveRubbers(liveUpdate({ topics: topics as LiveTopic[], data }), 'tie-1', [
+					'm1'
+				])
+			).toBe(expected);
+		});
+	});
+
+	describe('shouldRefreshOnScheduleOrTerminalScore branch coverage', () => {
+		test('returns true when score topic has no score payload', () => {
+			expect(shouldRefreshOnScheduleOrTerminalScore(liveUpdate({ topics: ['score'] }))).toBe(true);
+		});
 	});
 });

@@ -18,4 +18,14 @@ describe('AppInput.svelte', () => {
 		expect(input?.value).toBe('東京大学');
 		expect(new FormData(form).get('teamName')).toBe('東京大学');
 	});
+
+	it('applies invalid styling when aria-invalid is true', async () => {
+		render(AppInput, {
+			props: { name: 'teamName', value: 'x', 'aria-invalid': true }
+		});
+
+		const input = document.body.querySelector<HTMLInputElement>('input[aria-invalid="true"]');
+		expect(input).not.toBeNull();
+		expect(input?.className).toContain('border-red-400');
+	});
 });

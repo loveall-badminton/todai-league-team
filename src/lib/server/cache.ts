@@ -63,7 +63,7 @@ function isLocalRequest(): boolean {
 	}
 }
 
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		return JSON.stringify(value);
 	}
@@ -83,7 +83,7 @@ async function sha256Hex(input: string): Promise<string> {
 	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function normalizeKeyPart(part: CacheKeyPart): string {
+export function normalizeKeyPart(part: CacheKeyPart): string {
 	if (part === undefined) return '_';
 	if (part === null) return 'null';
 	return String(part)

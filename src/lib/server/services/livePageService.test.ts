@@ -18,7 +18,7 @@ vi.mock('$lib/server/repositories/tokyoLeagueRepository', () => ({
 	listTies: mockListTies
 }));
 
-import { getScoreProgressionForTie, getStandingsData } from './livePageService';
+import { getScheduleTieData, getScoreProgressionForTie, getStandingsData } from './livePageService';
 
 type LivePageDb = {
 	select: (fields?: object) => {
@@ -234,5 +234,74 @@ describe('livePageService', () => {
 			{ gameNo: 1, scoreA: 1, scoreB: 0 },
 			{ gameNo: 1, scoreA: 1, scoreB: 1 }
 		]);
+	});
+
+	test('getScheduleTieData returns null when tie is not found', async () => {
+		mockListTies.mockResolvedValue([
+			{
+				id: 'tie-other',
+				tieCode: 'A-2',
+				teamAId: 'team-a',
+				teamBId: 'team-b',
+				winnerTeamId: null,
+				scheduledStartAt: null,
+				lineupDueAt: null,
+				teamAName: 'Alpha',
+				teamBName: 'Beta',
+				status: 'scheduled',
+				teamScoreA: 0,
+				teamScoreB: 0,
+				phase: 'group_a',
+				updatedAt: '2026-07-02T00:00:00.000Z'
+			}
+		]);
+
+		await expect(getScheduleTieData('missing')).resolves.toBeNull();
+	});
+
+	test('getScoreProgressionForTie skips rubber and event rows with null matchIds', async () => {
+		mockGetRequestDb.mockReturnValue(
+			createScoreProgressionDb(
+				[
+					{ id: 'rubber-1', matchId: null },
+					{ id: 'rubber-2', matchId: 'match-1' }
+				],
+				[
+					{
+						matchId: null,
+						seqNo: 1,
+						eventType: 'rally_won',
+						gameNo: 1,
+						scoreA: 9,
+						scoreB: 9,
+						targetSeqNo: null
+					},
+					{
+						matchId: 'match-1',
+						seqNo: 1,
+						eventType: 'rally_won',
+						gameNo: 1,
+						scoreA: 1,
+						scoreB: 0,
+						targetSeqNo: null
+					}
+				]
+			)
+		);
+
+		const result = await getScoreProgressionForTie('tie-1');
+
+		expect(result.eventsByMatchId).toEqual({
+			'match-1': [
+				{
+					type: 'rally_won',
+					seqNo: 1,
+					gameNo: 1,
+					scoreA: 1,
+					scoreB: 0,
+					targetSeqNo: null
+				}
+			]
+		});
 	});
 });
