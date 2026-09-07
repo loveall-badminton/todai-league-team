@@ -22,7 +22,7 @@
 2. プロジェクト名などを確認・決定します。
 3. Cloudflare がリポジトリを読み込み、D1 データベース（`todai-league`）と Durable Objects（`LiveBoard`、`MatchActionCoordinator`）を新規にプロビジョニングして Worker をデプロイします。
 
-この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm deploy` 環境や手元の D1 データベースには接続しません。D1 にはボタンによってプロビジョニングされたデータベースが使用されます。
+この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm run deploy` 環境や手元の D1 データベースには接続しません。D1 にはボタンによってプロビジョニングされたデータベースが使用されます。
 
 `BETTER_AUTH_SECRET` は、Workers Builds の実行権限が許せば `deploy:button` によって自動的に作成されます。作成に成功すると Worker が再デプロイされて反映されます。もし secret の作成に失敗した場合は、Cloudflare ダッシュボード → Workers & Pages → 対象 Worker → **Secrets** から `BETTER_AUTH_SECRET` を手動で作成し、ダッシュボードの「Retry deploy」で再デプロイをトリガーしてください。値は強固な乱数を安全な方法で生成してください。
 
@@ -32,7 +32,7 @@
 
 ## 運営者向け：初回デプロイ（開発者・CLI 向け）
 
-ターミナルが使える開発者や、staging 環境を含めて細かく制御したい場合は `pnpm deploy` を使ってください。ブラウザだけで済ませたい場合は上記の Deploy Button を利用してください。
+ターミナルが使える開発者や、staging 環境を含めて細かく制御したい場合は `pnpm run deploy` を使ってください。ブラウザだけで済ませたい場合は上記の Deploy Button を利用してください。
 
 1. Cloudflare ダッシュボードにログインするか、CLI でログインします。
 
@@ -43,19 +43,18 @@
 2. 依存関係をインストールします。
 
    ```bash
-   corepack enable
    pnpm install
    ```
 
 3. 本番環境にデプロイします。
 
    ```bash
-   pnpm deploy
+   pnpm run deploy
    ```
 
-   `pnpm deploy` は preflight を自動的に実行します。`pnpm preflight` はトラブルシューティング時の任意の診断コマンドです。
+   `pnpm run deploy` は preflight を自動的に実行します。`pnpm preflight` はトラブルシューティング時の任意の診断コマンドです。
 
-   `pnpm deploy` は次の順で実行されます：
+   `pnpm run deploy` は次の順で実行されます：
 
    1. `pnpm preflight` — 環境チェック
    2. `pnpm build` — 型生成 + svelte-check + Vite build
@@ -67,11 +66,11 @@
 
    `BETTER_AUTH_SECRET` は CLI デプロイ時に自動生成されます。Git 管理や手動コミットは不要です。
 
-   **初回デプロイの D1 作成**: リポジトリの wrangler 設定は初回デプロイ時まで `database_id` を省略しています。`pnpm deploy` はこの状態を検出し、リモートに同名の D1 データベースが存在しないことを確認してから `wrangler d1 create` でデータベースを作成します。作成後、Cloudflare から取得した UUID を `wrangler.jsonc`（本番）または `wrangler.staging.jsonc`（staging）の `d1_databases[0].database_id` に書き込みます。**この設定ファイルの変更は必ずコミットしてください**。database_id は機密情報ではありません。
+   **初回デプロイの D1 作成**: リポジトリの wrangler 設定は初回デプロイ時まで `database_id` を省略しています。`pnpm run deploy` はこの状態を検出し、リモートに同名の D1 データベースが存在しないことを確認してから `wrangler d1 create` でデータベースを作成します。作成後、Cloudflare から取得した UUID を `wrangler.jsonc`（本番）または `wrangler.staging.jsonc`（staging）の `d1_databases[0].database_id` に書き込みます。**この設定ファイルの変更は必ずコミットしてください**。database_id は機密情報ではありません。
 
-   もしリモートに同名のデータベースがすでに存在するのに設定に `database_id` が記載されていない場合、`pnpm deploy` はエラーを出して停止します。その場合は既存のデータベース ID をダッシュボードまたは `pnpm exec wrangler d1 info todai-league --json` で確認し、対象の wrangler 設定に手動で追記してから再実行してください。
+   もしリモートに同名のデータベースがすでに存在するのに設定に `database_id` が記載されていない場合、`pnpm run deploy` はエラーを出して停止します。その場合は既存のデータベース ID をダッシュボードまたは `pnpm exec wrangler d1 info todai-league --json` で確認し、対象の wrangler 設定に手動で追記してから再実行してください。
 
-   初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください（後述）。
+   初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm run deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください（後述）。
 
 4. デプロイ後に表示された Worker URL を開き、`/auth/bootstrap` にアクセスして管理者アカウントを作成します。
 
@@ -114,7 +113,7 @@
 - [Worker Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
 
 > [!IMPORTANT]
-> `deploy:workers-builds` は **既存のリソースに対してのみ** 動作します。D1 の作成、database_id の書き込み、secret の生成は行いません。これらは初回デプロイ時に `pnpm deploy` またはダッシュボード操作で済ませてください。
+> `deploy:workers-builds` は **既存のリソースに対してのみ** 動作します。D1 の作成、database_id の書き込み、secret の生成は行いません。これらは初回デプロイ時に `pnpm run deploy` またはダッシュボード操作で済ませてください。
 
 ### ロールバック
 
@@ -122,13 +121,13 @@ Cloudflare ダッシュボードから Worker のバージョンロールバッ�
 
 ## 運営者向け：ターミナルからの本番デプロイ
 
-Workers Builds を使わず、開発者が直接実行する場合は `pnpm deploy` を使います。これは初回セットアップや staging 確認で使う経路です。
+Workers Builds を使わず、開発者が直接実行する場合は `pnpm run deploy` を使います。これは初回セットアップや staging 確認で使う経路です。
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-`pnpm deploy` は preflight を自動的に実行します。`pnpm preflight` は任意の診断コマンドとしてトラブルシューティング時にも個別に実行できます。
+`pnpm run deploy` は preflight を自動的に実行します。`pnpm preflight` は任意の診断コマンドとしてトラブルシューティング時にも個別に実行できます。
 
 ## 開発者向け：ローカル開発
 
@@ -166,10 +165,10 @@ pnpm preview
 
 ```bash
 pnpm preflight                 # 環境チェック
-pnpm deploy                    # 本番デプロイ（deploy:prod と同じ。CLI/bootstrap 用）
-pnpm deploy:staging            # Staging デプロイ
-pnpm deploy:workers-builds     # Workers Builds の Deploy コマンド用（既存環境のみ）
-pnpm deploy:button             # Deploy to Cloudflare ボタンの初回デプロイ用（隔離環境）
+pnpm run deploy                    # 本番デプロイ（deploy:prod と同じ。CLI/bootstrap 用）
+pnpm run deploy:staging            # Staging デプロイ
+pnpm run deploy:workers-builds     # Workers Builds の Deploy コマンド用（既存環境のみ）
+pnpm run deploy:button             # Deploy to Cloudflare ボタンの初回デプロイ用（隔離環境）
 pnpm dev                       # Vite dev サーバー（UI のみ）
 pnpm preview                   # wrangler dev（D1/DO/auth あり）
 pnpm build                     # 型生成 + svelte-check + Vite build

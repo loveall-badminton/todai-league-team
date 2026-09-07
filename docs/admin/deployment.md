@@ -24,7 +24,7 @@ order: 5
 2. Cloudflare アカウントでログインし、表示されるプロンプトに従います。
 3. Cloudflare がリポジトリを読み込み、新しい Worker と D1 データベース（`todai-league`）、Durable Objects（`LiveBoard`、`MatchActionCoordinator`）をプロビジョニングしてデプロイします。
 
-この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm deploy` 環境や手元の D1 データベースには接続しません。`wrangler.jsonc` の `d1_databases[0].database_id` は **省略したままである必要があり**（設定されている UUID がボタン生成のものであっても）、ボタンの `deploy:button` は固定データベース名 `todai-league` で migration を適用します。万一 `database_id` が記載されている構成では migration / deploy / secret 作成は一切行われず、ブラウザ専用のダッシュボード復旧手順を返します。
+この経路は **Deploy Button 専用の隔離された環境** を作成します。既存の `pnpm run deploy` 環境や手元の D1 データベースには接続しません。`wrangler.jsonc` の `d1_databases[0].database_id` は **省略したままである必要があり**（設定されている UUID がボタン生成のものであっても）、ボタンの `deploy:button` は固定データベース名 `todai-league` で migration を適用します。万一 `database_id` が記載されている構成では migration / deploy / secret 作成は一切行われず、ブラウザ専用のダッシュボード復旧手順を返します。
 
 `BETTER_AUTH_SECRET` は `deploy:button` が Workers Builds 内で作成しようとします。成功すれば自動的に Worker が再デプロイされます。失敗した場合は、Cloudflare ダッシュボードから手動で作成し、再デプロイをトリガーしてください（下記「ボタン経路での復旧」を参照）。
 
@@ -46,17 +46,17 @@ pnpm exec wrangler login
 
 ブラウザが開いて許可を求められたら、承認してください。
 
-`pnpm deploy` は環境チェック（preflight）を自動的に実行します。`pnpm preflight` はトラブルシューティング時に任意の診断コマンドとして個別に利用できます。
+`pnpm run deploy` は環境チェック（preflight）を自動的に実行します。`pnpm preflight` はトラブルシューティング時に任意の診断コマンドとして個別に利用できます。
 
 ### 2. デプロイ実行
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-`pnpm deploy` は preflight を自動的に実行します。個別の `pnpm preflight` は任意の診断コマンドです。
+`pnpm run deploy` は preflight を自動的に実行します。個別の `pnpm preflight` は任意の診断コマンドです。
 
-`pnpm deploy` は以下を順に行います。
+`pnpm run deploy` は以下を順に行います。
 
 1. 環境チェック (`pnpm preflight`)
 2. アプリをビルドする
@@ -68,18 +68,18 @@ pnpm deploy
 
 `BETTER_AUTH_SECRET` は自動作成されます。Git に含めたり、チャットに貼ったりしないでください。
 
-**初回デプロイの D1 作成**: リポジトリの wrangler 設定は初回デプロイ時まで `database_id` を省略しています。`pnpm deploy` はこの状態を検出すると、`wrangler d1 list --json` でリモートに同名の D1 データベースが存在しないことを確認してから `wrangler d1 create` で作成します。作成後、`wrangler d1 info <name> --json` から取得した UUID を対象の wrangler 設定の `d1_databases[0].database_id` に書き込みます。**この設定ファイルの変更は必ずコミットしてください**。database_id は機密情報ではありません。
+**初回デプロイの D1 作成**: リポジトリの wrangler 設定は初回デプロイ時まで `database_id` を省略しています。`pnpm run deploy` はこの状態を検出すると、`wrangler d1 list --json` でリモートに同名の D1 データベースが存在しないことを確認してから `wrangler d1 create` で作成します。作成後、`wrangler d1 info <name> --json` から取得した UUID を対象の wrangler 設定の `d1_databases[0].database_id` に書き込みます。**この設定ファイルの変更は必ずコミットしてください**。database_id は機密情報ではありません。
 
-同名のデータベースがすでに存在するのに `database_id` が設定されていない場合、`pnpm deploy` はエラーで停止します。復旧するには、既存のデータベース ID を以下のいずれかで確認し、対象の wrangler 設定に手動で追記してください。
+同名のデータベースがすでに存在するのに `database_id` が設定されていない場合、`pnpm run deploy` はエラーで停止します。復旧するには、既存のデータベース ID を以下のいずれかで確認し、対象の wrangler 設定に手動で追記してください。
 
 - Cloudflare ダッシュボード: Workers & Pages → D1 → `<データベース名>` → database ID をコピー
 - CLI: `pnpm exec wrangler d1 info <データベース名> --json` の `uuid` フィールド
 
-手動で追記したら `pnpm deploy` を再実行してください。
+手動で追記したら `pnpm run deploy` を再実行してください。
 
 ### 3. リソースの確認
 
-初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください。**デプロイ後は必ず Cloudflare ダッシュボードで生成されたリソースを確認してください**。
+初回セットアップは、ブラウザだけで済ませたい場合は README 上部の **Deploy to Cloudflare** バッジから、開発者が細かく制御したい場合は `pnpm run deploy` を使ってください。Deploy Button は **新規の隔離環境** の初回セットアップに使用できますが、既存の本番環境や staging 環境を更新する用途には使わず、Workers Builds を使用してください。**デプロイ後は必ず Cloudflare ダッシュボードで生成されたリソースを確認してください**。
 
 確認すべき主なリソース：
 
@@ -162,13 +162,13 @@ Cloudflare ダッシュボードから Worker のバージョンロールバッ�
 
 ## ターミナルからの本番更新
 
-Workers Builds を使わず、開発者や特権を持つ運営者が直接実行する場合は `pnpm deploy` を使います。
+Workers Builds を使わず、開発者や特権を持つ運営者が直接実行する場合は `pnpm run deploy` を使います。
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-`pnpm deploy` は preflight を自動的に実行します。`pnpm preflight` は任意の診断コマンドとしてトラブルシューティング時にも個別に実行できます。
+`pnpm run deploy` は preflight を自動的に実行します。`pnpm preflight` は任意の診断コマンドとしてトラブルシューティング時にも個別に実行できます。
 
 migration が追加されている場合は、Worker をデプロイする前に自動的に適用されます。通常の更新では Worker は 1 回のデプロイで済み、新しい secret を作成した場合のみ追加の再デプロイが行われます。
 
@@ -177,7 +177,7 @@ migration が追加されている場合は、Worker をデプロイする前に
 `wrangler.staging.jsonc` で staging Worker と D1（`todai-league-staging`）が定義されています。
 
 ```bash
-pnpm deploy:staging
+pnpm run deploy:staging
 ```
 
 staging は本番投入前の動作確認用です。本番データに影響を与えません。Staging も `scripts/deploy.mjs` でデプロイされ、本番と同じく D1 確認 → migration → deploy → secret の順序で実行されます。Staging は独立した D1 データベース（`todai-league-staging`）を使用し、初回デプロイ時に `wrangler.staging.jsonc` へその `database_id` が書き込まれます。

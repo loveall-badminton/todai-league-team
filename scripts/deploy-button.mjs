@@ -24,7 +24,7 @@ Cloudflare button. The d1_databases[0] entry must not contain a database_id;
 a configured database_id (even a valid UUID) is rejected so the script cannot
 attach an arbitrary existing D1 to this isolated environment.
 
-For the developer CLI bootstrap path, use "pnpm deploy" instead.
+For the developer CLI bootstrap path, use "pnpm run deploy" instead.
 
 If D1 migration or secret creation fails, recover through the Cloudflare
 dashboard (see README/docs). Do not run terminal commands inside the button

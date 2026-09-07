@@ -124,7 +124,7 @@ export function readDatabaseId(configText) {
 		throw new Error(
 			`d1_databases[0].database_id must be a valid UUID (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") in ${CONFIG_PATH}.\n\n` +
 				`This script only deploys to an already-provisioned environment. ` +
-				`Run the initial bootstrap with a privileged developer using "pnpm deploy" first, ` +
+				`Run the initial bootstrap with a privileged developer using "pnpm run deploy" first, ` +
 				`then commit the resulting ${CONFIG_PATH} with database_id included.`
 		);
 	}
