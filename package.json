@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"license": "MIT",
 	"type": "module",
-	"packageManager": "pnpm@10.34.4",
+	"packageManager": "pnpm@11.25.0",
 	"scripts": {
 		"dev": "LAUNCH_EDITOR=zed vite dev",
 		"clean:cf": "rm -rf .svelte-kit/cloudflare .svelte-kit/output",

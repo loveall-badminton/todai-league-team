@@ -1,6 +1,9 @@
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - esbuild
-  - lefthook
-  - sharp
-  - workerd
+engineStrict: true
+allowBuilds:
+  '@prisma/client': false
+  '@tailwindcss/oxide': true
+  better-sqlite3: false
+  esbuild: true
+  lefthook: true
+  sharp: true
+  workerd: true
