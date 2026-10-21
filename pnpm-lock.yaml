@@ -39,8 +39,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       hono:
-        specifier: ^4.13.7
-        version: 4.13.7
+        specifier: ^4.13.11
+        version: 4.13.11
       partyserver:
         specifier: ^0.5.10
         version: 0.5.10(@cloudflare/workers-types@5.20260813.1)
@@ -388,6 +388,7 @@ packages:
 
   '@cloudflare/vitest-pool-workers@0.21.2':
     resolution: {integrity: sha512-728q7/ydJQtyAsQqw/ptxpp1hYaqQbK0i6kgFHV5HwWcaVFDh0/LWgbRcJBQ3b4ABz77O3MrdHppPu/CPMqimw==}
+    deprecated: '@cloudflare/vitest-pool-workers has been renamed to @cloudflare/vitest-plugin. This package will not receive future updates.'
     peerDependencies:
       '@vitest/runner': ^4.1.0
       '@vitest/snapshot': ^4.1.0
@@ -2669,8 +2670,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.13.7:
-    resolution: {integrity: sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==}
+  hono@4.13.11:
+    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -6383,7 +6384,7 @@ snapshots:
       property-information: 7.2.0
       space-separated-tokens: 2.0.2
 
-  hono@4.13.7: {}
+  hono@4.13.11: {}
 
   html-escaper@2.0.2: {}
 
